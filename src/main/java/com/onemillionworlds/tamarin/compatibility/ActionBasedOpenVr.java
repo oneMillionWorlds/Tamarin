@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 
 /**
  * This app state provides action based OpenVR calls (aka semi modern VR), this is functionality that will come in
- * JMonkey 3.6 but does not yet exist. This provides that functionality but makes it available in JMonkey 3.4 & 3.5.
+ * JMonkey 3.6 but does not yet exist. This provides that functionality but makes it available in JMonkey 3.4 and 3.5.
  *
  * This app state closely follows LWJGLOpenVRInput as it will exist in 3.6
  *

@@ -8,6 +8,11 @@ repositories {
     mavenCentral()
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 group = 'com.onemillionworlds.tamarin'
 version = '1.0.0-SNAPSHOT'
 
@@ -29,4 +34,16 @@ dependencies {
      */
     compileOnly "${jme3.g}:jme3-core:${jme3.v}"
     compileOnly "${jme3.g}:jme3-vr:${jme3.v}"
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = "${group}"
+            artifactId = 'Tamarin'
+            version = "${version}"
+
+            from components.java
+        }
+    }
 }
