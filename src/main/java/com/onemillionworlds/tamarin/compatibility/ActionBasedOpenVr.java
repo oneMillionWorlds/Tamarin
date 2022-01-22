@@ -106,6 +106,10 @@ public class ActionBasedOpenVr extends BaseAppState{
         ACTION_BASED
     }
 
+    {
+        inputHandles.put(null, VR.k_ulInvalidInputValueHandle);
+    }
+
     @Override
     public void initialize(Application app){
         VRAppState vrAppState = app.getStateManager().getState(VRAppState.class);

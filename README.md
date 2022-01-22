@@ -1,6 +1,14 @@
 # Tamarin
 A VR utilities library for JMonkeyEngine. 
 
+## Typical imports
+
+To successfully use Tamarin you should typically have at least the following dependencies
+
+    implementation "org.jmonkeyengine:jme3-core:$jmonkeyengine_version"
+    implementation "org.jmonkeyengine:jme3-lwjgl3:$jmonkeyengine_version"
+    implementation "org.jmonkeyengine:jme3-vr:$jmonkeyengine_version"
+
 ## Logging
 
 This library uses simple java.util.Logger for maximum compatibility. Bind that to your preferred logging library.
