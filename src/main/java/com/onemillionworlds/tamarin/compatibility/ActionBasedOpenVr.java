@@ -433,6 +433,7 @@ public class ActionBasedOpenVr extends BaseAppState{
      *
      * @param actionName the action name by which a particular skeleton has been bound to.
      * @param armature a JMonkey armature (aka set of bones)
+     * @param handMode the hands "stance". See {@link HandMode} for more details
      */
     public void updateHandSkeletonPositions( String actionName, Armature armature, HandMode handMode ){
         LWJGLSkeletonData skeletonData = getOrFetchSkeletonData(actionName);
@@ -441,7 +442,7 @@ public class ActionBasedOpenVr extends BaseAppState{
         VRBoneTransform.Buffer boneBuffer = new VRBoneTransform.Buffer(skeletonBuffer);
 
         //EVRSkeletalTransformSpace_VRSkeletalTransformSpace_Parent means ask for bones relative to their parent (which is also what JME armature wants to talk about)
-        VRInput.VRInput_GetSkeletalBoneData(skeletonData.skeletonAction, VR.EVRSkeletalTransformSpace_VRSkeletalTransformSpace_Parent, handMode.openVrHandle, boneBuffer);
+        withErrorCodeWarning("Getting bone data", VRInput.VRInput_GetSkeletalBoneData(skeletonData.skeletonAction, VR.EVRSkeletalTransformSpace_VRSkeletalTransformSpace_Parent, handMode.openVrHandle, boneBuffer));
 
         int i=0;
         for(VRBoneTransform boneTransform : boneBuffer){

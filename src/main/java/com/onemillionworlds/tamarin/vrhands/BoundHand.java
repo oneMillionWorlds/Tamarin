@@ -1,8 +1,15 @@
 package com.onemillionworlds.tamarin.vrhands;
 
 import com.jme3.anim.Armature;
+import com.jme3.material.Material;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public abstract class BoundHand{
 
@@ -54,5 +61,24 @@ public abstract class BoundHand{
 
     public Armature getArmature(){
         return armature;
+    }
+
+    public void setMaterial(Material material){
+        searchForGeometry(getHandGeometry()).forEach(g -> g.setMaterial(material));
+    }
+
+    private static Collection<Geometry> searchForGeometry(Spatial spatial){
+        if (spatial instanceof Geometry){
+            return List.of((Geometry)spatial);
+        }else if (spatial instanceof Node){
+            List<Geometry> geometries = new ArrayList<>();
+            for(Spatial child : ((Node)spatial).getChildren()){
+                geometries.addAll(searchForGeometry(child));
+            }
+
+            return geometries;
+        }else{
+            throw new RuntimeException("Could not find skinable model");
+        }
     }
 }

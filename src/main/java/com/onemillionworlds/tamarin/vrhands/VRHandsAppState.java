@@ -123,19 +123,4 @@ public class VRHandsAppState extends BaseAppState{
         }
     }
 
-    private static Collection<Geometry> searchForGeometry(Spatial spatial){
-        if (spatial instanceof Geometry){
-            return List.of((Geometry)spatial);
-        }else if (spatial instanceof Node){
-            List<Geometry> geometries = new ArrayList<>();
-            for(Spatial child : ((Node)spatial).getChildren()){
-                geometries.addAll(searchForGeometry(child));
-            }
-
-            return geometries;
-        }else{
-            throw new RuntimeException("Could not find skinable model");
-        }
-    }
-
 }
