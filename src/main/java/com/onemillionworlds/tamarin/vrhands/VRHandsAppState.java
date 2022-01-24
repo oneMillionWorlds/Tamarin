@@ -5,14 +5,12 @@ import com.jme3.anim.SkinningControl;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
-import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVr;
 import com.onemillionworlds.tamarin.compatibility.PoseActionState;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -58,8 +56,8 @@ public class VRHandsAppState extends BaseAppState{
         if (isEnabled()){
             for(BoundHand boundHand : handControls){
                 PoseActionState pose = openVr.getPose(boundHand.getPostActionName());
-                boundHand.getHandGeometry().setLocalRotation(pose.getOrientation());
-                boundHand.getHandGeometry().setLocalTranslation(pose.getPosition());
+                boundHand.getHandNode().setLocalRotation(pose.getOrientation());
+                boundHand.getHandNode().setLocalTranslation(pose.getPosition());
                 openVr.updateHandSkeletonPositions(boundHand.getSkeletonActionName(), boundHand.getArmature(), boundHand.getHandMode());
             }
         }
@@ -87,7 +85,7 @@ public class VRHandsAppState extends BaseAppState{
     public BoundHand bindHandModel( String poseToBindTo, String skeletonActionToBindTo, Spatial spatial ){
         Spatial trueModel = searchForArmatured(spatial);
 
-        rootNodeDelegate.attachChild(trueModel);
+
 
         SkinningControl skinningControl = trueModel.getControl(SkinningControl.class);
         Armature armature = skinningControl.getArmature();
@@ -99,7 +97,7 @@ public class VRHandsAppState extends BaseAppState{
                 handControls.remove(this);
             }
         };
-
+        rootNodeDelegate.attachChild(boundHand.getHandNode());
         handControls.add(boundHand);
 
         return boundHand;

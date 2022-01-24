@@ -5,6 +5,7 @@ plugins {
 }
 
 repositories {
+    jcenter()
     mavenCentral()
 }
 
@@ -34,6 +35,7 @@ dependencies {
      */
     compileOnly "${jme3.g}:jme3-core:${jme3.v}"
     compileOnly "${jme3.g}:jme3-vr:${jme3.v}"
+    compileOnly "com.simsilica:lemur:1.14.0"
 }
 
 publishing {
