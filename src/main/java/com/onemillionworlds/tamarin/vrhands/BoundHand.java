@@ -1,10 +1,13 @@
 package com.onemillionworlds.tamarin.vrhands;
 
 import com.jme3.anim.Armature;
+import com.jme3.anim.Joint;
+import com.jme3.asset.AssetManager;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.material.Material;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
@@ -12,6 +15,8 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Line;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Panel;
@@ -21,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.stream.Stream;
 
 public abstract class BoundHand{
@@ -30,6 +36,8 @@ public abstract class BoundHand{
     private final Node handGeometryNode = new Node();
 
     private final Node handNode_zPointing = new Node();
+
+    private final Node debugPointsNode = new Node();
 
     /**
      * The hand will be detached from the scene graph and will no longer receive updates
@@ -42,6 +50,11 @@ public abstract class BoundHand{
 
     private final Armature armature;
 
+    /**
+     * Debug points add markers onto the hands where the bone positions are, and their directions
+     */
+    private boolean debugPoints = false;
+
     public BoundHand(String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature){
         this.handGeometryNode.attachChild(handGeometry);
         this.postActionName = postActionName;
@@ -49,6 +62,7 @@ public abstract class BoundHand{
         this.armature = armature;
 
         this.handGeometryNode.attachChild(handNode_zPointing);
+        this.handGeometryNode.attachChild(debugPointsNode);
 
         Quaternion naturalRotation = new Quaternion();
         naturalRotation.fromAngleAxis(-0.25f* FastMath.PI, Vector3f.UNIT_X);
@@ -112,6 +126,13 @@ public abstract class BoundHand{
 
     public void setMaterial(Material material){
         searchForGeometry(getHandNode()).forEach(g -> g.setMaterial(material));
+    }
+
+    protected void update(float timeSlice, AssetManager assetManager){
+        if (debugPoints){
+            debugPointsNode.detachAllChildren();
+            debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red, assetManager));
+        }
     }
 
     /**
@@ -178,6 +199,14 @@ public abstract class BoundHand{
         }
     }
 
+    public boolean isDebugPoints(){
+        return debugPoints;
+    }
+
+    public void setDebugPoints(boolean debugPoints){
+        this.debugPoints = debugPoints;
+    }
+
     private static Collection<Geometry> searchForGeometry(Spatial spatial){
         if (spatial instanceof Geometry){
             return List.of((Geometry)spatial);
@@ -198,9 +227,50 @@ public abstract class BoundHand{
      * @param basePoint
      * @return
      */
-    private  static Stream<Spatial> parentStream(Spatial basePoint){
+    private static Stream<Spatial> parentStream(Spatial basePoint){
         return Stream.iterate(basePoint, Objects::nonNull, Spatial::getParent);
 
+    }
+
+    private static Spatial armatureToNodes(Armature armature, ColorRGBA colorRGBA, AssetManager assetManager){
+        Random rnd = new Random(1);
+        return jointToNode(armature.getRoots()[0], colorRGBA, assetManager);
+    }
+
+    private static Spatial jointToNode(Joint joint, ColorRGBA colorRGBA, AssetManager assetManager){
+
+        Node node = new Node();
+        node.setLocalTranslation(joint.getLocalTranslation());
+        node.setLocalRotation(joint.getLocalRotation());
+        node.attachChild(microBox(colorRGBA, assetManager));
+        node.attachChild(microLine(colorRGBA, assetManager));
+        for(Joint child : joint.getChildren()){
+            node.attachChild(jointToNode(child, colorRGBA, assetManager));
+        }
+        return node;
+    }
+
+    public static Geometry microBox(ColorRGBA colorRGBA, AssetManager assetManager){
+        Box b = new Box(0.002f, 0.002f, 0.002f);
+        Geometry geom = new Geometry("debugHandBox", b);
+        Material mat = new Material(assetManager,
+                "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", colorRGBA);
+        geom.setMaterial(mat);
+        return geom;
+    }
+
+    public static Geometry microLine(ColorRGBA colorRGBA, AssetManager assetManager){
+        return microLine(colorRGBA, new Vector3f(0.015f, 0, 0), assetManager);
+    }
+
+    public static Geometry microLine(ColorRGBA colorRGBA, Vector3f vector, AssetManager assetManager){
+        Line line = new Line(new Vector3f(0, 0, 0), vector);
+        Geometry geometry = new Geometry("debugHandLine", line);
+        Material orange = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        orange.setColor("Color", colorRGBA);
+        geometry.setMaterial(orange);
+        return geometry;
     }
 
 

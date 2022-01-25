@@ -58,6 +58,7 @@ public class VRHandsAppState extends BaseAppState{
                 PoseActionState pose = openVr.getPose(boundHand.getPostActionName());
                 boundHand.getHandNode().setLocalRotation(pose.getOrientation());
                 boundHand.getHandNode().setLocalTranslation(pose.getPosition());
+                boundHand.update(tpf, getApplication().getAssetManager());
                 openVr.updateHandSkeletonPositions(boundHand.getSkeletonActionName(), boundHand.getArmature(), boundHand.getHandMode());
             }
         }
