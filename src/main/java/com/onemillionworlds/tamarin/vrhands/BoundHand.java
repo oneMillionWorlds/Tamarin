@@ -31,6 +31,8 @@ import java.util.stream.Stream;
 
 public abstract class BoundHand{
 
+    public static String NO_PICK = "noPick";
+
     private HandMode handMode = HandMode.WITHOUT_CONTROLLER;
 
     private final Node rawOpenVrPosition = new Node();
@@ -78,6 +80,8 @@ public abstract class BoundHand{
         this.handSide = handSide;
         this.rawOpenVrPosition.attachChild(handNode_xPointing);
         this.rawOpenVrPosition.attachChild(debugPointsNode);
+
+        searchForGeometry(handGeometry).forEach(g -> g.setUserData(NO_PICK, true));
 
         Quaternion naturalRotation = new Quaternion();
         naturalRotation.fromAngleAxis(-0.75f* FastMath.PI, Vector3f.UNIT_X);
@@ -178,9 +182,9 @@ public abstract class BoundHand{
         //the palm node is put at the position between the finger_middle_0_l bone and finger_middle_meta_l, but with the
         // rotation of the finger_middle_meta_l bone. This gives roughly the position of a grab point, with a sensible rotation
         String proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
-        String metacarpelName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
+        String metacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
 
-        BoneStance metacarpel = boneStances.get(metacarpelName);
+        BoneStance metacarpel = boneStances.get(metacarpalName);
         BoneStance proximal = boneStances.get(proximalName);
         if (metacarpel != null){
 
@@ -208,11 +212,14 @@ public abstract class BoundHand{
      * Picks from a point just in front of the thumb (the point the getHandNode_zPointing() is at) in the direction
      * out away from the hand.
      *
+     * Note that the geometry of the hand itself may be the first result from the pick but more reasonable pick results
+     * will follow. (These will have NO_PICK = true as userdata which can be used to ignore them)
+     *
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      */
     public CollisionResults pickBulkHand(Node nodeToPickAgainst){
         Vector3f pickOrigin = getHandNode_xPointing().getWorldTranslation();
-        Vector3f pickingPoint = getHandNode_xPointing().localToWorld(new Vector3f(0,0,-1), null);
+        Vector3f pickingPoint = getHandNode_xPointing().localToWorld(new Vector3f(1,0,0), null);
         Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
         CollisionResults results = new CollisionResults();
 
@@ -223,6 +230,29 @@ public abstract class BoundHand{
     }
 
     /**
+     * Picks from roughly the centre of the palm out from the palm (i.e. for the left hand it points right)
+     *
+     * This can be useful to use picking to determine what the player wishes to grab
+     *
+     * Note that the geometry of the hand itself may be the first result from the pick but more reasonable pick results
+     * will follow. (These will have NO_PICK = true as userdata which can be used to ignore them)
+     *
+     * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
+     */
+    public CollisionResults pickPalm(Node nodeToPickAgainst){
+        Vector3f pickOrigin = getHandNode_xPointing().getWorldTranslation();
+        Vector3f pickingPoint = getHandNode_xPointing().localToWorld(new Vector3f(0,0,handSide == HandSide.LEFT?1:-1), null);
+        Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
+        CollisionResults results = new CollisionResults();
+
+        Ray ray = new Ray(pickOrigin, pickingVector);
+
+        nodeToPickAgainst.collideWith(ray, results);
+        return results;
+    }
+
+
+    /**
      * Picks using {@link BoundHand#pickBulkHand} then simulates a pick on the first thing it hits.
      *
      * Note; it ignores anything connected to getHandNode(), so you can "pick through" any picking line markers or
@@ -230,21 +260,19 @@ public abstract class BoundHand{
      *
      * This requires lemur to be on the class path (or else you'll get an exception).
      *
-     * It kind of "fakes" a click. So its only limited in what it does. It tracks up the parents of things it hits looking
+     * It kind of "fakes" a click. So it's only limited in what it does. It tracks up the parents of things it hits looking
      * for things which are a button, or have a MouseEventControl. If it finds one it clicks that, then returns.
      *
      * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
      *
-     * @param nodeToPickAgainst
-     * @return
+     * @param nodeToPickAgainst the node that contains things that can be clicked
      */
     public void click_lemurSupport(Node nodeToPickAgainst){
         CollisionResults results = pickBulkHand(nodeToPickAgainst);
 
         for(int i=0;i<results.size();i++){
             CollisionResult collision = results.getCollision(i);
-            boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData("noPick"));
-            skip |= parentStream(collision.getGeometry().getParent()).anyMatch(s -> s == rawOpenVrPosition);
+            boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
 
             if (!skip){
                 Spatial processedSpatial = collision.getGeometry();
@@ -273,9 +301,8 @@ public abstract class BoundHand{
     }
 
     public void debugPickLines(){
-        rawOpenVrPosition.attachChild(microLine(ColorRGBA.Green, new Vector3f(0,0,-0.25f)));
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
-        palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0.25f,0,0)));
+        palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0,handSide == HandSide.LEFT?0.25f:-0.25f)));
     }
 
     /**
@@ -290,7 +317,7 @@ public abstract class BoundHand{
 
     /**
      * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
-     * {@link BoundHand#getPalmNode_xPointing()}
+     * {@link BoundHand#getPalmNode()}
      */
     public void debugPalmCoordinateSystem(){
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
@@ -347,6 +374,7 @@ public abstract class BoundHand{
                 "Common/MatDefs/Misc/Unshaded.j3md");
         mat.setColor("Color", colorRGBA);
         geom.setMaterial(mat);
+        geom.setUserData(NO_PICK, true);
         return geom;
     }
 
@@ -361,6 +389,7 @@ public abstract class BoundHand{
         material.getAdditionalRenderState().setLineWidth(5);
         material.setColor("Color", colorRGBA);
         geometry.setMaterial(material);
+        geometry.setUserData(NO_PICK, true);
         return geometry;
     }
 

@@ -23,6 +23,7 @@ import org.lwjgl.openvr.InputDigitalActionData;
 import org.lwjgl.openvr.InputPoseActionData;
 import org.lwjgl.openvr.VR;
 import org.lwjgl.openvr.VRActiveActionSet;
+import org.lwjgl.openvr.VRApplications;
 import org.lwjgl.openvr.VRBoneTransform;
 import org.lwjgl.openvr.VRInput;
 
@@ -141,7 +142,28 @@ public class ActionBasedOpenVrState extends BaseAppState{
     }
 
 
-
+    /**
+     * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make.
+     * (An action is an abstract version of a button press). The action manifest may then also include references to
+     * further files that define default mappings between those actions and physical buttons on the VR controllers.
+     *
+     * Note that registering an actions manifest will deactivate legacy inputs (i.e. methods such as isButtonDown
+     * will no longer work
+     *
+     * See https://github.com/ValveSoftware/openvr/wiki/Action-manifest for documentation on how to create an
+     * action manifest
+     *
+     * This option is only relevant to OpenVR
+     *
+     * @param actionManifestAbsolutePath
+     *          the absolute file path to an actions manifest
+     * @param startingActiveActionSets
+     *          the actions in the manifest are divided into action sets (groups) by their prefix (e.g. "/actions/main").
+     *          These action sets can be turned off and on per frame. This argument sets the action set that will be
+     *          active now. The active action sets can be later be changed by calling {@link #setActiveActionSet}.
+     *          Note that at present only a single set at a time is supported
+     *
+     */
     public void registerActionManifest(String actionManifestAbsolutePath, String startingActiveActionSets){
         inputMode = InputMode.ACTION_BASED;
         withErrorCodeWarning("registering an action manifest", VRInput.VRInput_SetActionManifestPath(actionManifestAbsolutePath));
