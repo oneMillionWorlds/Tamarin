@@ -17,25 +17,35 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
+import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.simsilica.lemur.Button;
-import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.event.MouseEventControl;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.stream.Stream;
 
 public abstract class BoundHand{
 
     private HandMode handMode = HandMode.WITHOUT_CONTROLLER;
 
-    private final Node handGeometryNode = new Node();
+    private final Node rawOpenVrPosition = new Node();
 
-    private final Node handNode_zPointing = new Node();
+    private final Node geometryNode = new Node();
+
+    private final Node handNode_xPointing = new Node();
+
+    /**
+     * This is a node that sits on the palm (but near the fingers) whose +x points out way from the palm (towards whatever
+     * would be grabbed). It is live updated based on the skeleton positions so its exact relations to other nodes may change as
+     * the node moves.
+     *
+     */
+    private final Node palmNode_xPointing = new Node();
 
     private final Node debugPointsNode = new Node();
 
@@ -50,23 +60,37 @@ public abstract class BoundHand{
 
     private final Armature armature;
 
+    private final AssetManager assetManager;
+
+    private final HandSide handSide;
+
     /**
      * Debug points add markers onto the hands where the bone positions are, and their directions
      */
     private boolean debugPoints = false;
 
-    public BoundHand(String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature){
-        this.handGeometryNode.attachChild(handGeometry);
+    public BoundHand(String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
+        this.geometryNode.attachChild(handGeometry);
         this.postActionName = postActionName;
         this.skeletonActionName = skeletonActionName;
         this.armature = armature;
-
-        this.handGeometryNode.attachChild(handNode_zPointing);
-        this.handGeometryNode.attachChild(debugPointsNode);
+        this.assetManager = assetManager;
+        this.handSide = handSide;
+        this.rawOpenVrPosition.attachChild(handNode_xPointing);
+        this.rawOpenVrPosition.attachChild(debugPointsNode);
 
         Quaternion naturalRotation = new Quaternion();
-        naturalRotation.fromAngleAxis(-0.25f* FastMath.PI, Vector3f.UNIT_X);
-        handNode_zPointing.setLocalRotation(naturalRotation);
+        naturalRotation.fromAngleAxis(-0.75f* FastMath.PI, Vector3f.UNIT_X);
+        Quaternion zToXRotation = new Quaternion();
+        zToXRotation.fromAngleAxis(0.5f* FastMath.PI, Vector3f.UNIT_Z);
+        Quaternion rotateAxes = new Quaternion();
+        rotateAxes.fromAngleAxis(0.5f* FastMath.PI, Vector3f.UNIT_X);
+
+        handNode_xPointing.setLocalRotation(naturalRotation.mult(zToXRotation).mult(rotateAxes));
+
+        rawOpenVrPosition.attachChild(palmNode_xPointing);
+
+        rawOpenVrPosition.attachChild(geometryNode);
     }
 
     public HandMode getHandMode(){
@@ -74,34 +98,39 @@ public abstract class BoundHand{
     }
 
     /**
-     * Returns a node that will update with the hands position and rotation.
+     * Returns a node that will update with the hands position and rotation. If you are dealing with raw bone positions
+     * they are in this coordinate system.
      *
      * Note that this is in the orientation that OpenVR provides which isn't very helpful
      * (it doesn't map well to the direction the hand is pointing for example)
      *
-     * You probably don't want this and probably want {@link BoundHand#getHandNode_zPointing}
-     * which has a more natural rotation
+     * You probably don't want this and probably want {@link BoundHand#getHandNode_xPointing}
+     * which has a more natural rotation. Unless you are dealing with raw bone positions, which are in this coordinate
+     * system.
      *
      * @return the raw hand node
      */
-    public Node getHandNode(){
-        return handGeometryNode;
+    public Node getRawOpenVrNode(){
+        return rawOpenVrPosition;
     }
 
     /**
      * Returns a node that will update with the hands position and rotation.
      *
-     * This node has an orientation such that negative Z aligned with the hands pointing direction and +X aligned with the
-     * direction along the hand (which direction along the hand +X or -X depends on if its the left or right hand).
+     * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
+     * pointing to the right
      *
-     * This is an ideal node for things like picking lines, which can be put in the negative z direction
+     * This is an ideal node for things like picking lines, which can be put in the x direction
      *
-     * Note that the position is just in front of the thumb, not the centre of the hand
+     * Note that the (0,0,0) position is just in front of the thumb, not the centre of the hand.
+     *
+     * This node is primarily used for picking, but if you want a node to attach to that only cares about the bulk
+     * hand position
      *
      * @return a node to connect things to
      */
-    public Node getHandNode_zPointing(){
-        return handNode_zPointing;
+    public Node getHandNode_xPointing(){
+        return handNode_xPointing;
     }
 
     /**
@@ -125,14 +154,24 @@ public abstract class BoundHand{
     }
 
     public void setMaterial(Material material){
-        searchForGeometry(getHandNode()).forEach(g -> g.setMaterial(material));
+        searchForGeometry(geometryNode).forEach(g -> g.setMaterial(material));
     }
 
-    protected void update(float timeSlice, AssetManager assetManager){
+    protected void update(float timeSlice, Map<String, BoneStance> boneStances){
         if (debugPoints){
             debugPointsNode.detachAllChildren();
-            debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red, assetManager));
+            debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
         }
+
+        String middleFingerPalmTargetBone = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
+
+        BoneStance boneStance = boneStances.get(middleFingerPalmTargetBone);
+
+        if (boneStance != null){
+            palmNode_xPointing.setLocalTranslation(boneStance.position);
+            palmNode_xPointing.setLocalRotation(boneStance.orientation);
+        }
+
     }
 
     /**
@@ -142,8 +181,8 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      */
     public CollisionResults pickBulkHand(Node nodeToPickAgainst){
-        Vector3f pickOrigin = getHandNode_zPointing().getWorldTranslation();
-        Vector3f pickingPoint = getHandNode_zPointing().localToWorld(new Vector3f(0,0,-1), null);
+        Vector3f pickOrigin = getHandNode_xPointing().getWorldTranslation();
+        Vector3f pickingPoint = getHandNode_xPointing().localToWorld(new Vector3f(0,0,-1), null);
         Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
         CollisionResults results = new CollisionResults();
 
@@ -175,7 +214,7 @@ public abstract class BoundHand{
         for(int i=0;i<results.size();i++){
             CollisionResult collision = results.getCollision(i);
             boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData("noPick"));
-            skip |= parentStream(collision.getGeometry().getParent()).anyMatch(s -> s == handGeometryNode);
+            skip |= parentStream(collision.getGeometry().getParent()).anyMatch(s -> s == rawOpenVrPosition);
 
             if (!skip){
                 Spatial processedSpatial = collision.getGeometry();
@@ -199,12 +238,26 @@ public abstract class BoundHand{
         }
     }
 
-    public boolean isDebugPoints(){
-        return debugPoints;
+    public void debugArmature(){
+        this.debugPoints = true;
     }
 
-    public void setDebugPoints(boolean debugPoints){
-        this.debugPoints = debugPoints;
+    public void debugPickLines(){
+        rawOpenVrPosition.attachChild(microLine(ColorRGBA.Green, new Vector3f(0,0,-0.25f)));
+        handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
+        palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0.25f,0,0)));
+    }
+
+    public void handNodeXPointingCoordinateSystem(){
+        handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
+        handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
+        handNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
+    }
+
+    public void palmCoordinateSystem(){
+        palmNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
+        palmNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
+        palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
     }
 
     private static Collection<Geometry> searchForGeometry(Spatial spatial){
@@ -232,25 +285,24 @@ public abstract class BoundHand{
 
     }
 
-    private static Spatial armatureToNodes(Armature armature, ColorRGBA colorRGBA, AssetManager assetManager){
-        Random rnd = new Random(1);
-        return jointToNode(armature.getRoots()[0], colorRGBA, assetManager);
+    private Spatial armatureToNodes(Armature armature, ColorRGBA colorRGBA){
+        return jointToNode(armature.getRoots()[0], colorRGBA);
     }
 
-    private static Spatial jointToNode(Joint joint, ColorRGBA colorRGBA, AssetManager assetManager){
+    private Spatial jointToNode(Joint joint, ColorRGBA colorRGBA){
 
         Node node = new Node();
         node.setLocalTranslation(joint.getLocalTranslation());
         node.setLocalRotation(joint.getLocalRotation());
-        node.attachChild(microBox(colorRGBA, assetManager));
-        node.attachChild(microLine(colorRGBA, assetManager));
+        node.attachChild(microBox(colorRGBA));
+        node.attachChild(microLine(colorRGBA));
         for(Joint child : joint.getChildren()){
-            node.attachChild(jointToNode(child, colorRGBA, assetManager));
+            node.attachChild(jointToNode(child, colorRGBA));
         }
         return node;
     }
 
-    public static Geometry microBox(ColorRGBA colorRGBA, AssetManager assetManager){
+    private Geometry microBox(ColorRGBA colorRGBA){
         Box b = new Box(0.002f, 0.002f, 0.002f);
         Geometry geom = new Geometry("debugHandBox", b);
         Material mat = new Material(assetManager,
@@ -260,16 +312,17 @@ public abstract class BoundHand{
         return geom;
     }
 
-    public static Geometry microLine(ColorRGBA colorRGBA, AssetManager assetManager){
-        return microLine(colorRGBA, new Vector3f(0.015f, 0, 0), assetManager);
+    private Geometry microLine(ColorRGBA colorRGBA){
+        return microLine(colorRGBA, new Vector3f(0.015f, 0, 0));
     }
 
-    public static Geometry microLine(ColorRGBA colorRGBA, Vector3f vector, AssetManager assetManager){
+    private Geometry microLine(ColorRGBA colorRGBA, Vector3f vector){
         Line line = new Line(new Vector3f(0, 0, 0), vector);
         Geometry geometry = new Geometry("debugHandLine", line);
-        Material orange = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        orange.setColor("Color", colorRGBA);
-        geometry.setMaterial(orange);
+        Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        material.getAdditionalRenderState().setLineWidth(5);
+        material.setColor("Color", colorRGBA);
+        geometry.setMaterial(material);
         return geometry;
     }
 

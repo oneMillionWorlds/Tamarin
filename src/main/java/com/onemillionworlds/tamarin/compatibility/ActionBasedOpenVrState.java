@@ -5,8 +5,6 @@ import com.jme3.anim.Joint;
 import com.jme3.app.Application;
 import com.jme3.app.VRAppState;
 import com.jme3.app.VREnvironment;
-import com.jme3.app.state.AbstractAppState;
-import com.jme3.app.state.AppStateManager;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.input.vr.lwjgl_openvr.LWJGLOpenVR;
 import com.jme3.input.vr.lwjgl_openvr.LWJGLOpenVRInput;
@@ -46,9 +44,9 @@ import java.util.logging.Logger;
  * app state {@link VRAppState} will already have been bound. The setting VRConstants.SETTING_VRAPI must have been set to
  * VRConstants.SETTING_VRAPI_OPENVR_LWJGL_VALUE (as this uses LWJGL)
  */
-public class ActionBasedOpenVr extends BaseAppState{
+public class ActionBasedOpenVrState extends BaseAppState{
 
-    private static final Logger logger = Logger.getLogger(ActionBasedOpenVr.class.getName());
+    private static final Logger logger = Logger.getLogger(ActionBasedOpenVrState.class.getName());
 
     /**
      * A map of the action name to the objects/data required to read states from lwjgl
@@ -97,7 +95,7 @@ public class ActionBasedOpenVr extends BaseAppState{
 
     private enum InputMode{
         /**
-         * Simple bitfield, no way to map new controllers (Not directly supported by Tamarin, only JMonkeyVr
+         * Simple bitfield, no way to map new controllers (Not directly supported by Tamarin, only JMonkeyVr)
          */
         LEGACY,
         /**
