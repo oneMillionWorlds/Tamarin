@@ -134,6 +134,18 @@ public abstract class BoundHand{
     }
 
     /**
+     * Returns a node that will update with the hands position and rotation.
+     *
+     * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
+     * pointing to the right, as defined by the middle finger metacarpal bone. Its X,Y and Z are likely to be in similar
+     * directions to those of {@link BoundHand#getHandNode_xPointing()} but not precisely
+     * @return
+     */
+    public Node getPalmNode(){
+        return palmNode_xPointing;
+    }
+
+    /**
      * The way the hand is being held, see javadoc on HandMode itself for more details
      * @param handMode the handMode
      */
@@ -163,13 +175,31 @@ public abstract class BoundHand{
             debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
         }
 
-        String middleFingerPalmTargetBone = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
+        //the palm node is put at the position between the finger_middle_0_l bone and finger_middle_meta_l, but with the
+        // rotation of the finger_middle_meta_l bone. This gives roughly the position of a grab point, with a sensible rotation
+        String proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
+        String metacarpelName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
 
-        BoneStance boneStance = boneStances.get(middleFingerPalmTargetBone);
+        BoneStance metacarpel = boneStances.get(metacarpelName);
+        BoneStance proximal = boneStances.get(proximalName);
+        if (metacarpel != null){
 
-        if (boneStance != null){
-            palmNode_xPointing.setLocalTranslation(boneStance.position);
-            palmNode_xPointing.setLocalRotation(boneStance.orientation);
+            Quaternion coordinateStandardisingRotation;
+            if (handSide == HandSide.LEFT){
+                coordinateStandardisingRotation = new Quaternion();
+                coordinateStandardisingRotation.fromAngleAxis(-0.5f*FastMath.PI, Vector3f.UNIT_X);
+            }else{
+                Quaternion aboutY = new Quaternion();
+                aboutY.fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
+
+                Quaternion aboutX = new Quaternion();
+                aboutX.fromAngleAxis(-0.5f*FastMath.PI, Vector3f.UNIT_X);
+
+                coordinateStandardisingRotation = aboutY.mult(aboutX);
+            }
+
+            palmNode_xPointing.setLocalTranslation(proximal.position.add(metacarpel.position).multLocal(0.5f));
+            palmNode_xPointing.setLocalRotation(metacarpel.orientation.mult(coordinateStandardisingRotation));
         }
 
     }
@@ -248,13 +278,21 @@ public abstract class BoundHand{
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0.25f,0,0)));
     }
 
-    public void handNodeXPointingCoordinateSystem(){
+    /**
+     * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
+     * {@link BoundHand#getHandNode_xPointing()}
+     */
+    public void debugHandNodeXPointingCoordinateSystem(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
         handNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
     }
 
-    public void palmCoordinateSystem(){
+    /**
+     * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
+     * {@link BoundHand#getPalmNode_xPointing()}
+     */
+    public void debugPalmCoordinateSystem(){
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
