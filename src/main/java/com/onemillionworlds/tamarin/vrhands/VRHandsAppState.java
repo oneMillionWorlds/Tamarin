@@ -35,8 +35,9 @@ public class VRHandsAppState extends BaseAppState{
      * initialised. This is optional, but may be helpful if you want to set everything up within {@link SimpleApplication#simpleInitApp()}
      * @param assetManager the assetManager
      */
-    public VRHandsAppState(AssetManager assetManager){
+    public VRHandsAppState(AssetManager assetManager, ActionBasedOpenVrState actionBasedOpenVrState){
         this.assetManager = assetManager;
+        openVr = actionBasedOpenVrState;
     }
 
     public VRHandsAppState(){
@@ -115,7 +116,7 @@ public class VRHandsAppState extends BaseAppState{
         SkinningControl skinningControl = trueModel.getControl(SkinningControl.class);
         Armature armature = skinningControl.getArmature();
 
-        BoundHand boundHand = new BoundHand(poseToBindTo, skeletonActionToBindTo, trueModel, armature, assetManager, leftOrRight){
+        BoundHand boundHand = new BoundHand(openVr, poseToBindTo, skeletonActionToBindTo, trueModel, armature, assetManager, leftOrRight){
             @Override
             public void unbindHand(){
                 trueModel.removeFromParent();

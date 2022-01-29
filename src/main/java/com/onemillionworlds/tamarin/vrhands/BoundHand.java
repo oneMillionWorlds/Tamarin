@@ -17,8 +17,12 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
+import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
+import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
+import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
+import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.event.MouseEventControl;
 
@@ -27,6 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public abstract class BoundHand{
@@ -66,12 +71,26 @@ public abstract class BoundHand{
 
     private final HandSide handSide;
 
+    private final ActionBasedOpenVrState vrState;
+
     /**
      * Debug points add markers onto the hands where the bone positions are, and their directions
      */
     private boolean debugPoints = false;
 
-    public BoundHand(String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
+    private Optional<String> grabAction = Optional.empty();
+    Node nodeToGrabPickAgainst;
+
+    private float grabEvery =1f/10;
+
+    private float timeSinceGrabbed = 100;
+
+    private float minimumGripToTrigger = 0.5f;
+
+    Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
+
+    public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
+        this.vrState = Objects.requireNonNull(vrState);
         this.geometryNode.attachChild(handGeometry);
         this.postActionName = postActionName;
         this.skeletonActionName = skeletonActionName;
@@ -206,6 +225,8 @@ public abstract class BoundHand{
             palmNode_xPointing.setLocalRotation(metacarpel.orientation.mult(coordinateStandardisingRotation));
         }
 
+        updateForGrab(timeSlice);
+
     }
 
     /**
@@ -240,8 +261,8 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      */
     public CollisionResults pickPalm(Node nodeToPickAgainst){
-        Vector3f pickOrigin = getHandNode_xPointing().getWorldTranslation();
-        Vector3f pickingPoint = getHandNode_xPointing().localToWorld(new Vector3f(0,0,handSide == HandSide.LEFT?1:-1), null);
+        Vector3f pickOrigin = getPalmNode().getWorldTranslation();
+        Vector3f pickingPoint = getPalmNode().localToWorld(new Vector3f(0,0,handSide == HandSide.LEFT?1:-1), null);
         Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
         CollisionResults results = new CollisionResults();
 
@@ -325,6 +346,58 @@ public abstract class BoundHand{
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
     }
 
+    /**
+     * Returns a world position that a spatial's holdCentre should be at.
+     * @param distanceFromSkin how far from the skin the hold position should be (provided so differing sized objects make sense)
+     */
+    public Vector3f getHoldPosition(float distanceFromSkin){
+        float baseSkinDepth = 0.05f;
+        return palmNode_xPointing.localToWorld(new Vector3f(0,0,(handSide==HandSide.LEFT?1:-1) * (baseSkinDepth+distanceFromSkin)), null );
+    }
+
+    /**
+     * The rotation that should be applied to objects currently being held by this hand
+     * @return
+     */
+    public Quaternion getHoldRotation(){
+        return getPalmNode().getWorldRotation();
+    }
+
+    /**
+     * When a grab action is specified (action in the openVr action manifest sense of the word) then periodically
+     * (see {@link BoundHand#setGrabEvery}) if the action is true then a grab pick will occure and if the pick finds
+     * any spatials with a control of type {@link AbstractGrabControl} then it will grab them. Equally once bound if the
+     * grab action is released then it will unbind from them.
+     *
+     * The action can be non hand specific as the hand restricts the action to only the hand this BoundHand represents
+     *
+     * The grab action should be an analog action
+     *
+     * @param grabAction the openVr action name to use to decide if the hand is grabbing
+     * @param nodeToPickAgainst the node to scan for items to grab (probably the root node)
+     */
+    public void setGrabAction(String grabAction, Node nodeToPickAgainst){
+        this.grabAction = Optional.of(grabAction);
+        this.nodeToGrabPickAgainst = nodeToPickAgainst;
+    }
+
+    public void clearGrabAction(){
+        this.grabAction = Optional.empty();
+        this.nodeToGrabPickAgainst = null;
+    }
+
+    public void setGrabEvery(float grabEvery){
+        this.grabEvery = grabEvery;
+    }
+
+    /**
+     * Allows the amount of pressure required to pick something up to be changed
+     * @param minimumGripToTrigger a value between 0 and 1
+     */
+    public void setMinimumGripToTrigger(float minimumGripToTrigger){
+        this.minimumGripToTrigger = minimumGripToTrigger;
+    }
+
     private static Collection<Geometry> searchForGeometry(Spatial spatial){
         if (spatial instanceof Geometry){
             return List.of((Geometry)spatial);
@@ -338,6 +411,47 @@ public abstract class BoundHand{
         }else{
             throw new RuntimeException("Could not find skinable model");
         }
+    }
+
+    private void updateForGrab(float timeSlice){
+        grabAction.ifPresent(action -> {
+            timeSinceGrabbed+=timeSlice;
+            if (timeSinceGrabbed>grabEvery){
+                timeSinceGrabbed = 0;
+                AnalogActionState grabActionState = vrState.getAnalogActionState(action, "/user/hand/" + (handSide == HandSide.LEFT ? "left" : "right"));
+
+                if (grabActionState.x>minimumGripToTrigger && currentlyGrabbed.isEmpty()){
+                    //looking for things in the world to grab
+                    CollisionResults results = pickPalm(nodeToGrabPickAgainst);
+                    Spatial picked = null;
+                    for(CollisionResult hit: results){
+                        if (!Boolean.TRUE.equals(hit.getGeometry().getUserData(NO_PICK))){
+                            picked = hit.getGeometry();
+                            break;
+                        }
+                    }
+                    AbstractGrabControl grabControl = null;
+
+                    while(picked !=null && grabControl == null){
+                        grabControl = picked.getControl(AbstractGrabControl.class);
+                        picked = picked.getParent();
+                    }
+
+                    if (grabControl!=null){
+                        currentlyGrabbed = Optional.of(grabControl);
+                        grabControl.onGrab(this);
+                        System.out.println("GRabbed");
+                    }
+
+                }else if (grabActionState.x<minimumGripToTrigger && currentlyGrabbed.isPresent()){
+                    //drop current item
+                    currentlyGrabbed.get().onRelease();
+                    currentlyGrabbed = Optional.empty();
+                    System.out.println("dropped");
+                }
+
+            }
+        });
     }
 
     /**

@@ -13,6 +13,12 @@ To successfully use Tamarin you should typically have at least the following dep
 
 This library uses simple java.util.Logger for maximum compatibility. Bind that to your preferred logging library.
 
+## Coding standard
+
+Standard Java coding conventions (try to match existing style). 
+
+British English; "Centre", "Colour" etc
+
 ## Upgrade
 
 This library forward ports JMonkeyEngine 3.6 functionality into JMonkeyEngine 3.5. Expect breaking changes on upgrading
