@@ -17,6 +17,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
+import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
@@ -81,7 +82,7 @@ public abstract class BoundHand{
     private Optional<String> grabAction = Optional.empty();
     Node nodeToGrabPickAgainst;
 
-    private float grabEvery =1f/10;
+    private float grabEvery = 1f/10;
 
     private float timeSinceGrabbed = 100;
 
@@ -92,6 +93,10 @@ public abstract class BoundHand{
     private float baseSkinDepth = 0.02f;
 
     Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
+
+    Optional<Node> pickMarkerAgainstContinuous = Optional.empty();
+
+    Spatial pickMarker;
 
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.vrState = Objects.requireNonNull(vrState);
@@ -120,6 +125,8 @@ public abstract class BoundHand{
         rawOpenVrPosition.attachChild(geometryNode);
 
         handNode_xPointing.attachChild(pickLineNode);
+
+        pickMarker= defaultPickMarker();
     }
 
     public HandMode getHandMode(){
@@ -204,6 +211,13 @@ public abstract class BoundHand{
             debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
         }
 
+        updatePalm(timeSlice, boneStances);
+        updateForGrab(timeSlice);
+        updateForPickMarker(timeSlice);
+
+    }
+
+    private void updatePalm(float timeSlice, Map<String, BoneStance> boneStances){
         //the palm node is put at the position between the finger_middle_0_l bone and finger_middle_meta_l, but with the
         // rotation of the finger_middle_meta_l bone. This gives roughly the position of a grab point, with a sensible rotation
         String proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
@@ -230,9 +244,6 @@ public abstract class BoundHand{
             palmNode_xPointing.setLocalTranslation(proximal.position.add(metacarpel.position).multLocal(0.5f));
             palmNode_xPointing.setLocalRotation(metacarpel.orientation.mult(coordinateStandardisingRotation));
         }
-
-        updateForGrab(timeSlice);
-
     }
 
     /**
@@ -254,6 +265,24 @@ public abstract class BoundHand{
 
         nodeToPickAgainst.collideWith(ray, results);
         return results;
+    }
+
+    /**
+     * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/{@link BoundHand#click_lemurSupport}
+     * and place a marker (by default a white sphere) at the point where the pick hits a geometry. This gives the
+     * player an indication what they would pick it they clicked now; think of it like a mouse pointer in 3d space
+     * @param nodeToPickAgainst
+     */
+    public void setPickMarkerContinuous(Node nodeToPickAgainst){
+        pickMarkerAgainstContinuous = Optional.of(nodeToPickAgainst);
+        getHandNode_xPointing().attachChild(pickMarker);
+
+
+    }
+
+    public void clearPickMarkerContinuous(){
+        pickMarkerAgainstContinuous = Optional.empty();
+        pickMarker.removeFromParent();
     }
 
     /**
@@ -461,6 +490,19 @@ public abstract class BoundHand{
         }
     }
 
+    private void updateForPickMarker(float timslice){
+        pickMarkerAgainstContinuous.ifPresent(node -> {
+            firstNonSkippedHit(pickBulkHand(node)).ifPresentOrElse(
+                    hit -> {
+                        pickMarker.setCullHint(Spatial.CullHint.Inherit);
+                        pickMarker.setLocalTranslation(hit.getDistance(), 0, 0);
+                    },
+                    () -> pickMarker.setCullHint(Spatial.CullHint.Always)
+
+            );
+        });
+    }
+
     private void updateForGrab(float timeSlice){
         grabAction.ifPresent(action -> {
             timeSinceGrabbed+=timeSlice;
@@ -545,5 +587,27 @@ public abstract class BoundHand{
         return geometry;
     }
 
+    private Geometry defaultPickMarker(){
+        Sphere sphere = new Sphere(15, 15, 0.01f);
+        Geometry geometry = new Geometry("pickingMarker", sphere);
+        Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        material.setColor("Color", ColorRGBA.White);
+        geometry.setMaterial(material);
+        geometry.setUserData(NO_PICK, true);
+        return geometry;
+    }
 
+    /**
+     * Given a picking result returns the first result that is not marked as being {@link BoundHand#NO_PICK}
+     * @param collisionResults the collision result
+     * @return the first hit
+     */
+    public static Optional<CollisionResult> firstNonSkippedHit( CollisionResults collisionResults ){
+        for(CollisionResult hit: collisionResults){
+            if (!Boolean.TRUE.equals(hit.getGeometry().getUserData(NO_PICK))){
+                return Optional.of(hit);
+            }
+        }
+        return Optional.empty();
+    }
 }
