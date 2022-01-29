@@ -87,6 +87,8 @@ public abstract class BoundHand{
 
     private float minimumGripToTrigger = 0.5f;
 
+    private float maxGrabDistance = 0.1f;
+
     Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
 
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
@@ -351,7 +353,7 @@ public abstract class BoundHand{
      * @param distanceFromSkin how far from the skin the hold position should be (provided so differing sized objects make sense)
      */
     public Vector3f getHoldPosition(float distanceFromSkin){
-        float baseSkinDepth = 0.05f;
+        float baseSkinDepth = 0.02f;
         return palmNode_xPointing.localToWorld(new Vector3f(0,0,(handSide==HandSide.LEFT?1:-1) * (baseSkinDepth+distanceFromSkin)), null );
     }
 
@@ -398,6 +400,16 @@ public abstract class BoundHand{
         this.minimumGripToTrigger = minimumGripToTrigger;
     }
 
+    /**
+     * This maximum distance that a grab pick will pick up an object.
+     *
+     * Note that this is the distance from the centre of the hand to the first face the pick line sees
+     * @param maxGrabDistance a value in meters
+     */
+    public void setMaxGrabDistance(float maxGrabDistance){
+        this.maxGrabDistance = maxGrabDistance;
+    }
+
     private static Collection<Geometry> searchForGeometry(Spatial spatial){
         if (spatial instanceof Geometry){
             return List.of((Geometry)spatial);
@@ -426,7 +438,9 @@ public abstract class BoundHand{
                     Spatial picked = null;
                     for(CollisionResult hit: results){
                         if (!Boolean.TRUE.equals(hit.getGeometry().getUserData(NO_PICK))){
-                            picked = hit.getGeometry();
+                            if (hit.getDistance()<maxGrabDistance){
+                                picked = hit.getGeometry();
+                            }
                             break;
                         }
                     }
@@ -440,14 +454,12 @@ public abstract class BoundHand{
                     if (grabControl!=null){
                         currentlyGrabbed = Optional.of(grabControl);
                         grabControl.onGrab(this);
-                        System.out.println("GRabbed");
                     }
 
                 }else if (grabActionState.x<minimumGripToTrigger && currentlyGrabbed.isPresent()){
                     //drop current item
                     currentlyGrabbed.get().onRelease();
                     currentlyGrabbed = Optional.empty();
-                    System.out.println("dropped");
                 }
 
             }
