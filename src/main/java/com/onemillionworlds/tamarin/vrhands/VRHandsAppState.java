@@ -13,6 +13,7 @@ import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.PoseActionState;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -84,6 +85,11 @@ public class VRHandsAppState extends BaseAppState{
                 openVr.updateHandSkeletonPositions(boundHand.getSkeletonActionName(), boundHand.getArmature(), boundHand.getHandMode());
             }
         }
+    }
+
+    public List<BoundHand> getHandControls(){
+        return Collections.unmodifiableList(handControls);
+
     }
 
     /**

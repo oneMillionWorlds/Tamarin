@@ -20,7 +20,6 @@ import com.jme3.scene.shape.Line;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
-import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.simsilica.lemur.Button;
@@ -32,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 public abstract class BoundHand{
 
@@ -45,6 +43,8 @@ public abstract class BoundHand{
     private final Node geometryNode = new Node();
 
     private final Node handNode_xPointing = new Node();
+
+    private final Node pickLineNode = new Node();
 
     /**
      * This is a node that sits on the palm (but near the fingers) whose +x points out way from the palm (towards whatever
@@ -89,6 +89,8 @@ public abstract class BoundHand{
 
     private float maxGrabDistance = 0.1f;
 
+    private float baseSkinDepth = 0.02f;
+
     Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
 
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
@@ -116,6 +118,8 @@ public abstract class BoundHand{
         rawOpenVrPosition.attachChild(palmNode_xPointing);
 
         rawOpenVrPosition.attachChild(geometryNode);
+
+        handNode_xPointing.attachChild(pickLineNode);
     }
 
     public HandMode getHandMode(){
@@ -274,6 +278,13 @@ public abstract class BoundHand{
         return results;
     }
 
+    /**
+     * Left or right hand
+     * @return
+     */
+    public HandSide getHandSide(){
+        return handSide;
+    }
 
     /**
      * Picks using {@link BoundHand#pickBulkHand} then simulates a pick on the first thing it hits.
@@ -353,7 +364,6 @@ public abstract class BoundHand{
      * @param distanceFromSkin how far from the skin the hold position should be (provided so differing sized objects make sense)
      */
     public Vector3f getHoldPosition(float distanceFromSkin){
-        float baseSkinDepth = 0.02f;
         return palmNode_xPointing.localToWorld(new Vector3f(0,0,(handSide==HandSide.LEFT?1:-1) * (baseSkinDepth+distanceFromSkin)), null );
     }
 
@@ -410,6 +420,32 @@ public abstract class BoundHand{
         this.maxGrabDistance = maxGrabDistance;
     }
 
+    /**
+     * Set the depth between the centre of the palm and the skin of the palm used by the hand model you have bound.
+     *
+     * This ensures that held objects are flush against the palm
+     * @param baseSkinDepth a value in meters (0.02 is a good example of the right kind of size)
+     */
+    public void setBaseSkinDepth(float baseSkinDepth){
+        this.baseSkinDepth = baseSkinDepth;
+    }
+
+    /**
+     * Broadly similar to attaching a geometry to {@link BoundHand#getHandNode_xPointing()} but it will get special
+     * handling to ensure it doesn't block lemur picks (and will all get the {@link BoundHand#NO_PICK} label on all its
+     * geometries which may make it easier to avoid when using manual picking. Also it can be easily removed with the
+     * {@link BoundHand#removePickLine()} method
+     * @param spatial the pick line (+X should be in the direction of the pick line)
+     */
+    public void attachPickLine( Spatial spatial ){
+        searchForGeometry(spatial).forEach(g -> g.setUserData(NO_PICK, true));
+        pickLineNode.attachChild(spatial);
+    }
+
+    public void removePickLine(){
+        pickLineNode.detachAllChildren();
+    }
+
     private static Collection<Geometry> searchForGeometry(Spatial spatial){
         if (spatial instanceof Geometry){
             return List.of((Geometry)spatial);
@@ -430,7 +466,7 @@ public abstract class BoundHand{
             timeSinceGrabbed+=timeSlice;
             if (timeSinceGrabbed>grabEvery){
                 timeSinceGrabbed = 0;
-                AnalogActionState grabActionState = vrState.getAnalogActionState(action, "/user/hand/" + (handSide == HandSide.LEFT ? "left" : "right"));
+                AnalogActionState grabActionState = vrState.getAnalogActionState(action, handSide.restrictToInputString);
 
                 if (grabActionState.x>minimumGripToTrigger && currentlyGrabbed.isEmpty()){
                     //looking for things in the world to grab
@@ -464,16 +500,6 @@ public abstract class BoundHand{
 
             }
         });
-    }
-
-    /**
-     * Returns a linear stream that is the list of parents up from the specified node
-     * @param basePoint
-     * @return
-     */
-    private static Stream<Spatial> parentStream(Spatial basePoint){
-        return Stream.iterate(basePoint, Objects::nonNull, Spatial::getParent);
-
     }
 
     private Spatial armatureToNodes(Armature armature, ColorRGBA colorRGBA){
