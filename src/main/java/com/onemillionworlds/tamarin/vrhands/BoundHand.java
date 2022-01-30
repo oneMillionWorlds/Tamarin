@@ -610,4 +610,12 @@ public abstract class BoundHand{
         }
         return Optional.empty();
     }
+
+    /**
+     * Returns the direction the hand is pointing (i.e. the direction the fingers would point if they aren't curled)
+     * @return the bulkPointingDirection
+     */
+    public Vector3f getBulkPointingDirection(){
+        return handNode_xPointing.getWorldRotation().mult(Vector3f.UNIT_X);
+    }
 }
