@@ -8,10 +8,12 @@ import com.jme3.app.VREnvironment;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.input.vr.lwjgl_openvr.LWJGLOpenVR;
 import com.jme3.input.vr.lwjgl_openvr.LWJGLOpenVRInput;
+import com.jme3.math.FastMath;
 import com.jme3.math.Matrix4f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.openvr.HmdMatrix34;
@@ -46,6 +48,8 @@ import java.util.logging.Logger;
  * VRConstants.SETTING_VRAPI_OPENVR_LWJGL_VALUE (as this uses LWJGL)
  */
 public class ActionBasedOpenVrState extends BaseAppState{
+
+    private static final Quaternion HALF_ROTATION_ABOUT_Y = new Quaternion();
 
     private static final Logger logger = Logger.getLogger(ActionBasedOpenVrState.class.getName());
 
@@ -103,6 +107,10 @@ public class ActionBasedOpenVrState extends BaseAppState{
          * Actions manifest based. Forward ported by Tamarin
          */
         ACTION_BASED
+    }
+
+    static {
+        HALF_ROTATION_ABOUT_Y.fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
     }
 
     {
@@ -253,14 +261,30 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
         Object obs = environment.getObserver();
         Vector3f position = pose.toTranslationVector();
+        Quaternion rotation = pose.toRotationQuat();
         if (obs instanceof Camera) {
-            //((Camera) obs).getRotation().mult(position, position);
-            position.addLocal(((Camera) obs).getLocation());
+            Camera camera = ((Camera)obs);
+            Node calculationNode = new Node();
+            //the openVR and JMonkey define "not rotated" to be a different rotation, the HALF_ROTATION_ABOUT_Y corrects that
+            calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(camera.getRotation()));
+            calculationNode.setLocalTranslation(camera.getLocation());
+
+            position = calculationNode.localToWorld(position, position);
+            rotation = HALF_ROTATION_ABOUT_Y.mult(camera.getRotation()).mult(rotation);
         } else {
+            Spatial spatial = (Spatial)obs;
             //((Spatial) obs).getWorldRotation().mult(position, position);
             position.addLocal(((Spatial) obs).getWorldTranslation());
+
+            Node calculationNode = new Node();
+            //the openVR and JMonkey define "not rotated" to be a different rotation, the HALF_ROTATION_ABOUT_Y corrects that
+            calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(spatial.getWorldRotation()));
+            calculationNode.setLocalTranslation(spatial.getWorldTranslation());
+
+            position = calculationNode.localToWorld(position, position);
+            rotation = HALF_ROTATION_ABOUT_Y.mult(spatial.getWorldRotation()).mult(rotation);
         }
-        return new PoseActionState(pose, position, pose.toRotationQuat(), new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
+        return new PoseActionState(pose, position, rotation, new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
     }
 
     /**
