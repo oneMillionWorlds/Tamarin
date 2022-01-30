@@ -1,9 +1,5 @@
 package com.onemillionworlds.tamarin.vrhands.grabbing;
 
-import com.jme3.math.Vector3f;
-import com.jme3.renderer.RenderManager;
-import com.jme3.renderer.ViewPort;
-import com.jme3.scene.Node;
 import com.jme3.scene.control.AbstractControl;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 
@@ -29,7 +25,7 @@ public abstract class AbstractGrabControl extends AbstractControl{
         grabbingHand = Optional.of(grabbedByHand);
     }
 
-    public void onRelease(){
+    public void onRelease(BoundHand handUnbindingFrom){
         grabbingHand = Optional.empty();
     }
 

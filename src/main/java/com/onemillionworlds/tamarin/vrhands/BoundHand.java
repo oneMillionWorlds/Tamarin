@@ -536,7 +536,7 @@ public abstract class BoundHand{
 
                 }else if (grabActionState.x<minimumGripToTrigger && currentlyGrabbed.isPresent()){
                     //drop current item
-                    currentlyGrabbed.get().onRelease();
+                    currentlyGrabbed.get().onRelease(this);
                     currentlyGrabbed = Optional.empty();
                 }
 
