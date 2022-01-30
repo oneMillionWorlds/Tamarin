@@ -5,7 +5,6 @@ import com.jme3.anim.Joint;
 import com.jme3.asset.AssetManager;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
-import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
@@ -23,8 +22,7 @@ import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
-import com.simsilica.lemur.Button;
-import com.simsilica.lemur.event.MouseEventControl;
+import com.onemillionworlds.tamarin.vrhands.lemursupport.LemurSupport;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,6 +32,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 public abstract class BoundHand{
+
+    private static boolean lemurCheckedAvailable = false ;
 
     public static String NO_PICK = "noPick";
 
@@ -347,32 +347,11 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst the node that contains things that can be clicked
      */
     public void click_lemurSupport(Node nodeToPickAgainst){
-        CollisionResults results = pickBulkHand(nodeToPickAgainst);
-
-        for(int i=0;i<results.size();i++){
-            CollisionResult collision = results.getCollision(i);
-            boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
-
-            if (!skip){
-                Spatial processedSpatial = collision.getGeometry();
-
-                while(processedSpatial!=null){
-                    if (processedSpatial instanceof Button){
-                        ((Button)processedSpatial).click();
-                        return;
-                    }
-                    MouseEventControl mec = processedSpatial.getControl(MouseEventControl.class);
-                    if ( mec!=null ){
-                        mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
-                        return;
-                    }
-
-                    processedSpatial = processedSpatial.getParent();
-                }
-                return;
-            }
-
+        if (!isLemurAvailable()){
+            throw new RuntimeException("Lemur not available on class path. Lemur required for methods named _lemurSupport");
         }
+        CollisionResults results = pickBulkHand(nodeToPickAgainst);
+        LemurSupport.clickThroughCollisionResults(results);
     }
 
     /**
@@ -657,5 +636,19 @@ public abstract class BoundHand{
      */
     public Vector3f getBulkPointingDirection(){
         return handNode_xPointing.getWorldRotation().mult(Vector3f.UNIT_X);
+    }
+
+    private static boolean isLemurAvailable(){
+        if (lemurCheckedAvailable){
+            return true;
+        }else{
+            try {
+                Class.forName("com.simsilica.lemur.Button");
+                lemurCheckedAvailable = true;
+            } catch (Throwable ex) {
+                lemurCheckedAvailable = false;
+            }
+            return lemurCheckedAvailable;
+        }
     }
 }
