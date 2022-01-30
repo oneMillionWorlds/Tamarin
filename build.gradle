@@ -14,7 +14,7 @@ java {
     withSourcesJar()
 }
 
-group = 'com.onemillionworlds.tamarin'
+group = 'com.onemillionworlds'
 version = '1.0.0-SNAPSHOT'
 
 def jme3 = [v:'3.4.0-stable', g:'org.jmonkeyengine']
