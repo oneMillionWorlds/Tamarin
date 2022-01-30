@@ -23,6 +23,12 @@ Grabbing and menu picking both use geometry picking. With simple scenes performa
 against the root node. However with complex scenes this may become slow, creating a node that contains 
 all the grabbables (or all the UI interactables) may give better performance
 
+## Attribution and licensing
+
+This project is licensed under the BSD-3 license, meaning it can be used in a commercial project free of charge with no need to provide attribution. That said if you want to mention that Tamarin is used in your project that would be very welcome.
+
+The hand models are similarly included under that license; if you want to start with Tamarin models but tweak them the blenderFiles may be useful. There is no requirement to distribute any updates to hand models, but if you want to contribute improved models that is also very welcome.
+
 ## Coding standard
 
 Standard Java coding conventions (try to match existing style). 
