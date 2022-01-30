@@ -37,6 +37,8 @@ public abstract class BoundHand{
 
     public static String NO_PICK = "noPick";
 
+    private List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,0), new Vector3f(0.02f,-0.03f,0), new Vector3f(0.03f,0.03f,0));
+
     private HandMode handMode = HandMode.WITHOUT_CONTROLLER;
 
     private final Node rawOpenVrPosition = new Node();
@@ -85,6 +87,8 @@ public abstract class BoundHand{
     private float grabEvery = 1f/10;
 
     private float timeSinceGrabbed = 100;
+
+    private float lastGripPressure = 0;
 
     private float minimumGripToTrigger = 0.5f;
 
@@ -296,8 +300,20 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      */
     public CollisionResults pickPalm(Node nodeToPickAgainst){
-        Vector3f pickOrigin = getPalmNode().getWorldTranslation();
-        Vector3f pickingPoint = getPalmNode().localToWorld(new Vector3f(0,0,handSide == HandSide.LEFT?1:-1), null);
+        return pickPalm(nodeToPickAgainst, Vector3f.ZERO);
+    }
+
+    /**
+     * Picks outward away from the palm palmRelativePosition to {@link BoundHand#getPalmNode()}.
+     * Note that x is towards the fingers, y is up and z is right (whether +z is the palm direction depends on if this
+     * is the left or right hand)
+     * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
+     * @param palmRelativePosition the position for the pick line to start
+     * @return
+     */
+    public CollisionResults pickPalm(Node nodeToPickAgainst, Vector3f palmRelativePosition){
+        Vector3f pickOrigin = getPalmNode().localToWorld(palmRelativePosition, null);
+        Vector3f pickingPoint = getPalmNode().localToWorld(palmRelativePosition.add(0,0,handSide == HandSide.LEFT?1:-1), null);
         Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
         CollisionResults results = new CollisionResults();
 
@@ -359,13 +375,31 @@ public abstract class BoundHand{
         }
     }
 
+    /**
+     * Sets the points (in the palm coordinate system) where pick lines should be generated from when the player
+     * initiates a grab. Consider using {@link BoundHand#debugGrabPickLines()} to see where the lines you create go
+     * @param palmPickPoints
+     */
+    public void setPalmPickPoints(List<Vector3f> palmPickPoints){
+        this.palmPickPoints = palmPickPoints;
+    }
+
     public void debugArmature(){
         this.debugPoints = true;
     }
 
-    public void debugPickLines(){
+    public void debugPointingPickLine(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
-        palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0,handSide == HandSide.LEFT?0.25f:-0.25f)));
+    }
+
+    public void debugGrabPickLines(){
+        for(Vector3f palmPickPoints : palmPickPoints){
+            ColorRGBA colour = palmPickPoints.equals(Vector3f.ZERO) ? ColorRGBA.Red : ColorRGBA.Pink;
+
+            Geometry line = microLine(colour, new Vector3f(0,0,(handSide == HandSide.LEFT?1:-1)*maxGrabDistance));
+            line.setLocalTranslation(palmPickPoints);
+            palmNode_xPointing.attachChild(line);
+        }
     }
 
     /**
@@ -424,6 +458,7 @@ public abstract class BoundHand{
 
     public void clearGrabAction(){
         this.grabAction = Optional.empty();
+        this.lastGripPressure = 0;
         this.nodeToGrabPickAgainst = null;
     }
 
@@ -510,36 +545,41 @@ public abstract class BoundHand{
                 timeSinceGrabbed = 0;
                 AnalogActionState grabActionState = vrState.getAnalogActionState(action, handSide.restrictToInputString);
 
-                if (grabActionState.x>minimumGripToTrigger && currentlyGrabbed.isEmpty()){
+                float gripPressure = grabActionState.x;
+                //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
+                if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
                     //looking for things in the world to grab
-                    CollisionResults results = pickPalm(nodeToGrabPickAgainst);
-                    Spatial picked = null;
-                    for(CollisionResult hit: results){
-                        if (!Boolean.TRUE.equals(hit.getGeometry().getUserData(NO_PICK))){
-                            if (hit.getDistance()<maxGrabDistance){
-                                picked = hit.getGeometry();
+                    for(Vector3f palmPickPoint : palmPickPoints){
+                        CollisionResults results = pickPalm(nodeToGrabPickAgainst, palmPickPoint);
+                        Spatial picked = null;
+                        for(CollisionResult hit : results){
+                            if(!Boolean.TRUE.equals(hit.getGeometry().getUserData(NO_PICK))){
+                                if(hit.getDistance() < maxGrabDistance){
+                                    picked = hit.getGeometry();
+                                }
+                                break;
                             }
+                        }
+                        AbstractGrabControl grabControl = null;
+
+                        while(picked != null && grabControl == null){
+                            grabControl = picked.getControl(AbstractGrabControl.class);
+                            picked = picked.getParent();
+                        }
+
+                        if(grabControl != null){
+                            currentlyGrabbed = Optional.of(grabControl);
+                            grabControl.onGrab(this);
                             break;
                         }
                     }
-                    AbstractGrabControl grabControl = null;
 
-                    while(picked !=null && grabControl == null){
-                        grabControl = picked.getControl(AbstractGrabControl.class);
-                        picked = picked.getParent();
-                    }
-
-                    if (grabControl!=null){
-                        currentlyGrabbed = Optional.of(grabControl);
-                        grabControl.onGrab(this);
-                    }
-
-                }else if (grabActionState.x<minimumGripToTrigger && currentlyGrabbed.isPresent()){
+                }else if (gripPressure<minimumGripToTrigger && currentlyGrabbed.isPresent()){
                     //drop current item
                     currentlyGrabbed.get().onRelease(this);
                     currentlyGrabbed = Optional.empty();
                 }
-
+                lastGripPressure = gripPressure;
             }
         });
     }

@@ -284,6 +284,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
             position = calculationNode.localToWorld(position, position);
             rotation = HALF_ROTATION_ABOUT_Y.mult(spatial.getWorldRotation()).mult(rotation);
         }
+        //the velocity and rotational velocity are in the wrong coordinate systems. This is wrong and a bug
         return new PoseActionState(pose, position, rotation, new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
     }
 
