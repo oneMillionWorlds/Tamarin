@@ -2,6 +2,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
 }
 
 repositories {
@@ -15,7 +16,7 @@ java {
 }
 
 group = 'com.onemillionworlds'
-version = '1.0.0-SNAPSHOT'
+version = '1.0.1-SNAPSHOT'
 
 def jme3 = [v:'3.4.0-stable', g:'org.jmonkeyengine']
 
@@ -38,14 +39,54 @@ dependencies {
     compileOnly "com.simsilica:lemur:1.14.0"
 }
 
-publishing {
+publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.html
     publications {
         mavenJava(MavenPublication) {
             groupId = "${group}"
-            artifactId = 'Tamarin'
+            artifactId = 'tamarin'
             version = "${version}"
 
             from components.java
+
+            pom {
+                name = project.name
+                description = 'A VR utilities library that extends the functionality in JMonkeyEngine'
+                url = 'https://github.com/oneMillionWorlds/Tamarin'
+                licenses {
+                    license {
+                        name = 'New BSD (3-clause) License'
+                        url = 'http://opensource.org/licenses/BSD-3-Clause'
+                    }
+                }
+                scm {
+                    connection = 'git@github.com:oneMillionWorlds/Tamarin.git'
+                    developerConnection = 'git@github.com:oneMillionWorlds/Tamarin.git'
+                    url = 'https://github.com/oneMillionWorlds/Tamarin'
+                }
+                developers {
+                    developer {
+                        id = 'RichardTingle'
+                        name = 'Richard Tingle (aka richtea)'
+                        email = 'support@oneMillionWorlds.com'
+                    }
+                }
+            }
+
         }
     }
+    repositories {
+        maven {
+            name 'sonatype'
+            url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+            //url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+            credentials {
+                username ossrhUsername
+                password ossrhPassword
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }

@@ -179,27 +179,30 @@ public class ActionBasedOpenVrState extends BaseAppState{
         setActiveActionSet(startingActiveActionSets);
     }
 
-    public void setActiveActionSet(String actionSet){
+    public void setActiveActionSet(String... actionSets){
         assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
 
-        long actionSetHandle;
-        if (actionSetHandles.containsKey(actionSet)){
-            actionSetHandle = actionSetHandles.get(actionSet);
-        }else{
-            LongBuffer longBuffer = BufferUtils.createLongBuffer(1);
-            int errorCode = VRInput.VRInput_GetActionHandle(actionSet, longBuffer);
-            if ( errorCode != 0 )
-            {
-                logger.warning( "An error code of " + errorCode + " was reported while fetching an action set handle for " + actionSet );
+        for(String actionSet : actionSets){
+            long actionSetHandle;
+            if(!actionSetHandles.containsKey(actionSet)){
+                LongBuffer longBuffer = BufferUtils.createLongBuffer(1);
+                int errorCode = VRInput.VRInput_GetActionHandle(actionSet, longBuffer);
+                if(errorCode != 0){
+                    logger.warning("An error code of " + errorCode + " was reported while fetching an action set handle for " + actionSet);
+                }
+                actionSetHandle = longBuffer.get(0);
+                actionSetHandles.put(actionSet, actionSetHandle);
             }
-            actionSetHandle = longBuffer.get(0);
-            actionSetHandles.put(actionSet,actionSetHandle);
         }
 
-        //Todo: this seems to imply that you could have multiple active action sets at once (Although I was not able to get that to work), allow multiple action sets
-        activeActionSets = VRActiveActionSet.create(1);
-        activeActionSets.ulActionSet(actionSetHandle);
-        activeActionSets.ulRestrictedToDevice(VR.k_ulInvalidInputValueHandle); // both hands
+        activeActionSets = VRActiveActionSet.create(actionSets.length);
+
+        int i=0;
+        for(VRActiveActionSet actionSetItem : activeActionSets){
+            actionSetItem.ulActionSet(actionSetHandles.get(actionSets[i]));
+            activeActionSets.ulRestrictedToDevice(VR.k_ulInvalidInputValueHandle); // both hands
+            i++;
+        }
     }
 
     /**
@@ -273,7 +276,6 @@ public class ActionBasedOpenVrState extends BaseAppState{
             rotation = HALF_ROTATION_ABOUT_Y.mult(camera.getRotation()).mult(rotation);
         } else {
             Spatial spatial = (Spatial)obs;
-            //((Spatial) obs).getWorldRotation().mult(position, position);
             position.addLocal(((Spatial) obs).getWorldTranslation());
 
             Node calculationNode = new Node();

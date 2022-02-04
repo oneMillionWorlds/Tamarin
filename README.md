@@ -35,6 +35,23 @@ Standard Java coding conventions (try to match existing style).
 
 British English; "Centre", "Colour" etc
 
+## Signing
+
+To sign jars for maven central appropriate details will need to be in C:\Users\{user}\.gradle\gradle.properties. Will need
+
+    signing.keyId=keyId
+    signing.password=password
+    signing.secretKeyRingFile=C:/Users/{user}/AppData/Roaming/gnupg/pubring.kbx
+    
+    ossrhUsername=your-jira-id
+    ossrhPassword=your-jira-password
+
+Note that the keyId is just the last 8 characters of the long id, and the secretRing must be explicitly `exported gpg --export-secret-keys -o secring.gpg`
+
+## Nexus
+
+Project is provisioned on https://s01.oss.sonatype.org/
+
 ## Upgrade
 
 This library forward ports JMonkeyEngine 3.6 functionality into JMonkeyEngine 3.5. Expect breaking changes on upgrading
