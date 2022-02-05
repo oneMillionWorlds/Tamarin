@@ -15,6 +15,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.vrhands.HandSide;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.openvr.HmdMatrix34;
 import org.lwjgl.openvr.HmdQuaternionf;
@@ -25,7 +26,6 @@ import org.lwjgl.openvr.InputDigitalActionData;
 import org.lwjgl.openvr.InputPoseActionData;
 import org.lwjgl.openvr.VR;
 import org.lwjgl.openvr.VRActiveActionSet;
-import org.lwjgl.openvr.VRApplications;
 import org.lwjgl.openvr.VRBoneTransform;
 import org.lwjgl.openvr.VRInput;
 
@@ -33,7 +33,9 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -87,6 +89,12 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * Note that null is a special case that maps to VR.k_ulInvalidInputValueHandle and means "any input"
      */
     private final Map<String, Long> inputHandles = new HashMap<>();
+
+    private String[] bothHandActionSets;
+
+    private String[] leftHandActionSets;
+
+    private String[] rightHandActionSets;
 
     /**
      * A lwjgl object that contains handles to the active action sets (is used each frame to tell lwjgl which actions to
@@ -168,41 +176,71 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * @param startingActiveActionSets
      *          the actions in the manifest are divided into action sets (groups) by their prefix (e.g. "/actions/main").
      *          These action sets can be turned off and on per frame. This argument sets the action set that will be
-     *          active now. The active action sets can be later be changed by calling {@link #setActiveActionSet}.
+     *          active now. The active action sets can be later be changed by calling {@link #setActiveActionSetsBothHands}.
      *          Note that at present only a single set at a time is supported
      *
      */
-    public void registerActionManifest(String actionManifestAbsolutePath, String startingActiveActionSets){
+    public void registerActionManifest(String actionManifestAbsolutePath, String... startingActiveActionSets){
         inputMode = InputMode.ACTION_BASED;
         withErrorCodeWarning("registering an action manifest", VRInput.VRInput_SetActionManifestPath(actionManifestAbsolutePath));
 
-        setActiveActionSet(startingActiveActionSets);
+        setActiveActionSetsBothHands(startingActiveActionSets);
     }
 
+    /**
+     * Deprecated, use setActiveActionSetsBothHands
+     * @param actionSets
+     */
+    @Deprecated
     public void setActiveActionSet(String... actionSets){
+        setActiveActionSetsBothHands(actionSets);
+    }
+
+    /**
+     * This sets action sets active for all hands
+     * @param actionSets the action sets to set as active
+     */
+    public void setActiveActionSetsBothHands(String... actionSets){
         assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
 
-        for(String actionSet : actionSets){
-            long actionSetHandle;
-            if(!actionSetHandles.containsKey(actionSet)){
-                LongBuffer longBuffer = BufferUtils.createLongBuffer(1);
-                int errorCode = VRInput.VRInput_GetActionHandle(actionSet, longBuffer);
-                if(errorCode != 0){
-                    logger.warning("An error code of " + errorCode + " was reported while fetching an action set handle for " + actionSet);
-                }
-                actionSetHandle = longBuffer.get(0);
-                actionSetHandles.put(actionSet, actionSetHandle);
-            }
-        }
+        bothHandActionSets = actionSets;
+        activeActionSets = null;
+    }
 
-        activeActionSets = VRActiveActionSet.create(actionSets.length);
+    /**
+     * This sets action sets active for the left hand only
+     * @param actionSets the action sets to set as active
+     */
+    public void setActiveActionSetsLeftHand(String... actionSets){
+        assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
 
-        int i=0;
-        for(VRActiveActionSet actionSetItem : activeActionSets){
-            actionSetItem.ulActionSet(actionSetHandles.get(actionSets[i]));
-            activeActionSets.ulRestrictedToDevice(VR.k_ulInvalidInputValueHandle); // both hands
-            i++;
-        }
+        leftHandActionSets = actionSets;
+        activeActionSets = null;
+    }
+
+    /**
+     * This sets action sets active for the right hand only
+     * @param actionSets the action sets to set as active
+     */
+    public void setActiveActionSetsRightHand(String... actionSets){
+        assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
+
+        rightHandActionSets = actionSets;
+        activeActionSets = null;
+    }
+
+    /**
+     * Gets the current state of the action (abstract version of a button press).
+     *
+     * This is called for digital style actions (a button is pressed, or not)
+     *
+     * {@link #registerActionManifest} must have been called before using this method.
+     *
+     * @param actionName The name of the action. E.g. /actions/main/in/openInventory
+     * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
+     */
+    public DigitalActionState getDigitalActionState(String actionName){
+        return getDigitalActionState(actionName, null);
     }
 
     /**
@@ -236,7 +274,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
         int errorCode = VRInput.VRInput_GetDigitalActionData(actionDataObjects.actionHandle, actionDataObjects.actionData, getOrFetchInputHandle(restrictToInput));
 
         if (errorCode == VR.EVRInputError_VRInputError_WrongType){
-            throw new RuntimeException("Attempted to fetch a non-digital state as if it is digital");
+            throw new WrongActionTypeException("Attempted to fetch a non-digital state as if it is digital");
         }else if (errorCode!=0){
             logger.warning( "An error code of " + errorCode + " was reported while fetching an action state for " + actionName );
         }
@@ -341,7 +379,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
         int errorCode = VRInput.VRInput_GetAnalogActionData(actionDataObjects.actionHandle, actionDataObjects.actionData, getOrFetchInputHandle(restrictToInput));
 
         if (errorCode == VR.EVRInputError_VRInputError_WrongType){
-            throw new RuntimeException("Attempted to fetch a non-analog state as if it is analog");
+            throw new WrongActionTypeException("Attempted to fetch a non-analog state as if it is analog");
         }else if (errorCode!=0){
             logger.warning( "An error code of " + errorCode + " was reported while fetching an action state for " + actionName );
         }
@@ -560,5 +598,49 @@ public class ActionBasedOpenVrState extends BaseAppState{
         if (errorCode !=0 ){
             logger.warning( "An error code of " + errorCode + " was reported while " + eventText);
         }
+    }
+
+    private VRActiveActionSet.Buffer getOrBuildActionSets(){
+
+        if (activeActionSets != null){
+            return activeActionSets;
+        }
+
+        Map<String, String> actionSetAndRestriction = new HashMap<>();
+
+        Arrays.stream(bothHandActionSets).forEach(
+                set -> actionSetAndRestriction.put(set, null)
+        );
+        Arrays.stream(leftHandActionSets).forEach(
+                set -> actionSetAndRestriction.put(set, HandSide.LEFT.restrictToInputString)
+        );
+        Arrays.stream(rightHandActionSets).forEach(
+                set -> actionSetAndRestriction.put(set, HandSide.RIGHT.restrictToInputString)
+        );
+
+        actionSetAndRestriction.keySet().forEach(actionSet -> {
+            long actionSetHandle;
+            if(!actionSetHandles.containsKey(actionSet)){
+                LongBuffer longBuffer = BufferUtils.createLongBuffer(1);
+                int errorCode = VRInput.VRInput_GetActionHandle(actionSet, longBuffer);
+                if(errorCode != 0){
+                    logger.warning("An error code of " + errorCode + " was reported while fetching an action set handle for " + actionSet);
+                }
+                actionSetHandle = longBuffer.get(0);
+                actionSetHandles.put(actionSet, actionSetHandle);
+            }
+        });
+
+        activeActionSets = VRActiveActionSet.create(actionSetAndRestriction.size());
+
+        Iterator<Map.Entry<String, String>> iterator = actionSetAndRestriction.entrySet().iterator();
+
+        for(VRActiveActionSet actionSetItem : activeActionSets){
+            Map.Entry<String, String> entrySetAndRestriction = iterator.next();
+            actionSetItem.ulActionSet(actionSetHandles.get(entrySetAndRestriction.getKey()));
+            actionSetItem.ulRestrictedToDevice(getOrFetchInputHandle(entrySetAndRestriction.getValue()));
+        }
+
+        return activeActionSets;
     }
 }

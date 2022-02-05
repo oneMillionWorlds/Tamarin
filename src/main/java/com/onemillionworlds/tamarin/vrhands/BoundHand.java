@@ -20,7 +20,9 @@ import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
+import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
+import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.lemursupport.LemurSupport;
 
@@ -82,6 +84,9 @@ public abstract class BoundHand{
     private boolean debugPoints = false;
 
     private Optional<String> grabAction = Optional.empty();
+
+    private boolean grabActionIsAnalog = true;
+
     Node nodeToGrabPickAgainst;
 
     private float grabEvery = 1f/10;
@@ -425,7 +430,7 @@ public abstract class BoundHand{
      *
      * The action can be non hand specific as the hand restricts the action to only the hand this BoundHand represents
      *
-     * The grab action should be an analog action
+     * The grab action can be either an analog or digital action
      *
      * @param grabAction the openVr action name to use to decide if the hand is grabbing
      * @param nodeToPickAgainst the node to scan for items to grab (probably the root node)
@@ -522,9 +527,8 @@ public abstract class BoundHand{
             timeSinceGrabbed+=timeSlice;
             if (timeSinceGrabbed>grabEvery){
                 timeSinceGrabbed = 0;
-                AnalogActionState grabActionState = vrState.getAnalogActionState(action, handSide.restrictToInputString);
+                float gripPressure =  getGripActionPressure(action);
 
-                float gripPressure = grabActionState.x;
                 //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
                 if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
                     //looking for things in the world to grab
@@ -561,6 +565,22 @@ public abstract class BoundHand{
                 lastGripPressure = gripPressure;
             }
         });
+    }
+
+    private float getGripActionPressure(String action){
+        try{
+            if (grabActionIsAnalog){
+                AnalogActionState grabActionState = vrState.getAnalogActionState(action, handSide.restrictToInputString);
+                return grabActionState.x;
+            }else{
+                DigitalActionState grabActionState = vrState.getDigitalActionState(action, handSide.restrictToInputString);
+                return grabActionState.state?1:0;
+            }
+        }catch(WrongActionTypeException wrongActionTypeException){
+            //its the opposite type of action, switch automatically, on the next update the correct type will be used
+            grabActionIsAnalog = !grabActionIsAnalog;
+            return 0;
+        }
     }
 
     private Spatial armatureToNodes(Armature armature, ColorRGBA colorRGBA){
