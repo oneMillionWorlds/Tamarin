@@ -26,8 +26,10 @@ import org.lwjgl.openvr.InputDigitalActionData;
 import org.lwjgl.openvr.InputPoseActionData;
 import org.lwjgl.openvr.VR;
 import org.lwjgl.openvr.VRActiveActionSet;
+import org.lwjgl.openvr.VRApplications;
 import org.lwjgl.openvr.VRBoneTransform;
 import org.lwjgl.openvr.VRInput;
+import org.lwjgl.openvr.VRSystem;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -596,8 +598,33 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     private static void withErrorCodeWarning(String eventText, int errorCode){
         if (errorCode !=0 ){
-            logger.warning( "An error code of " + errorCode + " was reported while " + eventText);
+            String errorString = mapErrorCodeToErrorString(errorCode);
+            logger.warning( "An error code of " + errorCode + " (" + errorString + ") was reported while " + eventText);
         }
+    }
+
+    private static String mapErrorCodeToErrorString(int errorCode){
+        switch(errorCode){
+            case VR.EVRInputError_VRInputError_None: return "Ok";
+            case VR.EVRInputError_VRInputError_NameNotFound: return "NameNotFound";
+            case VR.EVRInputError_VRInputError_WrongType: return "WrongType";
+            case VR.EVRInputError_VRInputError_InvalidHandle: return "InvalidHandle";
+            case VR.EVRInputError_VRInputError_InvalidParam: return "InvalidParam";
+            case VR.EVRInputError_VRInputError_NoSteam: return "NoSteam";
+            case VR.EVRInputError_VRInputError_MaxCapacityReached: return "MaxCapacityReached";
+            case VR.EVRInputError_VRInputError_IPCError: return "IPCError";
+            case VR.EVRInputError_VRInputError_NoActiveActionSet: return "NoActiveActionSet";
+            case VR.EVRInputError_VRInputError_InvalidDevice: return "InvalidDevice";
+            case VR.EVRInputError_VRInputError_InvalidSkeleton: return "InvalidSkeleton";
+            case VR.EVRInputError_VRInputError_InvalidBoneCount: return "InvalidBoneCount";
+            case VR.EVRInputError_VRInputError_InvalidCompressedData: return "InvalidCompressedData";
+            case VR.EVRInputError_VRInputError_NoData: return "NoData";
+            case VR.EVRInputError_VRInputError_BufferTooSmall: return "BufferTooSmall";
+            case VR.EVRInputError_VRInputError_MismatchedActionManifest: return "MismatchedActionManifest";
+            case VR.EVRInputError_VRInputError_MissingSkeletonData: return "MissingSkeletonData";
+            case VR.EVRInputError_VRInputError_InvalidBoneIndex: return "InvalidBoneIndex";
+        }
+        return "????ErrorCodeNotKnown????";
     }
 
     private VRActiveActionSet.Buffer getOrBuildActionSets(){
