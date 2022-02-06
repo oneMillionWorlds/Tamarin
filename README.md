@@ -17,6 +17,10 @@ Optionally you can also have
 
 This library uses simple java.util.Logger for maximum compatibility. Bind that to your preferred logging library.
 
+## Documentation
+
+See https://github.com/oneMillionWorlds/Tamarin/wiki for documentation 
+
 ## Best practices
 
 Grabbing and menu picking both use geometry picking. With simple scenes performance may be fine picking
