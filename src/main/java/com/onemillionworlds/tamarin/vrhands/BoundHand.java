@@ -184,7 +184,7 @@ public abstract class BoundHand{
      * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
      * pointing to the right, as defined by the middle finger metacarpal bone. Its X,Y and Z are likely to be in similar
      * directions to those of {@link BoundHand#getHandNode_xPointing()} but not precisely
-     * @return
+     * @return the palm node
      */
     public Node getPalmNode(){
         return palmNode_xPointing;
@@ -210,6 +210,10 @@ public abstract class BoundHand{
         return armature;
     }
 
+    /**
+     * The material that will be applied to any geometries within the spatial provided as the hand
+     * @param material the material
+     */
     public void setMaterial(Material material){
         searchForGeometry(geometryNode).forEach(g -> g.setMaterial(material));
     }
@@ -285,10 +289,11 @@ public abstract class BoundHand{
     public void setPickMarkerContinuous(Node nodeToPickAgainst){
         pickMarkerAgainstContinuous = Optional.of(nodeToPickAgainst);
         getHandNode_xPointing().attachChild(pickMarker);
-
-
     }
 
+    /**
+     * This will stop that action started by {@link BoundHand#setPickMarkerContinuous}
+     */
     public void clearPickMarkerContinuous(){
         pickMarkerAgainstContinuous = Optional.empty();
         pickMarker.removeFromParent();
@@ -329,8 +334,7 @@ public abstract class BoundHand{
     }
 
     /**
-     * Left or right hand
-     * @return
+     * @return Left or right hand
      */
     public HandSide getHandSide(){
         return handSide;
@@ -368,14 +372,26 @@ public abstract class BoundHand{
         this.palmPickPoints = palmPickPoints;
     }
 
+    /**
+     * Will start rendering the positions of the bones (note if all is well they will be inside the hands, so not really
+     * visible (doing this is not performant, debug only)
+     */
     public void debugArmature(){
         this.debugPoints = true;
     }
 
+    /**
+     * Adds a debug line in the direction the hand would use for picking
+     */
     public void debugPointingPickLine(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
     }
 
+    /**
+     * Adds a debug lines in the directions the hand would use for picking when grabbing
+     *
+     * Note that the red line is the palm origin, the pink lines are extra pick lines
+     */
     public void debugGrabPickLines(){
         for(Vector3f palmPickPoints : palmPickPoints){
             ColorRGBA colour = palmPickPoints.equals(Vector3f.ZERO) ? ColorRGBA.Red : ColorRGBA.Pink;
