@@ -434,7 +434,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
     public void update(float tpf){
         super.update(tpf);
         if (inputMode == InputMode.ACTION_BASED){
-            withErrorCodeWarning("UpdateActionState", VRInput.VRInput_UpdateActionState(activeActionSets, VRActiveActionSet.SIZEOF));
+            withErrorCodeWarning("UpdateActionState", VRInput.VRInput_UpdateActionState(getOrBuildActionSets(), VRActiveActionSet.SIZEOF));
         }
     }
 
