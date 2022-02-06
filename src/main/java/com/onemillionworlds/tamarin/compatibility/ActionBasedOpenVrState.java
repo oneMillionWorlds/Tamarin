@@ -92,11 +92,11 @@ public class ActionBasedOpenVrState extends BaseAppState{
      */
     private final Map<String, Long> inputHandles = new HashMap<>();
 
-    private String[] bothHandActionSets;
+    private String[] bothHandActionSets = new String[0];
 
-    private String[] leftHandActionSets;
+    private String[] leftHandActionSets= new String[0];
 
-    private String[] rightHandActionSets;
+    private String[] rightHandActionSets= new String[0];
 
     /**
      * A lwjgl object that contains handles to the active action sets (is used each frame to tell lwjgl which actions to
