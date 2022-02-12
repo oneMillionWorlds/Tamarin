@@ -3,6 +3,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id "io.freefair.lombok" version "6.4.0"
 }
 
 repositories {
@@ -16,7 +17,7 @@ java {
 }
 
 group = 'com.onemillionworlds'
-version = '1.0.1-SNAPSHOT'
+version = '1.0.2-SNAPSHOT'
 
 def jme3 = [v:'3.4.0-stable', g:'org.jmonkeyengine']
 
@@ -37,6 +38,7 @@ dependencies {
     compileOnly "${jme3.g}:jme3-core:${jme3.v}"
     compileOnly "${jme3.g}:jme3-vr:${jme3.v}"
     compileOnly "com.simsilica:lemur:1.14.0"
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
 }
 
 publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.html

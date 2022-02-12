@@ -24,7 +24,7 @@ import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
-import com.onemillionworlds.tamarin.vrhands.lemursupport.LemurSupport;
+import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -356,9 +356,7 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst the node that contains things that can be clicked
      */
     public void click_lemurSupport(Node nodeToPickAgainst){
-        if (!isLemurAvailable()){
-            throw new RuntimeException("Lemur not available on class path. Lemur required for methods named _lemurSupport");
-        }
+        assertLemurAvailable();
         CollisionResults results = pickBulkHand(nodeToPickAgainst);
         LemurSupport.clickThroughCollisionResults(results);
     }
@@ -674,7 +672,13 @@ public abstract class BoundHand{
         return handNode_xPointing.getWorldRotation().mult(Vector3f.UNIT_X);
     }
 
-    private static boolean isLemurAvailable(){
+    public static void assertLemurAvailable(){
+        if (!isLemurAvailable()){
+            throw new RuntimeException("Lemur not available on class path. Lemur required for methods named _lemurSupport or classes with Lemur in name");
+        }
+    }
+
+    public static boolean isLemurAvailable(){
         if (lemurCheckedAvailable){
             return true;
         }else{

@@ -1,4 +1,4 @@
-package com.onemillionworlds.tamarin.vrhands.lemursupport;
+package com.onemillionworlds.tamarin.lemursupport;
 
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
