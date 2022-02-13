@@ -23,11 +23,17 @@ import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
+import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
+import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
+import com.onemillionworlds.tamarin.vrhands.functions.LemurClickFunction;
+import com.onemillionworlds.tamarin.vrhands.functions.PickMarkerFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,8 +44,6 @@ public abstract class BoundHand{
     private static boolean lemurCheckedAvailable = false ;
 
     public static String NO_PICK = "noPick";
-
-    private List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,0), new Vector3f(0.02f,-0.03f,0), new Vector3f(0.03f,0.03f,0));
 
     private HandMode handMode = HandMode.WITHOUT_CONTROLLER;
 
@@ -72,6 +76,7 @@ public abstract class BoundHand{
 
     private final Armature armature;
 
+    @Getter
     private final AssetManager assetManager;
 
     private final HandSide handSide;
@@ -83,29 +88,9 @@ public abstract class BoundHand{
      */
     private boolean debugPoints = false;
 
-    private Optional<String> grabAction = Optional.empty();
-
-    private boolean grabActionIsAnalog = true;
-
-    Node nodeToGrabPickAgainst;
-
-    private float grabEvery = 1f/10;
-
-    private float timeSinceGrabbed = 100;
-
-    private float lastGripPressure = 0;
-
-    private float minimumGripToTrigger = 0.5f;
-
-    private float maxGrabDistance = 0.1f;
-
     private float baseSkinDepth = 0.02f;
 
-    Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
-
-    Optional<Node> pickMarkerAgainstContinuous = Optional.empty();
-
-    Spatial pickMarker;
+    Map<Class<? extends BoundHandFunction>, BoundHandFunction> functions = new HashMap<>();
 
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.vrState = Objects.requireNonNull(vrState);
@@ -135,7 +120,7 @@ public abstract class BoundHand{
 
         handNode_xPointing.attachChild(pickLineNode);
 
-        pickMarker= defaultPickMarker();
+        addFunction(new PickMarkerFunction());
     }
 
     public HandMode getHandMode(){
@@ -218,15 +203,38 @@ public abstract class BoundHand{
         searchForGeometry(geometryNode).forEach(g -> g.setMaterial(material));
     }
 
+    /**
+     * Adds the requested
+     * @param function the functionality to add (things like grabbing, clicking etc are implemented as BoundHandFunctions
+     * @return a method that if called will remove the function
+     */
+    public Runnable addFunction(BoundHandFunction function){
+        function.onBind(this, vrState.getStateManager());
+        functions.put(function.getClass(), function);
+        return () -> removeFunction(function.getClass());
+    }
+
+    public void removeFunction(Class<? extends BoundHandFunction> functionToRemove){
+        BoundHandFunction function = functions.remove(functionToRemove);
+        if (function!=null){
+            function.onUnbind(this, vrState.getStateManager());
+        }
+    }
+
+    public <T extends BoundHandFunction> T getFunction(Class<T> function){
+        @SuppressWarnings("unchecked")
+        T functionClass = (T) functions.get(function);
+        Objects.requireNonNull(functionClass, () -> "Function " + function.getSimpleName() + " missing");
+        return functionClass;
+    }
+
     protected void update(float timeSlice, Map<String, BoneStance> boneStances){
         if (debugPoints){
             debugPointsNode.detachAllChildren();
             debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
         }
-
         updatePalm(timeSlice, boneStances);
-        updateForGrab(timeSlice);
-        updateForPickMarker(timeSlice);
+        functions.values().forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
 
     }
 
@@ -284,19 +292,16 @@ public abstract class BoundHand{
      * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/{@link BoundHand#click_lemurSupport}
      * and place a marker (by default a white sphere) at the point where the pick hits a geometry. This gives the
      * player an indication what they would pick it they clicked now; think of it like a mouse pointer in 3d space
-     * @param nodeToPickAgainst
      */
     public void setPickMarkerContinuous(Node nodeToPickAgainst){
-        pickMarkerAgainstContinuous = Optional.of(nodeToPickAgainst);
-        getHandNode_xPointing().attachChild(pickMarker);
+        getFunction(PickMarkerFunction.class).setPickMarkerContinuous(nodeToPickAgainst);
     }
 
     /**
      * This will stop that action started by {@link BoundHand#setPickMarkerContinuous}
      */
     public void clearPickMarkerContinuous(){
-        pickMarkerAgainstContinuous = Optional.empty();
-        pickMarker.removeFromParent();
+        getFunction(PickMarkerFunction.class).clearPickMarkerContinuous();
     }
 
     /**
@@ -319,7 +324,6 @@ public abstract class BoundHand{
      * is the left or right hand)
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      * @param palmRelativePosition the position for the pick line to start
-     * @return
      */
     public CollisionResults pickPalm(Node nodeToPickAgainst, Vector3f palmRelativePosition){
         Vector3f pickOrigin = getPalmNode().localToWorld(palmRelativePosition, null);
@@ -353,21 +357,14 @@ public abstract class BoundHand{
      *
      * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
      *
+     * Note; it may be more convenient to use {@link BoundHand#setClickAction_lemurSupport}
+     *
      * @param nodeToPickAgainst the node that contains things that can be clicked
      */
     public void click_lemurSupport(Node nodeToPickAgainst){
         assertLemurAvailable();
         CollisionResults results = pickBulkHand(nodeToPickAgainst);
         LemurSupport.clickThroughCollisionResults(results);
-    }
-
-    /**
-     * Sets the points (in the palm coordinate system) where pick lines should be generated from when the player
-     * initiates a grab. Consider using {@link BoundHand#debugGrabPickLines()} to see where the lines you create go
-     * @param palmPickPoints
-     */
-    public void setPalmPickPoints(List<Vector3f> palmPickPoints){
-        this.palmPickPoints = palmPickPoints;
     }
 
     /**
@@ -379,25 +376,10 @@ public abstract class BoundHand{
     }
 
     /**
-     * Adds a debug line in the direction the hand would use for picking
+     * Adds a debug line in the direction the hand would use for picking or clicking
      */
     public void debugPointingPickLine(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
-    }
-
-    /**
-     * Adds a debug lines in the directions the hand would use for picking when grabbing
-     *
-     * Note that the red line is the palm origin, the pink lines are extra pick lines
-     */
-    public void debugGrabPickLines(){
-        for(Vector3f palmPickPoints : palmPickPoints){
-            ColorRGBA colour = palmPickPoints.equals(Vector3f.ZERO) ? ColorRGBA.Red : ColorRGBA.Pink;
-
-            Geometry line = microLine(colour, new Vector3f(0,0,(handSide == HandSide.LEFT?1:-1)*maxGrabDistance));
-            line.setLocalTranslation(palmPickPoints);
-            palmNode_xPointing.attachChild(line);
-        }
     }
 
     /**
@@ -438,8 +420,8 @@ public abstract class BoundHand{
 
     /**
      * When a grab action is specified (action in the openVr action manifest sense of the word) then periodically
-     * (see {@link BoundHand#setGrabEvery}) if the action is true then a grab pick will occure and if the pick finds
-     * any spatials with a control of type {@link AbstractGrabControl} then it will grab them. Equally once bound if the
+     * (see {@link GrabPickingFunction#setGrabEvery}) if the action is true then a grab pick will occur and if the pick finds
+     * any spatials with a control of type {@link AbstractGrabControl} then it will grab them. Equally, once bound if the
      * grab action is released then it will unbind from them.
      *
      * The action can be non hand specific as the hand restricts the action to only the hand this BoundHand represents
@@ -450,36 +432,35 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst the node to scan for items to grab (probably the root node)
      */
     public void setGrabAction(String grabAction, Node nodeToPickAgainst){
-        this.grabAction = Optional.of(grabAction);
-        this.nodeToGrabPickAgainst = nodeToPickAgainst;
+        addFunction(new GrabPickingFunction(grabAction, nodeToPickAgainst));
     }
 
     public void clearGrabAction(){
-        this.grabAction = Optional.empty();
-        this.lastGripPressure = 0;
-        this.nodeToGrabPickAgainst = null;
-    }
-
-    public void setGrabEvery(float grabEvery){
-        this.grabEvery = grabEvery;
+        removeFunction(GrabPickingFunction.class);
     }
 
     /**
-     * Allows the amount of pressure required to pick something up to be changed
-     * @param minimumGripToTrigger a value between 0 and 1
-     */
-    public void setMinimumGripToTrigger(float minimumGripToTrigger){
-        this.minimumGripToTrigger = minimumGripToTrigger;
-    }
-
-    /**
-     * This maximum distance that a grab pick will pick up an object.
+     * Will bind an action (see actions manifest) against a lemur click (picks against the
+     * passed node). Call {@link BoundHand#clearClickAction_lemurSupport} to remove binding
      *
-     * Note that this is the distance from the centre of the hand to the first face the pick line sees
-     * @param maxGrabDistance a value in meters
+     * This requires lemur to be on the class path (or else you'll get an exception).
+     *
+     * It kind of "fakes" a click. So it's only limited in what it does. It tracks up the parents of things it hits looking
+     * for things which are a button, or have a MouseEventControl. If it finds one it clicks that, then returns.
+     *
+     * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
+     *
+     * @param clickAction the action (see action manifest) that will trigger a click, can be a vector1 or a digital action.
+     * @param nodeToPickAgainst The node that is picked against to look for lemur UIs
      */
-    public void setMaxGrabDistance(float maxGrabDistance){
-        this.maxGrabDistance = maxGrabDistance;
+    public void setClickAction_lemurSupport(String clickAction, Node nodeToPickAgainst){
+        assertLemurAvailable();
+        clearClickAction_lemurSupport();
+        addFunction(new LemurClickFunction(clickAction, nodeToPickAgainst));
+    }
+
+    public void clearClickAction_lemurSupport(){
+        removeFunction(LemurClickFunction.class);
     }
 
     /**
@@ -523,80 +504,6 @@ public abstract class BoundHand{
         }
     }
 
-    private void updateForPickMarker(float timslice){
-        pickMarkerAgainstContinuous.ifPresent(node -> {
-            firstNonSkippedHit(pickBulkHand(node)).ifPresentOrElse(
-                    hit -> {
-                        pickMarker.setCullHint(Spatial.CullHint.Inherit);
-                        pickMarker.setLocalTranslation(hit.getDistance(), 0, 0);
-                    },
-                    () -> pickMarker.setCullHint(Spatial.CullHint.Always)
-
-            );
-        });
-    }
-
-    private void updateForGrab(float timeSlice){
-        grabAction.ifPresent(action -> {
-            timeSinceGrabbed+=timeSlice;
-            if (timeSinceGrabbed>grabEvery){
-                timeSinceGrabbed = 0;
-                float gripPressure =  getGripActionPressure(action);
-
-                //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
-                if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
-                    //looking for things in the world to grab
-                    for(Vector3f palmPickPoint : palmPickPoints){
-                        CollisionResults results = pickPalm(nodeToGrabPickAgainst, palmPickPoint);
-                        Spatial picked = null;
-                        for(CollisionResult hit : results){
-                            if(!Boolean.TRUE.equals(hit.getGeometry().getUserData(NO_PICK))){
-                                if(hit.getDistance() < maxGrabDistance){
-                                    picked = hit.getGeometry();
-                                }
-                                break;
-                            }
-                        }
-                        AbstractGrabControl grabControl = null;
-
-                        while(picked != null && grabControl == null){
-                            grabControl = picked.getControl(AbstractGrabControl.class);
-                            picked = picked.getParent();
-                        }
-
-                        if(grabControl != null){
-                            currentlyGrabbed = Optional.of(grabControl);
-                            grabControl.onGrab(this);
-                            break;
-                        }
-                    }
-
-                }else if (gripPressure<minimumGripToTrigger && currentlyGrabbed.isPresent()){
-                    //drop current item
-                    currentlyGrabbed.get().onRelease(this);
-                    currentlyGrabbed = Optional.empty();
-                }
-                lastGripPressure = gripPressure;
-            }
-        });
-    }
-
-    private float getGripActionPressure(String action){
-        try{
-            if (grabActionIsAnalog){
-                AnalogActionState grabActionState = vrState.getAnalogActionState(action, handSide.restrictToInputString);
-                return grabActionState.x;
-            }else{
-                DigitalActionState grabActionState = vrState.getDigitalActionState(action, handSide.restrictToInputString);
-                return grabActionState.state?1:0;
-            }
-        }catch(WrongActionTypeException wrongActionTypeException){
-            //its the opposite type of action, switch automatically, on the next update the correct type will be used
-            grabActionIsAnalog = !grabActionIsAnalog;
-            return 0;
-        }
-    }
-
     private Spatial armatureToNodes(Armature armature, ColorRGBA colorRGBA){
         return jointToNode(armature.getRoots()[0], colorRGBA);
     }
@@ -635,16 +542,6 @@ public abstract class BoundHand{
         Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         material.getAdditionalRenderState().setLineWidth(5);
         material.setColor("Color", colorRGBA);
-        geometry.setMaterial(material);
-        geometry.setUserData(NO_PICK, true);
-        return geometry;
-    }
-
-    private Geometry defaultPickMarker(){
-        Sphere sphere = new Sphere(15, 15, 0.01f);
-        Geometry geometry = new Geometry("pickingMarker", sphere);
-        Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        material.setColor("Color", ColorRGBA.White);
         geometry.setMaterial(material);
         geometry.setUserData(NO_PICK, true);
         return geometry;

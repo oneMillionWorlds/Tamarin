@@ -6,6 +6,7 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
+import com.jme3.material.Material;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
@@ -31,18 +32,19 @@ public class VRHandsAppState extends BaseAppState{
 
     private AssetManager assetManager;
 
+    private HandSpec pendingHandSpec;
+
     /**
-     * This constructor allows {@link VRHandsAppState#bindHandModel} to be called immediately (before the state has been
-     * initialised. This is optional, but may be helpful if you want to set everything up within {@link SimpleApplication#simpleInitApp()}
-     * @param assetManager the assetManager
+     * This constructor allows for bound hands to be created as soon as the state has initialised.
+     *
+     * You could alternatively call bindHandModel yourself, but that can only be done much later in initialisation
+     * and it may be easier to do it this way instead.
      */
-    public VRHandsAppState(AssetManager assetManager, ActionBasedOpenVrState actionBasedOpenVrState){
-        this.assetManager = assetManager;
-        openVr = actionBasedOpenVrState;
+    public VRHandsAppState(HandSpec handSpec){
+        pendingHandSpec = handSpec;
     }
 
     public VRHandsAppState(){
-        super();
     }
 
     @Override
@@ -53,6 +55,11 @@ public class VRHandsAppState extends BaseAppState{
             throw new IllegalStateException("VRHandsAppState requires ActionBasedOpenVr to have already been bound");
         }
         ((SimpleApplication)app).getRootNode().attachChild(rootNodeDelegate);
+
+        if (pendingHandSpec!=null){
+            updateHandsForHandSpec(pendingHandSpec);
+            pendingHandSpec = null;
+        }
     }
 
     @Override
@@ -93,8 +100,28 @@ public class VRHandsAppState extends BaseAppState{
     }
 
     /**
+     * Updates both hands simultaneously based on a spec. Really intended to be used via the {@link VRHandsAppState}
+     * constructor, but can be used directly as well to swap hands mid-game
+     * @param handSpec the handSpec
+     */
+    public void updateHandsForHandSpec(HandSpec handSpec){
+        new ArrayList<>(getHandControls()).forEach(BoundHand::unbindHand);
+        AssetManager assetManager = getApplication().getAssetManager();
+
+        Spatial leftModel = assetManager.loadModel(handSpec.leftHandModel);
+        BoundHand leftHand = bindHandModel(handSpec.leftHandPoseAction, handSpec.leftHandSkeletonAction, leftModel, HandSide.LEFT);
+        handSpec.applyMaterialToLeftHand.accept(leftHand, assetManager);
+        handSpec.postBindLeft.accept(leftHand);
+
+        Spatial rightModel = assetManager.loadModel(handSpec.rightHandModel);
+        BoundHand rightHand = bindHandModel(handSpec.rightHandPoseAction, handSpec.rightHandSkeletonAction, rightModel, HandSide.RIGHT);
+        handSpec.applyMaterialToRightHand.accept(rightHand, assetManager);
+        handSpec.postBindRight.accept(rightHand);
+    }
+
+    /**
      * This expects to be given a spatial that has an armature and geometry. That geometry then becomes owned by this
-     * app state (do not attempt to attach it to a node yourself). Its relatively unfussy about degenerate parent nodes
+     * app state (do not attempt to attach it to a node yourself). It's relatively unfussy about degenerate parent nodes
      * and will search for what it needs (primarily because blender exports can put such stuff in.)
      *
      * The spatial will most likely have been loaded using `assetManager.loadModel`
@@ -114,7 +141,7 @@ public class VRHandsAppState extends BaseAppState{
      */
     public BoundHand bindHandModel( String poseToBindTo, String skeletonActionToBindTo, Spatial spatial, HandSide leftOrRight ){
         if (assetManager == null){
-            throw new IllegalStateException("Attempted to bind hands before " + this.getClass().getSimpleName() + " was initialised. Either bind hands later or use the constructor that takes an assetManager to remove this requirement");
+            throw new IllegalStateException("Attempted to bind hands before " + this.getClass().getSimpleName() + " was initialised. Either bind hands later or use a hand spec to ensure binding occurs at the right time");
         }
 
         Spatial trueModel = searchForArmatured(spatial);
