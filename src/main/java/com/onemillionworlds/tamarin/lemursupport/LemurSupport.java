@@ -37,6 +37,7 @@ public class LemurSupport{
                         return;
                     }
                     if ( processedSpatial instanceof TextField){
+                        terminateAnyExistingKeyboards(stateManager);
                         TextField textField = ((TextField)processedSpatial);
                         textField.getControl(GuiControl.class).focusGained();
                         stateManager.attach(new LemurKeyboard(
@@ -77,4 +78,13 @@ public class LemurSupport{
         }
     }
 
+    private static void terminateAnyExistingKeyboards(AppStateManager stateManager){
+        LemurKeyboard keyboard = stateManager.getState(LemurKeyboard.class);
+
+        if (keyboard!=null){
+            stateManager.detach(keyboard);
+        }
+    }
+
 }
+
