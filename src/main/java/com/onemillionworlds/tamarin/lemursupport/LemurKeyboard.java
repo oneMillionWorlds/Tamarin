@@ -4,6 +4,7 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.VRAppState;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.KeyboardButton;
@@ -33,10 +34,13 @@ public class LemurKeyboard extends BaseAppState{
     private final Consumer<String> textConsumer;
     private final BiConsumer<KeyboardEvent,Object> eventConsumer;
     private final KeyboardStyle keyboardStyle;
-    private final float rangeToOpenAt;
 
     @Getter
     private ShiftMode shiftMode = ShiftMode.UPPER;
+
+    private final Vector3f ownerPosition;
+
+    private final Quaternion ownerRotation;
 
     public enum ShiftMode{
         LOWER,UPPER,LOCK_UPPER;
@@ -47,9 +51,9 @@ public class LemurKeyboard extends BaseAppState{
      * @param textConsumer when a normal text letter is typed it is returned here
      * @param eventConsumer when any event other than typing occurs it is published here, the first item is the category, the second is an object that may contain extra details (or may be null) depending on the event type
      * @param keyboardStyle the specific keys that the keyboard should use
-     * @param rangeToOpenAt how far from players "face" the keyboard opens at
+     * @param ownerPosition the thing that triggered the keyboard to show's position. The keyboard will appear slightly closer to the player than this and a little below (so eyeline is not blocked)
      */
-    public LemurKeyboard(Node nodeToAttachTo, Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, KeyboardStyle keyboardStyle, float rangeToOpenAt){
+    public LemurKeyboard(Node nodeToAttachTo, Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, KeyboardStyle keyboardStyle, Vector3f ownerPosition, Quaternion ownerRotation){
         nodeToAttachTo.attachChild(rootNodeDelegate);
         rootNodeDelegate.setLocalTranslation(nodeToAttachTo.getWorldTranslation());
         rootNodeDelegate.setLocalRotation(nodeToAttachTo.getLocalRotation().inverse());
@@ -57,7 +61,8 @@ public class LemurKeyboard extends BaseAppState{
         this.textConsumer = textConsumer;
         this.eventConsumer = eventConsumer;
         this.keyboardStyle = keyboardStyle;
-        this.rangeToOpenAt= rangeToOpenAt;
+        this.ownerPosition= ownerPosition;
+        this.ownerRotation = ownerRotation;
     }
 
     @Override
@@ -65,17 +70,12 @@ public class LemurKeyboard extends BaseAppState{
         rootNodeDelegate.attachChild(keyboardNode);
 
         VRAppState vrAppState = app.getStateManager().getState(VRAppState.class);
-        Vector3f cameraLocation = vrAppState.getVRViewManager().getLeftCamera().getLocation();
-        Vector3f cameraDirection = vrAppState.getVRViewManager().getLeftCamera().getDirection();
-        cameraDirection.y = 0;
-        if (cameraDirection.lengthSquared()==0){
-            cameraDirection = new Vector3f(1,0,0);
-        }else{
-            cameraDirection.normalizeLocal();
-        }
+        Vector3f cameraLocation = vrAppState.getVRViewManager().getLeftCamera().getLocation().add(vrAppState.getVRViewManager().getRightCamera().getLocation()).mult(0.5f);
+        Vector3f toCameraDirection = cameraLocation.subtract(ownerPosition).normalizeLocal();
+        float cameraDistance = cameraLocation.distance(ownerPosition);
 
-        keyboardNode.setLocalTranslation(cameraLocation.add(cameraDirection.mult(rangeToOpenAt)));
-        keyboardNode.lookAt(cameraLocation, Vector3f.UNIT_Y);
+        keyboardNode.setLocalTranslation(ownerPosition.add(toCameraDirection.mult(0.1f*cameraDistance)).add(0,-0.1f*cameraDistance, 0));
+        keyboardNode.setLocalRotation(this.ownerRotation);
         refreshKeyboard();
 
     }

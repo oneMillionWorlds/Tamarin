@@ -58,7 +58,7 @@ public class LemurSupport{
                                             break;
                                     }
                                 }, keyboardStyle
-                                ,0.75f * collision.getDistance()));
+                                ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation()));
 
                         return;
                     }
