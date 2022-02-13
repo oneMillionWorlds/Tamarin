@@ -16,7 +16,7 @@ public class SimpleQwertyStyle implements KeyboardStyle{
                 new KeyboardButton[]{k("q"),k("w"),k("e"),k("r"),k("t"),k("y"),k("u"),k("i"),k("o"),k("p")},
                 new KeyboardButton[]{k("a"),k("s"),k("d"),k("f"),k("g"),k("h"),k("j"),k("k"),k("l"), new EnterKey()},
                 new KeyboardButton[]{new ShiftKey(), k("z"),k("x"),k("c"),k("v"),k("b"),k("n"),k("m"), new Backspace()},
-                new KeyboardButton[]{k(","), k("."), k("("), k(")"),new SpaceBar(), k("?"), k("!"), k("%"), k("&"), k("$"), k(";"), k(":")},
+                new KeyboardButton[]{k(","), k("."), k("("), k(")"),k("?"),  new SpaceBar(), k("!"), k("%"), k("&"), k("$"), k(";"), k(":")},
         };
     }
 
