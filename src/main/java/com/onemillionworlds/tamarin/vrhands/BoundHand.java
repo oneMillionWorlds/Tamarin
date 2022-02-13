@@ -364,7 +364,7 @@ public abstract class BoundHand{
     public void click_lemurSupport(Node nodeToPickAgainst){
         assertLemurAvailable();
         CollisionResults results = pickBulkHand(nodeToPickAgainst);
-        LemurSupport.clickThroughCollisionResults(results);
+        LemurSupport.clickThroughCollisionResults(nodeToPickAgainst, results, vrState.getStateManager());
     }
 
     /**

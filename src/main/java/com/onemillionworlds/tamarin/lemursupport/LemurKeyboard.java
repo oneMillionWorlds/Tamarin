@@ -28,7 +28,7 @@ import java.util.function.Consumer;
  */
 public class LemurKeyboard extends BaseAppState{
 
-    private final Node rootNodeDelegate = new Node("LemurKeyboard");
+    private final Node rootNodeDelegate = new Node("LemurKeyboardRootNodeDelegate");
     private final Node keyboardNode = new Node("LemurKeyboard");
     private final Consumer<String> textConsumer;
     private final BiConsumer<KeyboardEvent,Object> eventConsumer;
@@ -46,12 +46,14 @@ public class LemurKeyboard extends BaseAppState{
      *
      * @param textConsumer when a normal text letter is typed it is returned here
      * @param eventConsumer when any event other than typing occurs it is published here, the first item is the category, the second is an object that may contain extra details (or may be null) depending on the event type
-     * @param triggerAction the action the player makes (see action manifest) that will lead to the click that may touck the keyboard
      * @param keyboardStyle the specific keys that the keyboard should use
      * @param rangeToOpenAt how far from players "face" the keyboard opens at
-     * @param autoCloseOnClickOut If the player clicks and doesn't hit the keyboard then should the keyboard autoclose
      */
-    public LemurKeyboard(Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, String triggerAction, KeyboardStyle keyboardStyle, float rangeToOpenAt, boolean autoCloseOnClickOut){
+    public LemurKeyboard(Node nodeToAttachTo, Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, KeyboardStyle keyboardStyle, float rangeToOpenAt){
+        nodeToAttachTo.attachChild(rootNodeDelegate);
+        rootNodeDelegate.setLocalTranslation(nodeToAttachTo.getWorldTranslation());
+        rootNodeDelegate.setLocalRotation(nodeToAttachTo.getLocalRotation().inverse());
+
         this.textConsumer = textConsumer;
         this.eventConsumer = eventConsumer;
         this.keyboardStyle = keyboardStyle;
@@ -60,7 +62,6 @@ public class LemurKeyboard extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
-        ((SimpleApplication)app).getRootNode().attachChild(rootNodeDelegate);
         rootNodeDelegate.attachChild(keyboardNode);
 
         VRAppState vrAppState = app.getStateManager().getState(VRAppState.class);
@@ -102,7 +103,7 @@ public class LemurKeyboard extends BaseAppState{
                             textConsumer.accept(typedText);
                             button.onClickEvent(eventConsumer, this);
 
-                            if (typedText!=null && typedText.isBlank() && shiftMode == ShiftMode.UPPER){
+                            if (typedText!=null && !typedText.isBlank() && shiftMode == ShiftMode.UPPER){
                                 setShiftMode(ShiftMode.LOWER);
                             }
                         }

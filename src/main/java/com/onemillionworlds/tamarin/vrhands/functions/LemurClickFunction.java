@@ -22,6 +22,8 @@ public class LemurClickFunction implements BoundHandFunction{
     @Setter
     private float minTriggerToClick = 0.5f;
 
+    private float lastTriggerPressure = 0;
+
     private BoundHand boundHand;
     private ActionBasedOpenVrState actionBasedOpenVrState;
 
@@ -36,7 +38,7 @@ public class LemurClickFunction implements BoundHandFunction{
     public void click(){
         BoundHand.assertLemurAvailable();
         CollisionResults results = this.boundHand.pickBulkHand(pickAgainstNode);
-        LemurSupport.clickThroughCollisionResults(results);
+        LemurSupport.clickThroughCollisionResults(pickAgainstNode, results, actionBasedOpenVrState.getStateManager());
     }
 
     @Override
@@ -52,9 +54,12 @@ public class LemurClickFunction implements BoundHandFunction{
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        if (getClickActionPressure(clickAction)>minTriggerToClick){
+        float triggerPressure = getClickActionPressure(clickAction);
+        if (triggerPressure>minTriggerToClick && lastTriggerPressure<minTriggerToClick){
             click();
         }
+
+        lastTriggerPressure = triggerPressure;
     }
 
     private float getClickActionPressure(String action){
