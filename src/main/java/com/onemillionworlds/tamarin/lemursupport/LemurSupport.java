@@ -72,13 +72,17 @@ public class LemurSupport{
 
                     processedSpatial = processedSpatial.getParent();
                 }
+                //if we don't click on anything that cares then that closes the keyboard
+                terminateAnyExistingKeyboards(stateManager);
                 return;
             }
 
         }
+        //if we don't click on anything that cares then that closes the keyboard
+        terminateAnyExistingKeyboards(stateManager);
     }
 
-    private static void terminateAnyExistingKeyboards(AppStateManager stateManager){
+    public static void terminateAnyExistingKeyboards(AppStateManager stateManager){
         LemurKeyboard keyboard = stateManager.getState(LemurKeyboard.class);
 
         if (keyboard!=null){

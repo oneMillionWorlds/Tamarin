@@ -9,7 +9,7 @@ public class SpaceBar implements KeyboardButton{
 
     @Override
     public String render(LemurKeyboard.ShiftMode shiftMode, LemurKeyboard keyboard){
-        return "          ";
+        return "               ";
     }
 
     @Override

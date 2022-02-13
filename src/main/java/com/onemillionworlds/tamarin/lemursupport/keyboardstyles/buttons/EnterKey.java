@@ -20,6 +20,5 @@ public class EnterKey implements KeyboardButton{
     @Override
     public void onClickEvent(BiConsumer<KeyboardEvent, Object> eventConsumer, LemurKeyboard keyboard){
         keyboard.getStateManager().detach(keyboard);
-        eventConsumer.accept(KeyboardEvent.CLOSED_KEYBOARD, null);
     }
 }

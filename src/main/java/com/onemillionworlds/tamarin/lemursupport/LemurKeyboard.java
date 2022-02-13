@@ -3,20 +3,21 @@ package com.onemillionworlds.tamarin.lemursupport;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.VRAppState;
+import com.jme3.app.state.AppStateManager;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.input.event.MouseMotionEvent;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.KeyboardButton;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardEvent;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
-import com.simsilica.lemur.TextField;
+import com.simsilica.lemur.event.MouseListener;
 import lombok.Getter;
-import lombok.Setter;
-
-import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -28,6 +29,8 @@ import java.util.function.Consumer;
  * It is expected that the desired picking lines and pick markers are already turned on
  */
 public class LemurKeyboard extends BaseAppState{
+
+    public static float keyboardScale = 0.005f;
 
     private final Node rootNodeDelegate = new Node("LemurKeyboardRootNodeDelegate");
     private final Node keyboardNode = new Node("LemurKeyboard");
@@ -90,14 +93,24 @@ public class LemurKeyboard extends BaseAppState{
         keyboardNode.detachAllChildren();
 
         Container lemurWindow = new Container();
-        lemurWindow.setLocalScale(0.005f); //lemur defaults to 1 meter == 1 pixel (because that make sense for 2D, scale it down, so it's not huge in 3d)
+
+        //a bit of a hack but this listener prevents us "clicking through to nothing" which would close the keyboard
+        lemurWindow.addMouseListener(new MouseListener(){
+            @Override public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){}
+            @Override public void mouseEntered(MouseMotionEvent event, Spatial target, Spatial capture){}
+            @Override public void mouseExited(MouseMotionEvent event, Spatial target, Spatial capture){}
+            @Override public void mouseMoved(MouseMotionEvent event, Spatial target, Spatial capture){}
+        });
+
+        lemurWindow.setLocalScale(keyboardScale); //lemur defaults to 1 meter == 1 pixel (because that make sense for 2D, scale it down, so it's not huge in 3d)
 
         for(KeyboardButton[] row : keyboardStyle.getKeyboardKeys()){
             Container rowContainer = new Container();
             lemurWindow.addChild(rowContainer);
             int index = 0;
             for(KeyboardButton button : row){
-                rowContainer.addChild(new Button(button.render(shiftMode, this)), 0, index).addClickCommands(
+                Button buttonEntry = rowContainer.addChild(new Button(button.render(shiftMode, this)), 0, index);
+                buttonEntry.addClickCommands(
                         source -> {
                             String typedText = button.getStringToAddOnClick(shiftMode, this);
                             textConsumer.accept(typedText);
@@ -108,6 +121,7 @@ public class LemurKeyboard extends BaseAppState{
                             }
                         }
                 );
+
                 index++;
             }
 
@@ -117,8 +131,15 @@ public class LemurKeyboard extends BaseAppState{
 
 
     @Override
-    protected void cleanup(Application app){
+    public void stateDetached(AppStateManager stateManager){
+        super.stateDetached(stateManager);
         rootNodeDelegate.removeFromParent();
+        eventConsumer.accept(KeyboardEvent.CLOSED_KEYBOARD, null);
+    }
+
+    @Override
+    protected void cleanup(Application app){
+
     }
 
     @Override

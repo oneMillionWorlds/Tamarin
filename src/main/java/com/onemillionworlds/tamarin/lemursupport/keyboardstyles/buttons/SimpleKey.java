@@ -19,7 +19,7 @@ public class SimpleKey implements KeyboardButton{
 
     @Override
     public String render(LemurKeyboard.ShiftMode shiftMode, LemurKeyboard keyboard){
-        return getStringToAddOnClick(shiftMode, keyboard);
+        return " " + getStringToAddOnClick(shiftMode, keyboard) + " ";
     }
 
     @Override
