@@ -94,13 +94,13 @@ public class LemurKeyboard extends BaseAppState{
 
         Container lemurWindow = new Container();
         lemurWindow.setUserData(LemurSupport.TAMARIN_STOP_BUBBLING, true); //so that clicking on the keyboard doesn't close the keyboard
-        //a bit of a hack but this listener prevents us "clicking through to nothing" which would close the keyboard
         lemurWindow.addMouseListener(new MouseListener(){
-            @Override public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){}
+            @Override public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){event.setConsumed();} //prevent "clicking through" the keyboard if a button is missed
             @Override public void mouseEntered(MouseMotionEvent event, Spatial target, Spatial capture){}
             @Override public void mouseExited(MouseMotionEvent event, Spatial target, Spatial capture){}
             @Override public void mouseMoved(MouseMotionEvent event, Spatial target, Spatial capture){}
         });
+
 
         lemurWindow.setLocalScale(keyboardScale); //lemur defaults to 1 meter == 1 pixel (because that make sense for 2D, scale it down, so it's not huge in 3d)
 
@@ -121,7 +121,6 @@ public class LemurKeyboard extends BaseAppState{
                             }
                         }
                 );
-
                 index++;
             }
 
