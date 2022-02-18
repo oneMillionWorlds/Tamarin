@@ -16,13 +16,9 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
-import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
-import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
-import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
-import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.LemurClickFunction;
@@ -51,7 +47,28 @@ public abstract class BoundHand{
 
     private final Node geometryNode = new Node();
 
+    /**
+     * Returns a node that will update with the hands position and rotation.
+     *
+     * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
+     * pointing to the right
+     *
+     * This is an ideal node for things like picking lines, which can be put in the x direction
+     *
+     * Note that the (0,0,0) position is just in front of the thumb, not the centre of the hand.
+     *
+     * This node is primarily used for picking, but if you want a node to attach to that only cares about the bulk
+     * hand position
+     *
+     */
+    @Getter
     private final Node handNode_xPointing = new Node();
+
+    /**
+     * A hand node, with +z pointing in the direction of the bulk hand. This is used primarily for direct lemur interactions
+     */
+    @Getter
+    private final Node handNode_zPointing = new Node();
 
     private final Node pickLineNode = new Node();
 
@@ -114,6 +131,11 @@ public abstract class BoundHand{
 
         handNode_xPointing.setLocalRotation(naturalRotation.mult(zToXRotation).mult(rotateAxes));
 
+        Quaternion xPointingToZPointing = new Quaternion();
+        xPointingToZPointing.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
+        handNode_zPointing.setLocalRotation(xPointingToZPointing);
+        handNode_xPointing.attachChild(handNode_zPointing);
+
         rawOpenVrPosition.attachChild(palmNode_xPointing);
 
         rawOpenVrPosition.attachChild(geometryNode);
@@ -144,24 +166,6 @@ public abstract class BoundHand{
         return rawOpenVrPosition;
     }
 
-    /**
-     * Returns a node that will update with the hands position and rotation.
-     *
-     * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
-     * pointing to the right
-     *
-     * This is an ideal node for things like picking lines, which can be put in the x direction
-     *
-     * Note that the (0,0,0) position is just in front of the thumb, not the centre of the hand.
-     *
-     * This node is primarily used for picking, but if you want a node to attach to that only cares about the bulk
-     * hand position
-     *
-     * @return a node to connect things to
-     */
-    public Node getHandNode_xPointing(){
-        return handNode_xPointing;
-    }
 
     /**
      * Returns a node that will update with the hands position and rotation.
@@ -345,29 +349,6 @@ public abstract class BoundHand{
     }
 
     /**
-     * Picks using {@link BoundHand#pickBulkHand} then simulates a pick on the first thing it hits.
-     *
-     * Note; it ignores anything connected to getHandNode(), so you can "pick through" any picking line markers or
-     * anything that has user data "noPick" with value true
-     *
-     * This requires lemur to be on the class path (or else you'll get an exception).
-     *
-     * It kind of "fakes" a click. So it's only limited in what it does. It tracks up the parents of things it hits looking
-     * for things which are a button, or have a MouseEventControl. If it finds one it clicks that, then returns.
-     *
-     * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
-     *
-     * Note; it may be more convenient to use {@link BoundHand#setClickAction_lemurSupport}
-     *
-     * @param nodeToPickAgainst the node that contains things that can be clicked
-     */
-    public void click_lemurSupport(Node nodeToPickAgainst){
-        assertLemurAvailable();
-        CollisionResults results = pickBulkHand(nodeToPickAgainst);
-        LemurSupport.clickThroughCollisionResults(nodeToPickAgainst, results, vrState.getStateManager());
-    }
-
-    /**
      * Will start rendering the positions of the bones (note if all is well they will be inside the hands, so not really
      * visible (doing this is not performant, debug only)
      */
@@ -390,6 +371,16 @@ public abstract class BoundHand{
         handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
         handNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
+    }
+
+    /**
+     * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
+     * {@link BoundHand#getHandNode_xPointing()}
+     */
+    public void debugHandNodeZPointingCoordinateSystem(){
+        handNode_zPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.15f,0,0)));
+        handNode_zPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
+        handNode_zPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.25f)));
     }
 
     /**

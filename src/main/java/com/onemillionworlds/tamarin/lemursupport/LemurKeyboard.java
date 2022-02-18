@@ -93,7 +93,7 @@ public class LemurKeyboard extends BaseAppState{
         keyboardNode.detachAllChildren();
 
         Container lemurWindow = new Container();
-
+        lemurWindow.setUserData(LemurSupport.TAMARIN_STOP_BUBBLING, true); //so that clicking on the keyboard doesn't close the keyboard
         //a bit of a hack but this listener prevents us "clicking through to nothing" which would close the keyboard
         lemurWindow.addMouseListener(new MouseListener(){
             @Override public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){}

@@ -17,25 +17,26 @@ import static com.onemillionworlds.tamarin.vrhands.BoundHand.NO_PICK;
 
 public class LemurSupport{
 
+    public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
+
     public static KeyboardStyle keyboardStyle = new SimpleQwertyStyle();
 
     /**
-     * Given a set of collision results, simulates a click on them
+     * Given a set of collision results, looks through them for anything that needs to be handled in a non "traditional lemur" way, like opening keyboards
      * @param results the result of a pick that returns things that could be a lemur ui
      */
-    public static void clickThroughCollisionResults(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager){
+    public static void clickThroughCollisionResultsForSpecialHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager){
         for( int i=0;i<results.size();i++ ){
             CollisionResult collision = results.getCollision(i);
             boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
 
             if (!skip){
                 Spatial processedSpatial = collision.getGeometry();
-
                 while(processedSpatial!=null){
-                    if (processedSpatial instanceof Button){
-                        ((Button)processedSpatial).click();
+                    if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
                         return;
                     }
+
                     if ( processedSpatial instanceof TextField){
                         terminateAnyExistingKeyboards(stateManager);
                         TextField textField = ((TextField)processedSpatial);
@@ -60,16 +61,8 @@ public class LemurSupport{
                                     }
                                 }, keyboardStyle
                                 ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation()));
-
                         return;
                     }
-                    MouseEventControl mec = processedSpatial.getControl(MouseEventControl.class);
-                    if ( mec!=null ){
-                        mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
-                        return;
-                    }
-
-
                     processedSpatial = processedSpatial.getParent();
                 }
                 //if we don't click on anything that cares then that closes the keyboard
