@@ -13,10 +13,6 @@ public class LemurProtectedSupport{
         return pickState.getSession();
     }
 
-    public static void dispatch(MouseAppState pickState, MouseButtonEvent event){
-        pickState.dispatch(event);
-    }
-
     public static List<PickEventSession.RootEntry> getPickRoots(PickEventSession session){
         return session.getRootList();
     }

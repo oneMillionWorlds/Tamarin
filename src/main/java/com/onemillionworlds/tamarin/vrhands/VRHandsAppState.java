@@ -12,6 +12,8 @@ import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.PoseActionState;
+import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
+import com.simsilica.lemur.event.BasePickState;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,6 +61,13 @@ public class VRHandsAppState extends BaseAppState{
         if (pendingHandSpec!=null){
             updateHandsForHandSpec(pendingHandSpec);
             pendingHandSpec = null;
+        }
+        if (BoundHand.isLemurAvailable()){
+            BasePickState basePickState = getStateManager().getState(BasePickState.class);
+            if (basePickState != null){
+                getStateManager().detach(basePickState);
+            }
+            getStateManager().attach(new VrLemurAppState());
         }
     }
 

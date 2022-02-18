@@ -11,6 +11,7 @@ import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.simsilica.lemur.event.LemurProtectedSupport;
@@ -48,7 +49,7 @@ public class LemurClickFunction implements BoundHandFunction{
     private Camera syntheticCamera;
     private ViewPort syntheticViewport;
 
-    private MouseAppState mouseAppState;
+    private VrLemurAppState mouseAppState;
     private PickEventSession lemurSession;
 
     public LemurClickFunction(String clickAction, Node pickAgainstNode){
@@ -68,7 +69,7 @@ public class LemurClickFunction implements BoundHandFunction{
         this.boundHand= boundHand;
         this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.class);
         this.stateManager = stateManager;
-        this.mouseAppState = this.stateManager.getState(MouseAppState.class);
+        this.mouseAppState = this.stateManager.getState(VrLemurAppState.class);
         this.vrHandsAppState = this.stateManager.getState(VRHandsAppState.class);
         lemurSession = LemurProtectedSupport.getSession(this.mouseAppState);
 
@@ -93,16 +94,17 @@ public class LemurClickFunction implements BoundHandFunction{
         }
 
         if (dominant){
+
             syntheticCamera.setLocation(boundHand.getHandNode_zPointing().getWorldTranslation());
             syntheticCamera.setRotation(boundHand.getHandNode_zPointing().getWorldRotation());
             lemurSession.cursorMoved(500,500);//the exact middle of the 1000 by 1000 synthetic camera
 
             if(triggerPressure > minTriggerToClick && lastTriggerPressure < minTriggerToClick){
-                LemurProtectedSupport.dispatch(mouseAppState, new MouseButtonEvent(0, true, 500, 500));
+                mouseAppState.dispatch( new MouseButtonEvent(0, true, 500, 500));
                 clickSpecialSupport();
             }
             if(triggerPressure < minTriggerToClick && lastTriggerPressure > minTriggerToClick){
-                LemurProtectedSupport.dispatch(mouseAppState, new MouseButtonEvent(0, false, 500, 500));
+                mouseAppState.dispatch( new MouseButtonEvent(0, false, 500, 500));
             }
         }
         lastTriggerPressure = triggerPressure;
