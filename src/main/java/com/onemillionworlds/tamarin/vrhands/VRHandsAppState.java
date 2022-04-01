@@ -28,8 +28,6 @@ import java.util.Map;
  */
 public class VRHandsAppState extends BaseAppState{
 
-    private boolean haveRunValidation = true;
-
     ActionBasedOpenVrState openVr;
 
     VRAppState vrAppState;
@@ -57,10 +55,7 @@ public class VRHandsAppState extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
-        if (!haveRunValidation){
-            haveRunValidation = true;
-            validateState();
-        }
+
 
         this.assetManager = app.getAssetManager();
         openVr = app.getStateManager().getState(ActionBasedOpenVrState.class);
@@ -68,6 +63,8 @@ public class VRHandsAppState extends BaseAppState{
         if (openVr == null){
             throw new IllegalStateException("VRHandsAppState requires ActionBasedOpenVr to have already been bound");
         }
+
+        validateState();
 
         ((Node)vrAppState.getObserver()).attachChild(rootNodeDelegate);
 
