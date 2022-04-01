@@ -284,50 +284,81 @@ public class ActionBasedOpenVrState extends BaseAppState{
         return new DigitalActionState(actionDataObjects.actionData.bState(), actionDataObjects.actionData.bChanged());
     }
 
+    public Vector3f getObserverPosition(){
+        Object obs = environment.getObserver();
+        if (obs instanceof Camera){
+            Camera camera = ((Camera) obs);
+            return camera.getLocation();
+        }else{
+            Spatial spatial = (Spatial)obs;
+            return spatial.getWorldTranslation();
+        }
+    }
+
+    public Quaternion getObserverRotation(){
+        Object obs = environment.getObserver();
+        if (obs instanceof Camera){
+            Camera camera = ((Camera) obs);
+            return camera.getRotation();
+        }else{
+            Spatial spatial = (Spatial)obs;
+            return spatial.getWorldRotation();
+        }
+    }
+
     /**
      * A pose is where a hand is, and what its rotation is.
+     *
+     * This returns the pose in the observers coordinate system
+     *
+     * @param actionName the action name that has been bound to a pose in the action manifest
+     * @return the PoseActionState
+     */
+    public PoseActionState getPose_observerRelative(String actionName){
+        InputPoseActionData inputPose = InputPoseActionData.create();
+
+        VRInput.VRInput_GetPoseActionDataForNextFrame(fetchActionHandle(actionName), environment.isSeatedExperience() ? VR.ETrackingUniverseOrigin_TrackingUniverseSeated : VR.ETrackingUniverseOrigin_TrackingUniverseStanding, inputPose, getOrFetchInputHandle(null));
+
+        HmdMatrix34 hmdMatrix34 = inputPose.pose().mDeviceToAbsoluteTracking();
+
+        Matrix4f pose = LWJGLOpenVR.convertSteamVRMatrix3ToMatrix4f(hmdMatrix34, new Matrix4f() );
+
+        HmdVector3 velocity = inputPose.pose().vVelocity();
+        HmdVector3 angularVelocity =inputPose.pose().vAngularVelocity();
+        Vector3f position = pose.toTranslationVector();
+        Quaternion rotation = pose.toRotationQuat();
+
+        return new PoseActionState(pose, position, rotation,  new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
+    }
+
+
+    /**
+     * A pose is where a hand is, and what its rotation is.
+     *
+     * This returns the post in world coordinate system
+     *
+     * (Note there is a known bug that velocity and angular velocity are in the wrng coordinate system, if anyone cares
+     * about that raise a bug, and I'll fix it)
      *
      * @param actionName the action name that has been bound to a pose in the action manifest
      * @return the PoseActionState
      */
     public PoseActionState getPose(String actionName){
+        PoseActionState observerRelativePose = getPose_observerRelative(actionName);
 
-        InputPoseActionData inputPose = InputPoseActionData.create();
+        Vector3f observerPosition = getObserverPosition();
+        Quaternion observerRotation = getObserverRotation();
 
-        VRInput.VRInput_GetPoseActionDataForNextFrame(fetchActionHandle(actionName), VR.ETrackingUniverseOrigin_TrackingUniverseSeated, inputPose, getOrFetchInputHandle(null));
+        Node calculationNode = new Node();
+        //the openVR and JMonkey define "not rotated" to be a different rotation, the HALF_ROTATION_ABOUT_Y corrects that
+        calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(observerRotation));
+        calculationNode.setLocalTranslation(observerPosition);
 
-        HmdMatrix34 hmdMatrix34 = inputPose.pose().mDeviceToAbsoluteTracking();
+        Vector3f worldRelativePosition = calculationNode.localToWorld(observerRelativePose.getPosition(), null);
+        Quaternion worldRelativeRotation = HALF_ROTATION_ABOUT_Y.mult(observerRotation).mult(observerRelativePose.getOrientation());
 
-        Matrix4f pose = LWJGLOpenVR.convertSteamVRMatrix3ToMatrix4f(hmdMatrix34, new Matrix4f() );
-        HmdVector3 velocity = inputPose.pose().vVelocity();
-        HmdVector3 angularVelocity =inputPose.pose().vAngularVelocity();
-
-        Object obs = environment.getObserver();
-        Vector3f position = pose.toTranslationVector();
-        Quaternion rotation = pose.toRotationQuat();
-        if (obs instanceof Camera) {
-            Camera camera = ((Camera)obs);
-            Node calculationNode = new Node();
-            //the openVR and JMonkey define "not rotated" to be a different rotation, the HALF_ROTATION_ABOUT_Y corrects that
-            calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(camera.getRotation()));
-            calculationNode.setLocalTranslation(camera.getLocation());
-
-            position = calculationNode.localToWorld(position, position);
-            rotation = HALF_ROTATION_ABOUT_Y.mult(camera.getRotation()).mult(rotation);
-        } else {
-            Spatial spatial = (Spatial)obs;
-            position.addLocal(((Spatial) obs).getWorldTranslation());
-
-            Node calculationNode = new Node();
-            //the openVR and JMonkey define "not rotated" to be a different rotation, the HALF_ROTATION_ABOUT_Y corrects that
-            calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(spatial.getWorldRotation()));
-            calculationNode.setLocalTranslation(spatial.getWorldTranslation());
-
-            position = calculationNode.localToWorld(position, position);
-            rotation = HALF_ROTATION_ABOUT_Y.mult(spatial.getWorldRotation()).mult(rotation);
-        }
         //the velocity and rotational velocity are in the wrong coordinate systems. This is wrong and a bug
-        return new PoseActionState(pose, position, rotation, new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
+        return new PoseActionState(observerRelativePose.getRawPose(), worldRelativePosition, worldRelativeRotation, observerRelativePose.getVelocity(), observerRelativePose.getAngularVelocity());
     }
 
     /**

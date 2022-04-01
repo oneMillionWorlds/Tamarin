@@ -42,4 +42,16 @@ public class PoseActionState{
     public Quaternion getOrientation(){
         return orientation;
     }
+
+    public Matrix4f getRawPose(){
+        return rawPose;
+    }
+
+    public Vector3f getVelocity(){
+        return velocity;
+    }
+
+    public Vector3f getAngularVelocity(){
+        return angularVelocity;
+    }
 }

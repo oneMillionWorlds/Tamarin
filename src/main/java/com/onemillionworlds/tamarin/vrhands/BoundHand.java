@@ -293,7 +293,7 @@ public abstract class BoundHand{
     }
 
     /**
-     * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/{@link BoundHand#click_lemurSupport}
+     * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/lemur clicks
      * and place a marker (by default a white sphere) at the point where the pick hits a geometry. This gives the
      * player an indication what they would pick it they clicked now; think of it like a mouse pointer in 3d space
      */
