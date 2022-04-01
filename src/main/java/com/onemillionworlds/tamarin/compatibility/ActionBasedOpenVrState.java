@@ -315,20 +315,20 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * @return the PoseActionState
      */
     public PoseActionState getPose_observerRelative(String actionName){
-        InputPoseActionData inputPose = InputPoseActionData.create();
+        PoseActionState worldRelative = getPose(actionName);
 
-        VRInput.VRInput_GetPoseActionDataForNextFrame(fetchActionHandle(actionName), environment.isSeatedExperience() ? VR.ETrackingUniverseOrigin_TrackingUniverseSeated : VR.ETrackingUniverseOrigin_TrackingUniverseStanding, inputPose, getOrFetchInputHandle(null));
+        Vector3f observerPosition = getObserverPosition();
+        Quaternion observerRotation = getObserverRotation();
 
-        HmdMatrix34 hmdMatrix34 = inputPose.pose().mDeviceToAbsoluteTracking();
+        Node calculationNode = new Node();
+        calculationNode.setLocalTranslation(observerPosition);
+        calculationNode.setLocalRotation(observerRotation);
+        Vector3f localPosition = calculationNode.worldToLocal(worldRelative.getPosition(), null);
 
-        Matrix4f pose = LWJGLOpenVR.convertSteamVRMatrix3ToMatrix4f(hmdMatrix34, new Matrix4f() );
+        Quaternion localRotation = observerRotation.inverse().mult(worldRelative.getOrientation());
 
-        HmdVector3 velocity = inputPose.pose().vVelocity();
-        HmdVector3 angularVelocity =inputPose.pose().vAngularVelocity();
-        Vector3f position = pose.toTranslationVector();
-        Quaternion rotation = pose.toRotationQuat();
 
-        return new PoseActionState(pose, position, rotation,  new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
+        return new PoseActionState(worldRelative.getRawPose(), localPosition, localRotation, worldRelative.getVelocity(), worldRelative.getAngularVelocity() );
     }
 
 
@@ -344,7 +344,19 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * @return the PoseActionState
      */
     public PoseActionState getPose(String actionName){
-        PoseActionState observerRelativePose = getPose_observerRelative(actionName);
+
+        InputPoseActionData inputPose = InputPoseActionData.create();
+
+        VRInput.VRInput_GetPoseActionDataForNextFrame(fetchActionHandle(actionName), environment.isSeatedExperience() ? VR.ETrackingUniverseOrigin_TrackingUniverseSeated : VR.ETrackingUniverseOrigin_TrackingUniverseStanding, inputPose, getOrFetchInputHandle(null));
+
+        HmdMatrix34 hmdMatrix34 = inputPose.pose().mDeviceToAbsoluteTracking();
+
+        Matrix4f pose = LWJGLOpenVR.convertSteamVRMatrix3ToMatrix4f(hmdMatrix34, new Matrix4f() );
+
+        HmdVector3 velocity = inputPose.pose().vVelocity();
+        HmdVector3 angularVelocity =inputPose.pose().vAngularVelocity();
+        Vector3f position = pose.toTranslationVector();
+        Quaternion rotation = pose.toRotationQuat();
 
         Vector3f observerPosition = getObserverPosition();
         Quaternion observerRotation = getObserverRotation();
@@ -354,11 +366,11 @@ public class ActionBasedOpenVrState extends BaseAppState{
         calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(observerRotation));
         calculationNode.setLocalTranslation(observerPosition);
 
-        Vector3f worldRelativePosition = calculationNode.localToWorld(observerRelativePose.getPosition(), null);
-        Quaternion worldRelativeRotation = HALF_ROTATION_ABOUT_Y.mult(observerRotation).mult(observerRelativePose.getOrientation());
+        Vector3f worldRelativePosition = calculationNode.localToWorld(position, null);
+        Quaternion worldRelativeRotation = HALF_ROTATION_ABOUT_Y.mult(observerRotation).mult(rotation);
 
         //the velocity and rotational velocity are in the wrong coordinate systems. This is wrong and a bug
-        return new PoseActionState(observerRelativePose.getRawPose(), worldRelativePosition, worldRelativeRotation, observerRelativePose.getVelocity(), observerRelativePose.getAngularVelocity());
+        return new PoseActionState(pose, worldRelativePosition, worldRelativeRotation, new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
     }
 
     /**

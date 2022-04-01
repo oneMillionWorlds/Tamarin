@@ -4,9 +4,11 @@ import com.jme3.anim.Armature;
 import com.jme3.anim.SkinningControl;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.VRAppState;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
+import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
@@ -26,7 +28,11 @@ import java.util.Map;
  */
 public class VRHandsAppState extends BaseAppState{
 
+    private boolean haveRunValidation = true;
+
     ActionBasedOpenVrState openVr;
+
+    VRAppState vrAppState;
 
     Node rootNodeDelegate = new Node();
 
@@ -51,12 +57,19 @@ public class VRHandsAppState extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
+        if (!haveRunValidation){
+            haveRunValidation = true;
+            validateState();
+        }
+
         this.assetManager = app.getAssetManager();
         openVr = app.getStateManager().getState(ActionBasedOpenVrState.class);
+        vrAppState = app.getStateManager().getState(VRAppState.class);
         if (openVr == null){
             throw new IllegalStateException("VRHandsAppState requires ActionBasedOpenVr to have already been bound");
         }
-        ((SimpleApplication)app).getRootNode().attachChild(rootNodeDelegate);
+
+        ((Node)vrAppState.getObserver()).attachChild(rootNodeDelegate);
 
         if (pendingHandSpec!=null){
             updateHandsForHandSpec(pendingHandSpec);
@@ -91,8 +104,9 @@ public class VRHandsAppState extends BaseAppState{
         super.update(tpf);
 
         if (isEnabled()){
+
             for(BoundHand boundHand : handControls){
-                PoseActionState pose = openVr.getPose(boundHand.getPostActionName());
+                PoseActionState pose = openVr.getPose_observerRelative(boundHand.getPostActionName());
                 boundHand.getRawOpenVrNode().setLocalRotation(pose.getOrientation());
                 boundHand.getRawOpenVrNode().setLocalTranslation(pose.getPosition());
                 Map<String, BoneStance> boneStances = openVr.getModelRelativeSkeletonPositions(boundHand.getSkeletonActionName());
@@ -169,6 +183,12 @@ public class VRHandsAppState extends BaseAppState{
         handControls.add(boundHand);
 
         return boundHand;
+    }
+
+    private void validateState(){
+        if (!(vrAppState.getObserver() instanceof Node)){
+            throw new IllegalStateException("Tamarin 1.2 onwards requires that the observer be a Node. Please call vrAppState#setObserver and give it a node that is connected to the root node");
+        }
     }
 
     private static Spatial searchForArmatured(Spatial spatial){
