@@ -57,7 +57,7 @@ public class GrabPickingFunction implements BoundHandFunction{
      * @param maxGrabDistance a value in meters
      */
     @Setter
-    private float maxGrabDistance = 0.1f;
+    private float maxGrabDistance = 0.12f;
 
     private BoundHand boundHand;
     private ActionBasedOpenVrState actionBasedOpenVrState;
