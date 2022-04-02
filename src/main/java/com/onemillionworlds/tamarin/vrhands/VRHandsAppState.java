@@ -142,6 +142,19 @@ public class VRHandsAppState extends BaseAppState{
         }
     }
 
+    /**
+     * If a teleport or other event happens mid-climb (e.g. ending a level) it can be useful to force
+     * end any climb events. This method can be called to do so if necessary.
+     *
+     * Failing to call this method may mean that the player is pulled back to their previous position by the
+     * hand that is still clinging on to a grab point
+     */
+    public void forceTerminateClimbing(){
+        for(BoundHand hand  : handControls){
+            hand.getFunctionOpt(ClimbSupport.class).ifPresent(cs -> cs.setGrabStartPosition(null));
+        }
+    }
+
     private void handleClimbing(List<BoundHand> handControlsWithActiveClimbs){
         //update for any climbing that might be taking place
         Vector3f climbingErrorSum = new Vector3f();
