@@ -8,6 +8,7 @@ import com.jme3.app.VRAppState;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
+import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -17,7 +18,9 @@ import com.onemillionworlds.tamarin.compatibility.ObserverRelativePoseActionStat
 import com.onemillionworlds.tamarin.compatibility.PoseActionState;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
+import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.simsilica.lemur.event.BasePickState;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +44,15 @@ public class VRHandsAppState extends BaseAppState{
     private AssetManager assetManager;
 
     private HandSpec pendingHandSpec;
+
+    /**
+     * If the player is climbing (i.e. is currently grabbing something which has
+     * {@link com.onemillionworlds.tamarin.vrhands.grabbing.ClimbingPointGrabControl}) this is true.
+     *
+     * Available as convenience data to calling application
+     */
+    @Getter
+    private boolean currentlyClimbing = false;
 
     /**
      * This constructor allows for bound hands to be created as soon as the state has initialised.
@@ -104,6 +116,8 @@ public class VRHandsAppState extends BaseAppState{
 
         if (isEnabled()){
 
+            List<BoundHand> handControlsWithActiveClimbs = new ArrayList<>();
+
             for(BoundHand boundHand : handControls){
                 ObserverRelativePoseActionState pose = openVr.getPose_observerRelative(boundHand.getPostActionName());
                 boundHand.getRawOpenVrNode().setLocalRotation(pose.getOrientation());
@@ -113,8 +127,33 @@ public class VRHandsAppState extends BaseAppState{
 
                 boundHand.update(tpf, boneStances);
                 openVr.updateHandSkeletonPositions(boundHand.getSkeletonActionName(), boundHand.getArmature(), boundHand.getHandMode());
+                if (boundHand.getFunctionOpt(ClimbSupport.class).filter(cs -> cs.getGrabStartPosition() !=null).isPresent()){
+                    handControlsWithActiveClimbs.add(boundHand);
+                }
             }
+
+            if (!handControlsWithActiveClimbs.isEmpty()){
+                handleClimbing(handControlsWithActiveClimbs);
+                currentlyClimbing = true;
+            }else{
+                currentlyClimbing = false;
+            }
+
         }
+    }
+
+    private void handleClimbing(List<BoundHand> handControlsWithActiveClimbs){
+        //update for any climbing that might be taking place
+        Vector3f climbingErrorSum = new Vector3f();
+        for(BoundHand boundHand : handControlsWithActiveClimbs){
+            ClimbSupport climbSupport = boundHand.getFunction(ClimbSupport.class);
+            Vector3f startGrabPosition = climbSupport.getGrabStartPosition();
+            Vector3f currentGrabPosition = boundHand.getHandNode_xPointing().getWorldTranslation();
+            climbingErrorSum.addLocal(currentGrabPosition.subtract(startGrabPosition));
+        }
+        climbingErrorSum.multLocal(1f/handControlsWithActiveClimbs.size());
+        Spatial observer = (Spatial)vrAppState.getObserver();
+        observer.setLocalTranslation(observer.getLocalTranslation().subtract(climbingErrorSum));
     }
 
     public List<BoundHand> getHandControls(){

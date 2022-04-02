@@ -21,6 +21,7 @@ import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
+import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.LemurClickFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.PickMarkerFunction;
@@ -156,6 +157,7 @@ public abstract class BoundHand{
         handNode_xPointing.attachChild(pickLineNode);
 
         addFunction(new PickMarkerFunction());
+        addFunction(new ClimbSupport());
     }
 
     public HandMode getHandMode(){
@@ -236,6 +238,12 @@ public abstract class BoundHand{
         if (function!=null){
             function.onUnbind(this, vrState.getStateManager());
         }
+    }
+
+    public <T extends BoundHandFunction> Optional<T> getFunctionOpt(Class<T> function){
+        @SuppressWarnings("unchecked")
+        T functionClass = (T) functions.get(function);
+        return Optional.of(functionClass);
     }
 
     public <T extends BoundHandFunction> T getFunction(Class<T> function){
