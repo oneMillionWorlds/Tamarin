@@ -13,8 +13,10 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
+import com.onemillionworlds.tamarin.compatibility.ObserverRelativePoseActionState;
 import com.onemillionworlds.tamarin.compatibility.PoseActionState;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
+import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.simsilica.lemur.event.BasePickState;
 
 import java.util.ArrayList;
@@ -103,9 +105,10 @@ public class VRHandsAppState extends BaseAppState{
         if (isEnabled()){
 
             for(BoundHand boundHand : handControls){
-                PoseActionState pose = openVr.getPose_observerRelative(boundHand.getPostActionName());
+                ObserverRelativePoseActionState pose = openVr.getPose_observerRelative(boundHand.getPostActionName());
                 boundHand.getRawOpenVrNode().setLocalRotation(pose.getOrientation());
                 boundHand.getRawOpenVrNode().setLocalTranslation(pose.getPosition());
+                boundHand.updateVelocityData(pose.getPoseActionState_worldRelative().getVelocity(), new RotationalVelocity(pose.getPoseActionState_worldRelative().getAngularVelocity()));
                 Map<String, BoneStance> boneStances = openVr.getModelRelativeSkeletonPositions(boundHand.getSkeletonActionName());
 
                 boundHand.update(tpf, boneStances);

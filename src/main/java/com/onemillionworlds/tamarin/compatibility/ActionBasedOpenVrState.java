@@ -309,36 +309,39 @@ public class ActionBasedOpenVrState extends BaseAppState{
     /**
      * A pose is where a hand is, and what its rotation is.
      *
-     * This returns the pose in the observers coordinate system
+     * This returns the pose in the observers coordinate system (note that observer does not mean "eyes", it means
+     * a reference point placed in the scene that corresponds to the real world VR origin)
      *
      * @param actionName the action name that has been bound to a pose in the action manifest
      * @return the PoseActionState
      */
-    public PoseActionState getPose_observerRelative(String actionName){
+    public ObserverRelativePoseActionState getPose_observerRelative(String actionName){
         PoseActionState worldRelative = getPose(actionName);
 
         Vector3f observerPosition = getObserverPosition();
         Quaternion observerRotation = getObserverRotation();
 
         Node calculationNode = new Node();
-        calculationNode.setLocalTranslation(observerPosition);
         calculationNode.setLocalRotation(observerRotation);
+        Vector3f velocity_observerRelative = calculationNode.worldToLocal(worldRelative.getVelocity(), null);
+        Vector3f angularVelocity_observerRelative = calculationNode.worldToLocal(worldRelative.getAngularVelocity(), null);
+        calculationNode.setLocalTranslation(observerPosition);
+
         Vector3f localPosition = calculationNode.worldToLocal(worldRelative.getPosition(), null);
 
         Quaternion localRotation = observerRotation.inverse().mult(worldRelative.getOrientation());
 
-
-        return new PoseActionState(worldRelative.getRawPose(), localPosition, localRotation, worldRelative.getVelocity(), worldRelative.getAngularVelocity() );
+        return new ObserverRelativePoseActionState(worldRelative.getRawPose(), localPosition, localRotation, velocity_observerRelative, angularVelocity_observerRelative, worldRelative );
     }
 
 
     /**
      * A pose is where a hand is, and what its rotation is.
      *
-     * This returns the post in world coordinate system
+     * Pose means the bulk position and rotation of the hand. Be aware that the direction the hand is pointing by this
+     * may be surprising, the relative bone positions also need to be taken into account for this to really make sense.
      *
-     * (Note there is a known bug that velocity and angular velocity are in the wrng coordinate system, if anyone cares
-     * about that raise a bug, and I'll fix it)
+     * This returns the pose in world coordinate system
      *
      * @param actionName the action name that has been bound to a pose in the action manifest
      * @return the PoseActionState
@@ -353,8 +356,10 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
         Matrix4f pose = LWJGLOpenVR.convertSteamVRMatrix3ToMatrix4f(hmdMatrix34, new Matrix4f() );
 
-        HmdVector3 velocity = inputPose.pose().vVelocity();
-        HmdVector3 angularVelocity =inputPose.pose().vAngularVelocity();
+        HmdVector3 velocityHmd = inputPose.pose().vVelocity();
+        Vector3f velocity = new Vector3f(velocityHmd.v(0), velocityHmd.v(1), velocityHmd.v(2));
+        HmdVector3 angularVelocityHmd =inputPose.pose().vAngularVelocity();
+        Vector3f angularVelocity = new Vector3f(angularVelocityHmd.v(0), angularVelocityHmd.v(1), angularVelocityHmd.v(2));
         Vector3f position = pose.toTranslationVector();
         Quaternion rotation = pose.toRotationQuat();
 
@@ -364,13 +369,17 @@ public class ActionBasedOpenVrState extends BaseAppState{
         Node calculationNode = new Node();
         //the openVR and JMonkey define "not rotated" to be a different rotation, the HALF_ROTATION_ABOUT_Y corrects that
         calculationNode.setLocalRotation(HALF_ROTATION_ABOUT_Y.mult(observerRotation));
+
+        Vector3f worldRelativeVelocity =  calculationNode.localToWorld(velocity, null);
+        Vector3f worldRelativeAngularVelocity = calculationNode.localToWorld(angularVelocity, null);
+
         calculationNode.setLocalTranslation(observerPosition);
 
         Vector3f worldRelativePosition = calculationNode.localToWorld(position, null);
         Quaternion worldRelativeRotation = HALF_ROTATION_ABOUT_Y.mult(observerRotation).mult(rotation);
 
         //the velocity and rotational velocity are in the wrong coordinate systems. This is wrong and a bug
-        return new PoseActionState(pose, worldRelativePosition, worldRelativeRotation, new Vector3f(velocity.v(0), velocity.v(1), velocity.v(2)), new Vector3f(angularVelocity.v(0), angularVelocity.v(1), angularVelocity.v(2)));
+        return new PoseActionState(pose, worldRelativePosition, worldRelativeRotation, worldRelativeVelocity, worldRelativeAngularVelocity);
     }
 
     /**

@@ -19,6 +19,7 @@ import com.jme3.scene.shape.Line;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
+import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.LemurClickFunction;
@@ -106,6 +107,18 @@ public abstract class BoundHand{
     private boolean debugPoints = false;
 
     private float baseSkinDepth = 0.02f;
+
+    /**
+     * The velocity (in world coordinates) that the hand is currently moving at
+     */
+    @Getter
+    private Vector3f velocity_world = new Vector3f();
+
+    /**
+     * The rotational velocity (in world coordinates) that the hand is currently rotating at
+     */
+    @Getter
+    private RotationalVelocity rotationalVelocity_world = new RotationalVelocity(new Vector3f());
 
     Map<Class<? extends BoundHandFunction>, BoundHandFunction> functions = new HashMap<>();
 
@@ -478,6 +491,11 @@ public abstract class BoundHand{
 
     public void removePickLine(){
         pickLineNode.detachAllChildren();
+    }
+
+    protected void updateVelocityData(Vector3f velocity_world, RotationalVelocity rotationalVelocity_world){
+        this.velocity_world = velocity_world;
+        this.rotationalVelocity_world = rotationalVelocity_world;
     }
 
     private static Collection<Geometry> searchForGeometry(Spatial spatial){

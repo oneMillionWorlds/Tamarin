@@ -62,6 +62,7 @@ Deploy to sonatype by:
 - Go to https://s01.oss.sonatype.org/ and log in
 - Go to the staging repository and select the repository
 - If all looks well "close" the repository and then Release it
+- Tag the release
 ## Upgrade
 
 This library forward ports JMonkeyEngine 3.6 functionality into JMonkeyEngine 3.5. Expect breaking changes on upgrading
