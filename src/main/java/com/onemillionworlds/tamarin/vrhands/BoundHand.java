@@ -444,7 +444,14 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst the node to scan for items to grab (probably the root node)
      */
     public void setGrabAction(String grabAction, Node nodeToPickAgainst){
-        addFunction(new GrabPickingFunction(grabAction, nodeToPickAgainst));
+        GrabPickingFunction grabPickingFunction = new GrabPickingFunction(grabAction, nodeToPickAgainst);
+
+        float intoHandDepth = (handSide == HandSide.LEFT ? -1 : 1) * 0.02f; //by picking from slightly behind the hand misses are less likely from putting your hand into something before grabbing
+        List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,intoHandDepth), new Vector3f(0.02f,-0.03f,intoHandDepth), new Vector3f(0.03f,0.03f,intoHandDepth), new Vector3f(-0.03f,0,intoHandDepth));
+        grabPickingFunction.setPalmPickPoints(palmPickPoints);
+
+        addFunction(grabPickingFunction);
+
     }
 
     public void clearGrabAction(){

@@ -24,7 +24,7 @@ import java.util.Optional;
 
 public class GrabPickingFunction implements BoundHandFunction{
 
-    private List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,0), new Vector3f(0.02f,-0.03f,0), new Vector3f(0.03f,0.03f,0));
+    private List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,0));
 
     private String grabAction;
 
