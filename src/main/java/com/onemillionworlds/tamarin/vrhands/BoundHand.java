@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public abstract class BoundHand{
 
@@ -121,7 +122,7 @@ public abstract class BoundHand{
     @Getter
     private RotationalVelocity rotationalVelocity_world = new RotationalVelocity(new Vector3f());
 
-    Map<Class<? extends BoundHandFunction>, BoundHandFunction> functions = new HashMap<>();
+    List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
 
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.vrState = Objects.requireNonNull(vrState);
@@ -229,28 +230,24 @@ public abstract class BoundHand{
      */
     public Runnable addFunction(BoundHandFunction function){
         function.onBind(this, vrState.getStateManager());
-        functions.put(function.getClass(), function);
+        functions.add(function);
         return () -> removeFunction(function.getClass());
     }
 
     public void removeFunction(Class<? extends BoundHandFunction> functionToRemove){
-        BoundHandFunction function = functions.remove(functionToRemove);
+        BoundHandFunction function = functions.stream().filter(f -> f.getClass().equals(functionToRemove)).findFirst().orElse(null);
         if (function!=null){
             function.onUnbind(this, vrState.getStateManager());
         }
     }
 
     public <T extends BoundHandFunction> Optional<T> getFunctionOpt(Class<T> function){
-        @SuppressWarnings("unchecked")
-        T functionClass = (T) functions.get(function);
-        return Optional.of(functionClass);
+        //noinspection unchecked
+        return functions.stream().filter(f -> f.getClass().equals(function)).map(f -> (T)f).findFirst();
     }
 
     public <T extends BoundHandFunction> T getFunction(Class<T> function){
-        @SuppressWarnings("unchecked")
-        T functionClass = (T) functions.get(function);
-        Objects.requireNonNull(functionClass, () -> "Function " + function.getSimpleName() + " missing");
-        return functionClass;
+        return getFunctionOpt(function).orElseThrow();
     }
 
     protected void update(float timeSlice, Map<String, BoneStance> boneStances){
@@ -259,8 +256,7 @@ public abstract class BoundHand{
             debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
         }
         updatePalm(timeSlice, boneStances);
-        functions.values().forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
-
+        functions.forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
     }
 
     private void updatePalm(float timeSlice, Map<String, BoneStance> boneStances){

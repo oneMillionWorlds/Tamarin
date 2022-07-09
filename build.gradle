@@ -17,7 +17,7 @@ java {
 }
 
 group = 'com.onemillionworlds'
-version = '1.2.2'
+version = '1.2.3'
 
 def jme3 = [v:'3.4.0-stable', g:'org.jmonkeyengine']
 
