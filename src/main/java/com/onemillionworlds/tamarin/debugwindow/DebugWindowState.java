@@ -8,12 +8,15 @@ import com.jme3.app.state.BaseAppState;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AutoMovingGrabControl;
+import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
 import lombok.Setter;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,10 +29,18 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DebugWindowState extends BaseAppState{
 
+    private final Object lock = new Object();
+
+    /**
+     * Because of the need to use this state for during development debugging this INSTANCE allows
+     * the state to be statically accessed from anywhere
+     */
+    public static DebugWindowState INSTANCE;
+
     Node debugWindowNode = new Node("Tamarin-debug-window-node");
     Container lemurWindow = new Container();
 
-    Map<String, String> dataTable = new ConcurrentHashMap<>();
+    Map<String, String> dataTable = new LinkedHashMap<>();
     Map<String, Label> labels = new HashMap<>();
 
     VRAppState vrAppState;
@@ -48,17 +59,20 @@ public class DebugWindowState extends BaseAppState{
     @Setter
     boolean showFps = true;
 
+    public DebugWindowState(){
+        assert INSTANCE == null : "Can only have 1 DebugWindowState";
+        INSTANCE = this;
+    }
+
     @Override
     protected void initialize(Application app){
         lemurWindow.addChild(new Label("Debug window"));
         debugWindowNode.attachChild(lemurWindow);
-        lemurWindow.setLocalScale(0.005f);
+        lemurWindow.setLocalScale(0.0015f);
 
-        //lemurWindow.setPreferredSize(new Vector3f(0.3f, 0.3f, 0.01f));
+        lemurWindow.setLocalTranslation(-0.25f, -0.25f, 0); //a bit arbitrary, but likely to be about correct so a normal-sized window looks at the player right
 
-        lemurWindow.setLocalTranslation(-0.25f, -0.25f, 0); //a bit arbitrary, but likely to be about correct
-
-        AutoMovingGrabControl control = new AutoMovingGrabControl(new Vector3f(0.2f, 0.2f, 0), 0.01f );
+        AbstractGrabControl control = new RelativeMovingGrabControl();
         debugWindowNode.addControl(control);
 
         vrAppState = getState(VRAppState.class);
@@ -81,8 +95,14 @@ public class DebugWindowState extends BaseAppState{
         debugWindowNode.setCullHint(Spatial.CullHint.Always);
     }
 
+    public void setData(String dataLabel, Object data){
+        setData(dataLabel, data.toString());
+    }
+
     public void setData(String dataLabel, String data){
-        dataTable.put(dataLabel, data);
+        synchronized(lock){
+            dataTable.put(dataLabel, data);
+        }
     }
 
     @Override
@@ -99,19 +119,19 @@ public class DebugWindowState extends BaseAppState{
                 frameCounter = 0;
             }
         }
-
-        for(Map.Entry<String,String> dataEntry : dataTable.entrySet()){
-            Label label = labels.get(dataEntry.getKey());
-            if (label == null){
-                label = new Label("");
-                lemurWindow.addChild(label);
+        synchronized(lock){
+            for(Map.Entry<String, String> dataEntry : dataTable.entrySet()){
+                Label label = labels.get(dataEntry.getKey());
+                if(label == null){
+                    label = new Label("");
+                    lemurWindow.addChild(label);
+                }
+                labels.put(dataEntry.getKey(), label);
+                label.setText(dataEntry.getKey() + ": " + dataEntry.getValue());
             }
-            labels.put(dataEntry.getKey(), label);
-            label.setText(dataEntry.getKey() + ": " + dataEntry.getValue());
         }
 
         timeTillNextPositionCheck-=tpf;
-
         if (timeTillNextPositionCheck<=0){
             Vector3f headPosition = getVrCameraPosition(vrAppState);
 

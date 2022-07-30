@@ -18,6 +18,9 @@ import com.onemillionworlds.tamarin.vrhands.BoundHand;
  *
  * Note that this control expects that the spatial is either directly attached to the root node, or is attached to a node
  * that is at (0,0,0) and unrotated (basically it does all its work with local translations)
+ *
+ * Note that this grab control has a "snap to hand on grab" behaviour. If you don't want that use the
+ * {@link RelativeMovingGrabControl}
  */
 public class AutoMovingGrabControl extends AbstractGrabControl{
 
