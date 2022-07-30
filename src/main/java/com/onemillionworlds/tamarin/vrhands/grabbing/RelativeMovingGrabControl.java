@@ -5,7 +5,6 @@ import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
-import com.onemillionworlds.tamarin.debugwindow.DebugWindowState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 
 import java.util.Optional;
@@ -16,7 +15,7 @@ import java.util.Optional;
  * This control allows for simple interaction but is entirely optional, raw {@link BoundHand#pickPalm} can be used and
  * your own grabbing implementation.
  *
- * Unlike {@link AutoMovingGrabControl} this does not "snap to hand" so if more useful for things that feel like
+ * Unlike {@link SnapToHandGrabControl} this does not "snap to hand" so if more useful for things that feel like
  * "moving UI items" and less like physics objects
  *
  * Extend this class to get access to onGrab and onRelease, make sure to call super

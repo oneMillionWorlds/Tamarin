@@ -9,7 +9,6 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
-import com.onemillionworlds.tamarin.vrhands.grabbing.AutoMovingGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
@@ -18,7 +17,6 @@ import lombok.Setter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The debug window creates a ui element that will render debug information to a panel.
