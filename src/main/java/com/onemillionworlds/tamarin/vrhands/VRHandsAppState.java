@@ -69,8 +69,6 @@ public class VRHandsAppState extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
-
-
         this.assetManager = app.getAssetManager();
         openVr = app.getStateManager().getState(ActionBasedOpenVrState.class);
         vrAppState = app.getStateManager().getState(VRAppState.class);

@@ -10,6 +10,9 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.vrhands.BoundHand;
+import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
+import com.onemillionworlds.tamarin.vrhands.functions.LemurPressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
 import com.simsilica.lemur.Axis;
@@ -21,6 +24,7 @@ import com.simsilica.lemur.component.BoxLayout;
 import lombok.AllArgsConstructor;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,10 +64,14 @@ public class DebugWindowState extends BaseAppState{
     Map<String, LineItem> currentLineItems = new HashMap<>();
 
     VRAppState vrAppState;
+    VRHandsAppState vrHandsAppState;
     StatsAppState statsAppState;
 
     protected float secondCounter = 0.0f;
     protected int frameCounter = 0;
+
+    boolean connectedToHands = false;
+    List<Runnable> deregistrations = new ArrayList<>();
 
     /**
      * if the DebugWindow is further away than this is is drawn towards the player
@@ -89,21 +97,39 @@ public class DebugWindowState extends BaseAppState{
         debugWindowNode.addControl(control);
 
         vrAppState = getState(VRAppState.class);
+        vrHandsAppState = getState(VRHandsAppState.class);
         statsAppState = getState(StatsAppState.class);
         ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
+
+        //attach press functions to the bound hands so buttons are guaranteed to be pressable (If other mouse support
+        //is on that can also be used)
+        connectToHands();
 
         autoSelectPosition();
     }
 
+    private void connectToHands(){
+        List<BoundHand> handControls = vrHandsAppState.getHandControls();
+
+        if (!handControls.isEmpty()){
+            handControls.forEach(hand ->
+                    deregistrations.add(hand.addFunction(new LemurPressFunction(debugWindowNode)))
+            );
+            connectedToHands = true;
+        }
+    }
+
     private void autoSelectPosition(){
         Vector3f vrCameraPosition = getVrCameraPosition(vrAppState);
-        debugWindowNode.setLocalTranslation(vrCameraPosition.add(new Vector3f(0.3f, 0, 0f)));
+        debugWindowNode.setLocalTranslation(vrCameraPosition.add(new Vector3f(0.4f, 0, 0f)));
         debugWindowNode.lookAt(vrCameraPosition, Vector3f.UNIT_Y);
     }
 
     @Override
     protected void cleanup(Application app){
         debugWindowNode.removeFromParent();
+        deregistrations.forEach(Runnable::run);
+        deregistrations.clear();
     }
 
     @Override
@@ -153,6 +179,10 @@ public class DebugWindowState extends BaseAppState{
     @Override
     public void update(float tpf){
         super.update(tpf);
+
+        if (!connectedToHands){
+            connectToHands();
+        }
 
         secondCounter += getApplication().getTimer().getTimePerFrame();
         frameCounter ++;

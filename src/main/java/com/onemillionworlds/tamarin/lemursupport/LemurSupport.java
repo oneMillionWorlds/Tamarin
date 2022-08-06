@@ -3,6 +3,7 @@ package com.onemillionworlds.tamarin.lemursupport;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
+
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -20,6 +21,38 @@ public class LemurSupport{
     public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
 
     public static KeyboardStyle keyboardStyle = new SimpleQwertyStyle();
+
+    /**
+     * Normally it's preferable to dispatch lemur click events but in some cases (like a physical button push) it can
+     * be better to special handle it. This will look for handlable lemur "stuff" and do a beset effort of simulating a
+     * click on it. It will also handle keyboard popping as normal
+     */
+    public static void clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager){
+        clickThroughCollisionResultsForSpecialHandling(nodePickedAgainst, results, stateManager);
+        for( int i=0;i<results.size();i++ ){
+            CollisionResult collision = results.getCollision(i);
+            boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
+
+            if (!skip){
+                Spatial processedSpatial = collision.getGeometry();
+                while(processedSpatial!=null){
+                    if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
+                        return;
+                    }
+                    if (processedSpatial instanceof Button){
+                        ((Button)processedSpatial).click();
+                        return;
+                    }
+                    MouseEventControl mec = processedSpatial.getControl(MouseEventControl.class);
+                    if ( mec!=null ){
+                        mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
+                        return;
+                    }
+                    processedSpatial = processedSpatial.getParent();
+                }
+            }
+        }
+    }
 
     /**
      * Given a set of collision results, looks through them for anything that needs to be handled in a non "traditional lemur" way, like opening keyboards

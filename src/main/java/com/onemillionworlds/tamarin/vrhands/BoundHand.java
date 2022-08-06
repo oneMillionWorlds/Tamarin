@@ -26,12 +26,10 @@ import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.LemurClickFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.PickMarkerFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
-import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +37,11 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public abstract class BoundHand{
+
+    /**
+     * How far (in meters) the index finger pick line starts inside the finger
+     */
+    public static float PICK_INDEX_FINGER_STANDOFF_DISTANCE = 0.02f;
 
     private static boolean lemurCheckedAvailable = false ;
 
@@ -87,6 +90,7 @@ public abstract class BoundHand{
      * This is a node that sits on the tip of the index finger whose +x points out way from the index
      * finger. A pick from slightly negative on this and pointing in +X can detect things the index finger is pressing
      */
+    @Getter
     private final Node indexFingerTip_xPointing = new Node();
 
     private final Node debugPointsNode = new Node();
@@ -263,9 +267,16 @@ public abstract class BoundHand{
     public Runnable addFunction(BoundHandFunction function){
         function.onBind(this, vrState.getStateManager());
         functions.add(function);
-        return () -> removeFunction(function.getClass());
+        return () -> {
+            function.onUnbind(this, vrState.getStateManager());
+            functions.remove(function);
+        };
     }
 
+    /**
+     * Note that this function can behave oddly when multiple copies of the same BoundHandFunction type are
+     * registered. It is better to use the Runnable returned by addFunction to remove functions
+     */
     public void removeFunction(Class<? extends BoundHandFunction> functionToRemove){
         BoundHandFunction function = functions.stream().filter(f -> f.getClass().equals(functionToRemove)).findFirst().orElse(null);
         if (function!=null){
@@ -352,6 +363,25 @@ public abstract class BoundHand{
         }
 
         indexFingerTip_xPointing.setLocalRotation(rotation);
+    }
+
+    /**
+     * Picks from just behind the index finger (to catch if the index finger has been plunged into something
+     * outward in the direction the index finger is pointing)
+     * @param nodeToPickAgainst the node that contains geometries to be picked from
+     * @return the results
+     */
+    public CollisionResults pickIndexFingerTip(Node nodeToPickAgainst){
+        Vector3f pickOrigin = indexFingerTip_xPointing.getWorldTranslation();
+        Vector3f pickingPoint = indexFingerTip_xPointing.localToWorld(new Vector3f(1,0,0), null);
+        Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
+        pickOrigin.subtractLocal(pickingVector.mult(-1* PICK_INDEX_FINGER_STANDOFF_DISTANCE));//take the origin just inside the finger
+        CollisionResults results = new CollisionResults();
+
+        Ray ray = new Ray(pickOrigin, pickingVector);
+
+        nodeToPickAgainst.collideWith(ray, results);
+        return results;
     }
 
     /**
@@ -534,11 +564,12 @@ public abstract class BoundHand{
      *
      * @param clickAction the action (see action manifest) that will trigger a click, can be a vector1 or a digital action.
      * @param nodeToPickAgainst The node that is picked against to look for lemur UIs
+     * @return a Runnable that if called will end the click action
      */
-    public void setClickAction_lemurSupport(String clickAction, Node nodeToPickAgainst){
+    public Runnable setClickAction_lemurSupport(String clickAction, Node nodeToPickAgainst){
         assertLemurAvailable();
         clearClickAction_lemurSupport();
-        addFunction(new LemurClickFunction(clickAction, nodeToPickAgainst));
+        return addFunction(new LemurClickFunction(clickAction, nodeToPickAgainst));
     }
 
     public void clearClickAction_lemurSupport(){
