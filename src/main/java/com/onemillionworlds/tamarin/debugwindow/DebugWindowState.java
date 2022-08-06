@@ -147,6 +147,27 @@ public class DebugWindowState extends BaseAppState{
     }
 
     /**
+     * This registers a single button that when clicked will call the event
+     */
+    public void registerButtonsWithCallbacks(String categoryLabel, Runnable event){
+        registerButtonsWithCallbacks(categoryLabel, Map.of(categoryLabel, event));
+    }
+
+    /**
+     * This registers buttons with call backs when they are clicked. It is perfectly safe to call this over and
+     * over again with the same data, all but the first will be ignored.
+     *
+     * Each time a button is clicked the appropriate callback will be called (and can do whatever you like).
+     *
+     * If you want to control the order of the buttons consider a LinkedHashMap
+     */
+    public void registerButtonsWithCallbacks(String categoryLabel, Map<String,Runnable> buttonsAndEvents){
+        if (!currentLineItems.containsKey(categoryLabel) && !newLineItems.containsKey(categoryLabel)){
+            newLineItems.put(categoryLabel, new CallbackButtonBar(categoryLabel, buttonsAndEvents));
+        }
+    }
+
+    /**
      * Gets the current state of the buttons set up for this enum. If no buttons are currently set up then a
      * new button bar will be set up and the defaultValue will be returned
      */
@@ -247,6 +268,27 @@ public class DebugWindowState extends BaseAppState{
         public void update(double timeslice){
             super.update(timeslice);
             labelNode.setText(label + ": " + displayDataTable.get(label));
+        }
+    }
+
+    private class CallbackButtonBar extends LineItem{
+
+        Container container = new Container(new BoxLayout(Axis.X, FillMode.None));
+
+        public CallbackButtonBar(String label, Map<String,Runnable> buttonsAndEvents){
+            super(label);
+
+            container.addChild(new Label(label));
+
+            buttonsAndEvents.forEach((buttonName, callback) -> {
+                Button button=new Button(buttonName);
+                button.addClickCommands(event -> callback.run());
+                container.addChild(button);
+            });
+        }
+        @Override
+        public Node render(){
+            return container;
         }
     }
 
