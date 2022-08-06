@@ -12,12 +12,15 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
+import com.simsilica.lemur.Axis;
+import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
+import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.Label;
+import com.simsilica.lemur.component.BoxLayout;
 import lombok.AllArgsConstructor;
-import lombok.Setter;
 
-import java.util.ArrayList;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -88,6 +91,14 @@ public class DebugWindowState extends BaseAppState{
         vrAppState = getState(VRAppState.class);
         statsAppState = getState(StatsAppState.class);
         ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
+
+        autoSelectPosition();
+    }
+
+    private void autoSelectPosition(){
+        Vector3f vrCameraPosition = getVrCameraPosition(vrAppState);
+        debugWindowNode.setLocalTranslation(vrCameraPosition.add(new Vector3f(0.3f, 0, 0f)));
+        debugWindowNode.lookAt(vrCameraPosition, Vector3f.UNIT_Y);
     }
 
     @Override
@@ -107,6 +118,21 @@ public class DebugWindowState extends BaseAppState{
 
     public void showFtps(){
         newLineItems.put("FPS", new NonFadingRenderText("FPS"));
+    }
+
+    /**
+     * Gets the current state of the buttons set up for this enum. If no buttons are currently set up then a
+     * new button bar will be set up and the defaultValue will be returned
+     */
+    public <U extends Enum<U>> U getData(String dataLabel, List<U> options, U defaultValue){
+        if (!currentLineItems.containsKey(dataLabel) && !newLineItems.containsKey(dataLabel)){
+            userEntryDataTable.put(dataLabel, defaultValue);
+            newLineItems.put(dataLabel, new OptionButtonBar(dataLabel, options));
+            return defaultValue;
+        }else{
+            //noinspection unchecked
+            return (U) userEntryDataTable.get(dataLabel);
+        }
     }
 
     public void setData(String dataLabel, Object data){
@@ -158,7 +184,9 @@ public class DebugWindowState extends BaseAppState{
 
             Vector3f relativeDebugPosition = debugWindowNode.getWorldTranslation().subtract(headPosition);
             double distance = relativeDebugPosition.length();
-            if (distance>MAX_DISTANCE_FROM_PLAYER){
+            if (distance>2*MAX_DISTANCE_FROM_PLAYER){
+                autoSelectPosition(); //probably a teleport
+            }else if (distance>MAX_DISTANCE_FROM_PLAYER){
                 //pull the window closer
                 debugWindowNode.setLocalTranslation(headPosition.add(relativeDebugPosition.normalize().mult(0.5f*MAX_DISTANCE_FROM_PLAYER)));
                 debugWindowNode.lookAt(headPosition, Vector3f.UNIT_Y);
@@ -189,6 +217,44 @@ public class DebugWindowState extends BaseAppState{
         public void update(double timeslice){
             super.update(timeslice);
             labelNode.setText(label + ": " + displayDataTable.get(label));
+        }
+    }
+
+    private class OptionButtonBar<U> extends LineItem{
+        Map<U, Button> buttonMap = new HashMap<>();
+        Container container = new Container(new BoxLayout(Axis.X, FillMode.None));
+
+        public OptionButtonBar(String label, List<U> enumOptions){
+            super(label);
+
+            container.addChild(new Label(label));
+            for(U item : enumOptions){
+                Button button=new Button("");
+                buttonMap.put(item, button);
+                container.addChild(button);
+
+                button.addClickCommands(source -> {
+                    userEntryDataTable.put(label, item);
+                    refreshButtonStates();
+
+                });
+            }
+            refreshButtonStates();
+        }
+
+        private void refreshButtonStates(){
+            U selectedObject = (U)userEntryDataTable.get(label);
+            buttonMap.forEach((object, buttonToUpdate) ->{
+                boolean selectedState = object ==selectedObject;
+                buttonToUpdate.setEnabled(!selectedState);
+                buttonToUpdate.setColor(selectedState ? ColorRGBA.White : ColorRGBA.Gray);
+                buttonToUpdate.setText(object.toString()+(selectedState?"(x)":"( )"));
+            });
+        }
+
+        @Override
+        public Node render(){
+            return container;
         }
     }
 
