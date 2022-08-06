@@ -124,6 +124,24 @@ public abstract class BoundHand{
 
     List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
 
+    /**
+     * A pointing arrangement is when the index finger is mostly straight and the ring ringer is not.
+     *
+     * This is the sort of hand position that indicates pressing buttons with the index finger
+     */
+    @Getter
+    public boolean handPointing = false;
+
+    private final String proximalName;
+    private final String metacarpalName;
+    private final String indexEndName;
+    private final String index2Name;
+    private final String index1Name;
+
+    private final String ringEndName;
+    private final String ring2Name;
+    private final String ring1Name;
+
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.vrState = Objects.requireNonNull(vrState);
         this.geometryNode.attachChild(handGeometry);
@@ -134,6 +152,15 @@ public abstract class BoundHand{
         this.handSide = handSide;
         this.rawOpenVrPosition.attachChild(handNode_xPointing);
         this.rawOpenVrPosition.attachChild(debugPointsNode);
+
+        proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
+        metacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
+        indexEndName = handSide == HandSide.LEFT ?"finger_index_l_end":"finger_index_r_end";
+        index2Name = handSide == HandSide.LEFT ?"finger_index_2_l":"finger_index_2_r";
+        index1Name  = handSide == HandSide.LEFT ?"finger_index_1_l":"finger_index_1_r";
+        ringEndName  = handSide == HandSide.LEFT ?"finger_ring_l_end":"finger_ring_r_end";
+        ring2Name = handSide == HandSide.LEFT ?"finger_ring_2_l":"finger_ring_2_r";
+        ring1Name = handSide == HandSide.LEFT ?"finger_ring_1_l":"finger_ring_1_r";
 
         searchForGeometry(handGeometry).forEach(g -> g.setUserData(NO_PICK, true));
 
@@ -257,13 +284,32 @@ public abstract class BoundHand{
         }
         updatePalm(timeSlice, boneStances);
         functions.forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
+
+        updatePointingState(boneStances);
+    }
+
+    /**
+     * Updates the hand to check if it's in a pointing arrangement;
+     * fist with index finger outstretched, like when pressing a button
+     */
+    private void updatePointingState(Map<String, BoneStance> boneStances){
+        BoneStance indexEnd = boneStances.get(indexEndName);
+        BoneStance index2= boneStances.get(index2Name);
+        BoneStance index1 = boneStances.get(index1Name);
+
+        BoneStance ringEnd = boneStances.get(ringEndName);
+        BoneStance ring2= boneStances.get(ring2Name);
+        BoneStance ring1 = boneStances.get(ring1Name);
+
+        float ringFingerAlignment = ringEnd.position.subtract(ring2.position).normalizeLocal().dot(ring2.position.subtract(ring1.position).normalizeLocal());
+        float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index2.position.subtract(index1.position).normalizeLocal());
+
+        handPointing = indexFingerAlignment>0.9 && ringFingerAlignment<0.8;
     }
 
     private void updatePalm(float timeSlice, Map<String, BoneStance> boneStances){
         //the palm node is put at the position between the finger_middle_0_l bone and finger_middle_meta_l, but with the
         // rotation of the finger_middle_meta_l bone. This gives roughly the position of a grab point, with a sensible rotation
-        String proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
-        String metacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
 
         BoneStance metacarpel = boneStances.get(metacarpalName);
         BoneStance proximal = boneStances.get(proximalName);
