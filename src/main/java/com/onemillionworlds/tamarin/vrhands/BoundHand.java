@@ -83,6 +83,12 @@ public abstract class BoundHand{
      */
     private final Node palmNode_xPointing = new Node();
 
+    /**
+     * This is a node that sits on the tip of the index finger whose +x points out way from the index
+     * finger. A pick from slightly negative on this and pointing in +X can detect things the index finger is pressing
+     */
+    private final Node indexFingerTip_xPointing = new Node();
+
     private final Node debugPointsNode = new Node();
 
     /**
@@ -179,9 +185,8 @@ public abstract class BoundHand{
         handNode_xPointing.attachChild(handNode_zPointing);
 
         rawOpenVrPosition.attachChild(palmNode_xPointing);
-
         rawOpenVrPosition.attachChild(geometryNode);
-
+        rawOpenVrPosition.attachChild(indexFingerTip_xPointing);
         handNode_xPointing.attachChild(pickLineNode);
 
         addFunction(new PickMarkerFunction());
@@ -283,6 +288,7 @@ public abstract class BoundHand{
             debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
         }
         updatePalm(timeSlice, boneStances);
+        updateFingerTips(boneStances);
         functions.forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
 
         updatePointingState(boneStances);
@@ -332,6 +338,20 @@ public abstract class BoundHand{
             palmNode_xPointing.setLocalTranslation(proximal.position.add(metacarpel.position).multLocal(0.5f));
             palmNode_xPointing.setLocalRotation(metacarpel.orientation.mult(coordinateStandardisingRotation));
         }
+    }
+
+    private void updateFingerTips(Map<String, BoneStance> boneStances){
+        BoneStance indexFingerTip = boneStances.get(indexEndName);
+        indexFingerTip_xPointing.setLocalTranslation(indexFingerTip.position);
+
+        Quaternion rotation = indexFingerTip.orientation;
+        if (handSide == HandSide.RIGHT){
+            Quaternion rightSideCorrection = new Quaternion();
+            rightSideCorrection.fromAngleNormalAxis(FastMath.PI, Vector3f.UNIT_Y);
+            rotation = rotation.mult(rightSideCorrection);
+        }
+
+        indexFingerTip_xPointing.setLocalRotation(rotation);
     }
 
     /**
@@ -424,6 +444,7 @@ public abstract class BoundHand{
      */
     public void debugPointingPickLine(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
+        indexFingerTip_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0.25f,0,0) ));
     }
 
     /**
