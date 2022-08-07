@@ -353,16 +353,18 @@ public abstract class BoundHand{
 
     private void updateFingerTips(Map<String, BoneStance> boneStances){
         BoneStance indexFingerTip = boneStances.get(indexEndName);
-        indexFingerTip_xPointing.setLocalTranslation(indexFingerTip.position);
+        if (indexFingerTip!=null){
+            indexFingerTip_xPointing.setLocalTranslation(indexFingerTip.position);
 
-        Quaternion rotation = indexFingerTip.orientation;
-        if (handSide == HandSide.RIGHT){
-            Quaternion rightSideCorrection = new Quaternion();
-            rightSideCorrection.fromAngleNormalAxis(FastMath.PI, Vector3f.UNIT_Y);
-            rotation = rotation.mult(rightSideCorrection);
+            Quaternion rotation = indexFingerTip.orientation;
+            if(handSide == HandSide.RIGHT){
+                Quaternion rightSideCorrection = new Quaternion();
+                rightSideCorrection.fromAngleNormalAxis(FastMath.PI, Vector3f.UNIT_Y);
+                rotation = rotation.mult(rightSideCorrection);
+            }
+
+            indexFingerTip_xPointing.setLocalRotation(rotation);
         }
-
-        indexFingerTip_xPointing.setLocalRotation(rotation);
     }
 
     /**
