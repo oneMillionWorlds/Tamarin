@@ -20,7 +20,7 @@ import com.onemillionworlds.tamarin.vrhands.BoundHand;
  * that is at (0,0,0) and unrotated (basically it does all its work with local translations)
  *
  * Note that this grab control has a "snap to hand on grab" behaviour. If you don't want that use the
- * {@link RelativeMovingGrabControl}
+ * {@link AbstractRelativeMovingGrabControl}
  */
 public class SnapToHandGrabControl extends AbstractGrabControl{
 

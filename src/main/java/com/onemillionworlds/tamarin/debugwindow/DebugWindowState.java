@@ -14,6 +14,7 @@ import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.LemurPressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
+import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractRelativeMovingGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Button;
@@ -23,7 +24,6 @@ import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.BoxLayout;
 import lombok.AllArgsConstructor;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
