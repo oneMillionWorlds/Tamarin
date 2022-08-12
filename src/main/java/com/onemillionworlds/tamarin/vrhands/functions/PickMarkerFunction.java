@@ -20,7 +20,7 @@ public class PickMarkerFunction implements BoundHandFunction{
 
     BoundHand boundHand;
 
-    Optional<Node> pickMarkerAgainstContinuous = Optional.empty();
+    final Node pickMarkerAgainstContinuous;
 
     Spatial pickMarker;
 
@@ -28,45 +28,33 @@ public class PickMarkerFunction implements BoundHandFunction{
      * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/lemur clicks
      * and place a marker (by default a white sphere) at the point where the pick hits a geometry. This gives the
      * player an indication what they would pick it they clicked now; think of it like a mouse pointer in 3d space
-     * @param nodeToPickAgainst
      */
-    public void setPickMarkerContinuous(Node nodeToPickAgainst){
-        pickMarkerAgainstContinuous = Optional.of(nodeToPickAgainst);
-        boundHand.getHandNode_xPointing().attachChild(pickMarker);
+    public PickMarkerFunction(Node pickMarkerAgainstContinuous){
+        this.pickMarkerAgainstContinuous = pickMarkerAgainstContinuous;
     }
-
-    /**
-     * This will stop that action started by {@link BoundHand#setPickMarkerContinuous}
-     */
-    public void clearPickMarkerContinuous(){
-        pickMarkerAgainstContinuous = Optional.empty();
-        pickMarker.removeFromParent();
-    }
-
 
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand = boundHand;
         pickMarker = defaultPickMarker(boundHand.getAssetManager());
+        boundHand.getHandNode_xPointing().attachChild(pickMarker);
     }
 
     @Override
     public void onUnbind(BoundHand boundHand, AppStateManager stateManager){
-
+        pickMarker.removeFromParent();
     }
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        pickMarkerAgainstContinuous.ifPresent(node -> {
-            BoundHand.firstNonSkippedHit(boundHand.pickBulkHand(node)).ifPresentOrElse(
-                    hit -> {
-                        pickMarker.setCullHint(Spatial.CullHint.Inherit);
-                        pickMarker.setLocalTranslation(hit.getDistance(), 0, 0);
-                    },
-                    () -> pickMarker.setCullHint(Spatial.CullHint.Always)
 
-            );
-        });
+        BoundHand.firstNonSkippedHit(boundHand.pickBulkHand(pickMarkerAgainstContinuous)).ifPresentOrElse(
+                hit -> {
+                    pickMarker.setCullHint(Spatial.CullHint.Inherit);
+                    pickMarker.setLocalTranslation(hit.getDistance(), 0, 0);
+                },
+                () -> pickMarker.setCullHint(Spatial.CullHint.Always)
+        );
     }
 
     private Geometry defaultPickMarker(AssetManager assetManager){

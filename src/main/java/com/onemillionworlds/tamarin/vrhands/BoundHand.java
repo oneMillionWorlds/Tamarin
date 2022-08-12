@@ -193,7 +193,6 @@ public abstract class BoundHand{
         rawOpenVrPosition.attachChild(indexFingerTip_xPointing);
         handNode_xPointing.attachChild(pickLineNode);
 
-        addFunction(new PickMarkerFunction());
         addFunction(new ClimbSupport());
     }
 
@@ -411,16 +410,22 @@ public abstract class BoundHand{
      * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/lemur clicks
      * and place a marker (by default a white sphere) at the point where the pick hits a geometry. This gives the
      * player an indication what they would pick it they clicked now; think of it like a mouse pointer in 3d space
+     *
+     * Run the returned runnable to remove the pick marker
      */
-    public void setPickMarkerContinuous(Node nodeToPickAgainst){
-        getFunction(PickMarkerFunction.class).setPickMarkerContinuous(nodeToPickAgainst);
+    public Runnable setPickMarkerContinuous(Node nodeToPickAgainst){
+        return addFunction(new PickMarkerFunction(nodeToPickAgainst));
     }
 
     /**
      * This will stop that action started by {@link BoundHand#setPickMarkerContinuous}
+     *
+     * Deprecated as assumes only 1 pick marker at a time. Instead call the Runnable returned
+     * by  {@link BoundHand#setPickMarkerContinuous} to remove the marker
      */
+    @Deprecated
     public void clearPickMarkerContinuous(){
-        getFunction(PickMarkerFunction.class).clearPickMarkerContinuous();
+        removeFunction(PickMarkerFunction.class);
     }
 
     /**
@@ -574,6 +579,12 @@ public abstract class BoundHand{
         return addFunction(new LemurClickFunction(clickAction, nodeToPickAgainst));
     }
 
+    /**
+     * Clears the click action. Deprecated because it assumes only 1 click action at a time.
+     * It's better to use the Runnable returned by {@link this#setClickAction_lemurSupport} to
+     * remove the action
+     */
+    @Deprecated
     public void clearClickAction_lemurSupport(){
         removeFunction(LemurClickFunction.class);
     }
