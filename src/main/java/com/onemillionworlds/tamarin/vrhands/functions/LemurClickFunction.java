@@ -26,6 +26,18 @@ import java.util.List;
 
 public class LemurClickFunction implements BoundHandFunction{
 
+    /**
+     * These are global settings intended as an advanced option. Controls the closest thing that can be picked with
+     * a lemur click
+     */
+    public static float PICK_MINIMUM = 0.01f;
+
+    /**
+     * These are global settings intended as an advanced option. Controls the futhest thing that can be picked with
+     * a lemur click
+     */
+    public static float PICK_MAXIMUM = 500f;
+
     private final Node pickAgainstNode;
     private final String clickAction;
 
@@ -145,6 +157,8 @@ public class LemurClickFunction implements BoundHandFunction{
         });
 
         syntheticCamera = new Camera(1000,1000);
+        syntheticCamera.setFrustumNear(PICK_MINIMUM);
+        syntheticCamera.setFrustumFar(PICK_MAXIMUM);
         syntheticViewport = new ViewPort("tamarinHandSyntheticViewport", syntheticCamera);
         syntheticViewport.attachScene(pickAgainstNode);
         mouseAppState.addCollisionRoot(syntheticViewport);
