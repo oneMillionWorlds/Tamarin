@@ -267,8 +267,7 @@ public abstract class BoundHand{
         function.onBind(this, vrState.getStateManager());
         functions.add(function);
         return () -> {
-            function.onUnbind(this, vrState.getStateManager());
-            functions.remove(function);
+            removeFunction(function);
         };
     }
 
@@ -278,8 +277,13 @@ public abstract class BoundHand{
      */
     public void removeFunction(Class<? extends BoundHandFunction> functionToRemove){
         BoundHandFunction function = functions.stream().filter(f -> f.getClass().equals(functionToRemove)).findFirst().orElse(null);
-        if (function!=null){
-            function.onUnbind(this, vrState.getStateManager());
+        removeFunction(function);
+    }
+
+    public void removeFunction(BoundHandFunction functionToRemove){
+        if (functionToRemove!=null){
+            functionToRemove.onUnbind(this, vrState.getStateManager());
+            functions.remove(functionToRemove);
         }
     }
 
@@ -317,10 +321,12 @@ public abstract class BoundHand{
         BoneStance ring2= boneStances.get(ring2Name);
         BoneStance ring1 = boneStances.get(ring1Name);
 
-        float ringFingerAlignment = ringEnd.position.subtract(ring2.position).normalizeLocal().dot(ring2.position.subtract(ring1.position).normalizeLocal());
-        float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index2.position.subtract(index1.position).normalizeLocal());
+        if (notNull(indexEnd, index2, index1, ringEnd, ring2, ring1)) {
+            float ringFingerAlignment = ringEnd.position.subtract(ring2.position).normalizeLocal().dot(ring2.position.subtract(ring1.position).normalizeLocal());
+            float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index2.position.subtract(index1.position).normalizeLocal());
 
-        handPointing = indexFingerAlignment>0.9 && ringFingerAlignment<0.8;
+            handPointing = indexFingerAlignment > 0.9 && ringFingerAlignment < 0.8;
+        }
     }
 
     private void updatePalm(float timeSlice, Map<String, BoneStance> boneStances){
@@ -569,6 +575,10 @@ public abstract class BoundHand{
      *
      * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
      *
+     * <strong>NOTE: at present only a single node can be picked against at a time and old click actions will be deregistered.
+     * However, that restriction may be lifted in later versions so old actions should be explicitly removed for forwards
+     * compatibility</strong>
+     *
      * @param clickAction the action (see action manifest) that will trigger a click, can be a vector1 or a digital action.
      * @param nodeToPickAgainst The node that is picked against to look for lemur UIs
      * @return a Runnable that if called will end the click action
@@ -580,11 +590,8 @@ public abstract class BoundHand{
     }
 
     /**
-     * Clears the click action. Deprecated because it assumes only 1 click action at a time.
-     * It's better to use the Runnable returned by {@link this#setClickAction_lemurSupport} to
-     * remove the action
+     * Clears the click action.
      */
-    @Deprecated
     public void clearClickAction_lemurSupport(){
         removeFunction(LemurClickFunction.class);
     }
@@ -605,10 +612,12 @@ public abstract class BoundHand{
      * geometries which may make it easier to avoid when using manual picking. Also it can be easily removed with the
      * {@link BoundHand#removePickLine()} method
      * @param spatial the pick line (+X should be in the direction of the pick line)
+     * @return a runnable that will remove the pick line
      */
-    public void attachPickLine( Spatial spatial ){
+    public Runnable attachPickLine( Spatial spatial ){
         searchForGeometry(spatial).forEach(g -> g.setUserData(NO_PICK, true));
         pickLineNode.attachChild(spatial);
+        return spatial::removeFromParent;
     }
 
     public void removePickLine(){
@@ -718,5 +727,14 @@ public abstract class BoundHand{
             }
             return lemurCheckedAvailable;
         }
+    }
+
+    public static boolean notNull(Object... objects){
+        for(Object o:objects){
+            if (o == null){
+                return false;
+            }
+        }
+        return true;
     }
 }
