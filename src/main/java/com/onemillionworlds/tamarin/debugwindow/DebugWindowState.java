@@ -267,7 +267,18 @@ public class DebugWindowState extends BaseAppState{
         @Override
         public void update(double timeslice){
             super.update(timeslice);
-            labelNode.setText(label + ": " + displayDataTable.get(label));
+            String oldText = labelNode.getText();
+            String newText = label + ": " + displayDataTable.get(label);
+            if (!oldText.equals(newText)){
+                labelNode.setText(label + ": " + displayDataTable.get(label));
+            }
+        }
+
+        public void setLabelColourEfficiently(ColorRGBA newColor){
+            if (!labelNode.getColor().equals(newColor)){
+                //setting colour triggers an expensive recalculate, don't do it unnecessarily
+                labelNode.setColor(newColor);
+            }
         }
     }
 
@@ -341,13 +352,17 @@ public class DebugWindowState extends BaseAppState{
             int noOfticksSinceLastSet = ticksSinceLastSet.get(label);
 
             if (noOfticksSinceLastSet<3){
+                setLabelColourEfficiently(ColorRGBA.White);
                 labelNode.setColor(ColorRGBA.White);
             }else{
-                float brightness = 1-noOfticksSinceLastSet/(2*60f);
-                brightness = FastMath.clamp(brightness, 0.3f, 1);
+                if ( noOfticksSinceLastSet % 3 == 0){
+                    float brightness = 1 - noOfticksSinceLastSet / (2 * 60f);
+                    brightness = FastMath.clamp(brightness, 0.3f, 1);
 
-                ColorRGBA fadedColour = ColorRGBA.fromRGBA255((int)(255*brightness), (int)(255*brightness),(int)(255*brightness),255);
-                labelNode.setColor(fadedColour);
+                    ColorRGBA fadedColour = ColorRGBA.fromRGBA255((int) (255 * brightness), (int) (255 * brightness), (int) (255 * brightness), 255);
+
+                    setLabelColourEfficiently(fadedColour);
+                }
             }
         }
     }
