@@ -35,10 +35,14 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -92,11 +96,11 @@ public class ActionBasedOpenVrState extends BaseAppState{
      */
     private final Map<String, Long> inputHandles = new HashMap<>();
 
-    private String[] bothHandActionSets = new String[0];
+    private List<String> bothHandActionSets = new ArrayList<>(0);
 
-    private String[] leftHandActionSets= new String[0];
+    private List<String> leftHandActionSets = new ArrayList<>(0);
 
-    private String[] rightHandActionSets= new String[0];
+    private List<String> rightHandActionSets = new ArrayList<>(0);
 
     /**
      * A lwjgl object that contains handles to the active action sets (is used each frame to tell lwjgl which actions to
@@ -205,29 +209,34 @@ public class ActionBasedOpenVrState extends BaseAppState{
     public void setActiveActionSetsBothHands(String... actionSets){
         assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
 
-        bothHandActionSets = actionSets;
+        bothHandActionSets = Arrays.asList(actionSets);
         activeActionSets = null;
     }
 
     /**
      * This sets action sets active for the left hand only
+     *
+     * Note that setting an action to left and right (or left and both) is equivalent to setting it to both
      * @param actionSets the action sets to set as active
      */
     public void setActiveActionSetsLeftHand(String... actionSets){
         assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
 
-        leftHandActionSets = actionSets;
+        leftHandActionSets = Arrays.asList(actionSets);
         activeActionSets = null;
     }
 
     /**
      * This sets action sets active for the right hand only
+     *
+     * Note that setting an action to left and right (or right and both) is equivalent to setting it to both
+     *
      * @param actionSets the action sets to set as active
      */
     public void setActiveActionSetsRightHand(String... actionSets){
         assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
 
-        rightHandActionSets = actionSets;
+        rightHandActionSets = Arrays.asList(actionSets);
         activeActionSets = null;
     }
 
@@ -687,15 +696,20 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
         Map<String, String> actionSetAndRestriction = new HashMap<>();
 
-        Arrays.stream(bothHandActionSets).forEach(
-                set -> actionSetAndRestriction.put(set, null)
-        );
-        Arrays.stream(leftHandActionSets).forEach(
-                set -> actionSetAndRestriction.put(set, HandSide.LEFT.restrictToInputString)
-        );
-        Arrays.stream(rightHandActionSets).forEach(
-                set -> actionSetAndRestriction.put(set, HandSide.RIGHT.restrictToInputString)
-        );
+        Set<String> allActionSets = new HashSet<>();
+        allActionSets.addAll(leftHandActionSets);
+        allActionSets.addAll(rightHandActionSets);
+        allActionSets.addAll(bothHandActionSets);
+
+        for(String actionSet: allActionSets){
+            if (bothHandActionSets.contains(actionSet) || (leftHandActionSets.contains(actionSet) && rightHandActionSets.contains(actionSet))){
+                actionSetAndRestriction.put(actionSet, null);
+            }else if (leftHandActionSets.contains(actionSet)){
+                actionSetAndRestriction.put(actionSet, HandSide.LEFT.restrictToInputString);
+            }else{
+                actionSetAndRestriction.put(actionSet, HandSide.RIGHT.restrictToInputString);
+            }
+        }
 
         actionSetAndRestriction.keySet().forEach(actionSet -> {
             long actionSetHandle;
