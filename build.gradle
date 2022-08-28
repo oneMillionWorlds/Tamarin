@@ -37,7 +37,7 @@ dependencies {
      */
     compileOnly "${jme3.g}:jme3-core:${jme3.v}"
     compileOnly "${jme3.g}:jme3-vr:${jme3.v}"
-    compileOnly "com.simsilica:lemur:1.14.0"
+    compileOnly "com.simsilica:lemur:1.16.0"
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
 }
 
