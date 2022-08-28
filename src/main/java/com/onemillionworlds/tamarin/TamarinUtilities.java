@@ -56,6 +56,20 @@ public class TamarinUtilities{
     }
 
     /**
+     * Returns the rotation of the VR cameras (technically the left camera, but they should be the same
+     */
+    public static Vector3f getVrCameraLookDirection(VRAppState vrAppState){
+        return vrAppState.getVRViewManager().getLeftCamera().getDirection();
+    }
+
+    /**
+     * Returns the average position of the 2 VR cameras (i.e. half way between the left and right eyes)
+     */
+    public static Vector3f getVrCameraPosition(VRAppState vrAppState){
+        return vrAppState.getVRViewManager().getLeftCamera().getLocation().add(vrAppState.getVRViewManager().getRightCamera().getLocation()).mult(0.5f);
+    }
+
+    /**
      * Often you'll want to programatically turn the player, which should be done by rotating the observer.
      *
      * However, if the player isn't standing directly above the observer this rotation will induce motion.
