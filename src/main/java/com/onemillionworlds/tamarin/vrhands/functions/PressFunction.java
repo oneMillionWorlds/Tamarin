@@ -17,6 +17,7 @@ import com.simsilica.lemur.event.LemurProtectedSupport;
 import com.simsilica.lemur.event.PickEventSession;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +30,12 @@ import java.util.Optional;
  * event listeners and text boxes)
  */
 public class PressFunction implements BoundHandFunction{
+
+    /**
+     * If there are multiple touches within this time all but the first are suppressed
+     * This is to avoid annoying double touches (especially caused by the vibrate)
+     */
+    public static float TOUCH_SUPPRESSION_TIME = 0.2f;
 
     Node pickAgainstNode;
     boolean requireFingerPointing;
@@ -46,7 +53,9 @@ public class PressFunction implements BoundHandFunction{
     private ActionBasedOpenVrState actionBasedOpenVrState;
     private VRHandsAppState vrHandsAppState;
 
-    List<AbstractTouchControl> currentlyTouching = new ArrayList<>(1);
+    Collection<AbstractTouchControl> currentlyTouching = new ArrayList<>(1);
+
+    float timeSinceTouched = TOUCH_SUPPRESSION_TIME;
 
     /**
      *
@@ -81,13 +90,10 @@ public class PressFunction implements BoundHandFunction{
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        if (!requireFingerPointing || boundHand.isHandPointing()){
+        timeSinceTouched+=timeSlice;
+        if ( timeSinceTouched>TOUCH_SUPPRESSION_TIME && (!requireFingerPointing || boundHand.isHandPointing())){
 
             CollisionResults results = boundHand.pickIndexFingerTip(pickAgainstNode);
-
-            if (results.size()>0){
-                DebugWindowState.INSTANCE.setData("NoOfTouches", results.size());
-            }
             boolean shouldTriggerHaptic = false;
             if (BoundHand.isLemurAvailable()){
                 boolean lemurTouchedThisUpdate = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, lemurTouchedLastUpdate);
@@ -96,20 +102,17 @@ public class PressFunction implements BoundHandFunction{
             }
 
             //go looking for tamarin touch controls
-            List<AbstractTouchControl> touchedControls = TamarinUtilities.findAllControlsInResults(AbstractTouchControl.class, results);
+            Collection<AbstractTouchControl> touchedControls = TamarinUtilities.findAllControlsInResults(AbstractTouchControl.class, results);
 
             if (!touchedControls.isEmpty() || !currentlyTouching.isEmpty()){
-                if (touchedControls.isEmpty()){
-                    shouldTriggerHaptic = true;
-                }
-
                 List<AbstractTouchControl> newItems = new ArrayList<>(touchedControls);
                 newItems.removeAll(currentlyTouching);
 
                 List<AbstractTouchControl> noLongerTouchedItems = new ArrayList<>(currentlyTouching);
-                newItems.removeAll(touchedControls);
+                noLongerTouchedItems.removeAll(touchedControls);
 
                 for(AbstractTouchControl newTouch : newItems){
+                    shouldTriggerHaptic = true;
                     newTouch.onTouch(boundHand);
                 }
                 for(AbstractTouchControl removedTouch : noLongerTouchedItems){
@@ -118,8 +121,12 @@ public class PressFunction implements BoundHandFunction{
             }
             currentlyTouching = touchedControls;
 
+            if (shouldTriggerHaptic){
+                timeSinceTouched=0;
+            }
+
             if (shouldTriggerHaptic && vibrateActionOnTouch.isPresent()){
-                actionBasedOpenVrState.triggerHapticAction(vibrateActionOnTouch.get(),0.1f, 60, vibrateOnTouchIntensity, boundHand.getHandSide().restrictToInputString );
+                actionBasedOpenVrState.triggerHapticAction(vibrateActionOnTouch.get(),0.02f, 60, vibrateOnTouchIntensity, boundHand.getHandSide().restrictToInputString );
             }
 
         }

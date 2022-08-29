@@ -24,10 +24,13 @@ import com.onemillionworlds.tamarin.debugwindow.DebugWindowState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
+import com.onemillionworlds.tamarin.vrhands.functions.FunctionRegistration;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.LemurClickFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.PickMarkerFunction;
+import com.onemillionworlds.tamarin.vrhands.functions.PressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
+import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
 import lombok.Getter;
 
 import java.text.DecimalFormat;
@@ -267,12 +270,12 @@ public abstract class BoundHand{
      * @param function the functionality to add (things like grabbing, clicking etc are implemented as BoundHandFunctions
      * @return a method that if called will remove the function
      */
-    public Runnable addFunction(BoundHandFunction function){
+    public FunctionRegistration addFunction(BoundHandFunction function){
         function.onBind(this, vrState.getStateManager());
         functions.add(function);
-        return () -> {
+        return () ->
             removeFunction(function);
-        };
+
     }
 
     /**
@@ -382,7 +385,7 @@ public abstract class BoundHand{
      * @return the results
      */
     public CollisionResults pickIndexFingerTip(Node nodeToPickAgainst){
-        float pickSphereRadius = 0.0075f;
+        float pickSphereRadius = 0.005f;
 
         Vector3f pickOrigin = new Vector3f(indexFingerTip_xPointing.getWorldTranslation());
         Vector3f pickingOutwardPoint = indexFingerTip_xPointing.localToWorld(new Vector3f(1,0,0), null);
@@ -422,7 +425,7 @@ public abstract class BoundHand{
      *
      * Run the returned runnable to remove the pick marker
      */
-    public Runnable setPickMarkerContinuous(Node nodeToPickAgainst){
+    public FunctionRegistration setPickMarkerContinuous(Node nodeToPickAgainst){
         return addFunction(new PickMarkerFunction(nodeToPickAgainst));
     }
 
@@ -549,18 +552,19 @@ public abstract class BoundHand{
      *
      * The grab action can be either an analog or digital action
      *
+     * Use the {@link FunctionRegistration} to end the function when done
+     *
      * @param grabAction the openVr action name to use to decide if the hand is grabbing
      * @param nodeToPickAgainst the node to scan for items to grab (probably the root node)
      */
-    public void setGrabAction(String grabAction, Node nodeToPickAgainst){
+    public FunctionRegistration setGrabAction(String grabAction, Node nodeToPickAgainst){
         GrabPickingFunction grabPickingFunction = new GrabPickingFunction(grabAction, nodeToPickAgainst);
 
         float intoHandDepth = (handSide == HandSide.LEFT ? -1 : 1) * 0.02f; //by picking from slightly behind the hand misses are less likely from putting your hand into something before grabbing
         List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,intoHandDepth), new Vector3f(0.02f,-0.03f,intoHandDepth), new Vector3f(0.03f,0.03f,intoHandDepth), new Vector3f(-0.03f,0,intoHandDepth));
         grabPickingFunction.setPalmPickPoints(palmPickPoints);
 
-        addFunction(grabPickingFunction);
-
+        return addFunction(grabPickingFunction);
     }
 
     public void clearGrabAction(){
@@ -582,14 +586,31 @@ public abstract class BoundHand{
      * However, that restriction may be lifted in later versions so old actions should be explicitly removed for forwards
      * compatibility</strong>
      *
+     * Use the {@link FunctionRegistration} to end the function when done
+     *
      * @param clickAction the action (see action manifest) that will trigger a click, can be a vector1 or a digital action.
      * @param nodeToPickAgainst The node that is picked against to look for lemur UIs
      * @return a Runnable that if called will end the click action
      */
-    public Runnable setClickAction_lemurSupport(String clickAction, Node nodeToPickAgainst){
+    public FunctionRegistration setClickAction_lemurSupport(String clickAction, Node nodeToPickAgainst){
         assertLemurAvailable();
         clearClickAction_lemurSupport();
         return addFunction(new LemurClickFunction(clickAction, nodeToPickAgainst));
+    }
+    /**
+     * Will continuously look for touches between the node and the index finger tip. Will trigger lemur buttons etc (if
+     * lemur is available) and Tamarin {@link AbstractTouchControl}
+     *
+     * Use the {@link FunctionRegistration} to end the function when done
+     *
+     * @param nodeToScanForTouches the note to scan for contact with the fingertip
+     * @param requireFingerPointing if the scan should only occur if the hand is in a pointing arrangement
+     *                              (index finger outstretched, other fingers curled)
+     * @param vibrateActionOnTouch the action name of the vibration binding (e.g. "/actions/main/out/haptic"). Can be null for no vibrate
+     * @param vibrateOnTouchIntensity how hard the vibration response is. Should be between 0 (none) and 1 (lots)
+     */
+    public FunctionRegistration setFingerTipPressDetection(Node nodeToScanForTouches, boolean requireFingerPointing, String vibrateActionOnTouch, float vibrateOnTouchIntensity){
+        return addFunction(new PressFunction(nodeToScanForTouches, requireFingerPointing, vibrateActionOnTouch, vibrateOnTouchIntensity));
     }
 
     /**
@@ -613,11 +634,14 @@ public abstract class BoundHand{
      * Broadly similar to attaching a geometry to {@link BoundHand#getHandNode_xPointing()} but it will get special
      * handling to ensure it doesn't block lemur picks (and will all get the {@link BoundHand#NO_PICK} label on all its
      * geometries which may make it easier to avoid when using manual picking. Also it can be easily removed with the
+     *
+     * Use the {@link FunctionRegistration} to end the function when done
+     *
      * {@link BoundHand#removePickLine()} method
      * @param spatial the pick line (+X should be in the direction of the pick line)
-     * @return a runnable that will remove the pick line
+     * @return a FunctionRegistration that will remove the pick line
      */
-    public Runnable attachPickLine( Spatial spatial ){
+    public FunctionRegistration attachPickLine( Spatial spatial ){
         searchForGeometry(spatial).forEach(g -> g.setUserData(NO_PICK, true));
         pickLineNode.attachChild(spatial);
         return spatial::removeFromParent;

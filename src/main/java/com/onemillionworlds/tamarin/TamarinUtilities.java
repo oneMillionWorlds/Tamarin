@@ -12,7 +12,10 @@ import com.jme3.scene.control.Control;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class TamarinUtilities{
 
@@ -100,8 +103,8 @@ public class TamarinUtilities{
      * Note that this method respects the TAMARIN_STOP_BUBBLING user data. Meaning if a boolean of true is registered
      * with that key then it will stop looking up the parent chain
      */
-    public static <T extends Control> List<T> findAllControlsInResults(Class<T> searchClass, CollisionResults collisionResults){
-        List<T> results = new ArrayList<>(1); //usually we find 1 or zero results
+    public static <T extends Control> Collection<T> findAllControlsInResults(Class<T> searchClass, CollisionResults collisionResults){
+        Set<T> results = new HashSet<>(1); //usually we find 1 or zero results
         for(CollisionResult result : collisionResults){
             Spatial workingTarget = result.getGeometry();
             while(workingTarget !=null){

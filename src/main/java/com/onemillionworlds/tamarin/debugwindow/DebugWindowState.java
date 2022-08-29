@@ -12,6 +12,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
+import com.onemillionworlds.tamarin.vrhands.functions.FunctionRegistration;
 import com.onemillionworlds.tamarin.vrhands.functions.PressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
@@ -70,7 +71,7 @@ public class DebugWindowState extends BaseAppState{
     protected int frameCounter = 0;
 
     boolean connectedToHands = false;
-    List<Runnable> deregistrations = new ArrayList<>();
+    List<FunctionRegistration> deregistrations = new ArrayList<>();
 
     /**
      * if the DebugWindow is further away than this is is drawn towards the player
@@ -137,7 +138,7 @@ public class DebugWindowState extends BaseAppState{
     @Override
     protected void cleanup(Application app){
         debugWindowNode.removeFromParent();
-        deregistrations.forEach(Runnable::run);
+        deregistrations.forEach(FunctionRegistration::endFunction);
         deregistrations.clear();
     }
 
