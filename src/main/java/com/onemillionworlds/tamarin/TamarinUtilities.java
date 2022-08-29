@@ -1,10 +1,18 @@
 package com.onemillionworlds.tamarin;
 
 import com.jme3.app.VRAppState;
+import com.jme3.collision.CollisionResult;
+import com.jme3.collision.CollisionResults;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
+import com.jme3.scene.control.Control;
+import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class TamarinUtilities{
 
@@ -84,6 +92,31 @@ public class TamarinUtilities{
     @Deprecated
     public static void rotateObserverWithoutMovingPlayer(Node observerNode, VRAppState vrAppState, float angleAboutYAxis){
         rotateObserverWithoutMovingPlayer(vrAppState, angleAboutYAxis);
+    }
+
+    /**
+     * Will search the collision results (and all parents) looking for controls of that class.
+     *
+     * Note that this method respects the TAMARIN_STOP_BUBBLING user data. Meaning if a boolean of true is registered
+     * with that key then it will stop looking up the parent chain
+     */
+    public static <T extends Control> List<T> findAllControlsInResults(Class<T> searchClass, CollisionResults collisionResults){
+        List<T> results = new ArrayList<>(1); //usually we find 1 or zero results
+        for(CollisionResult result : collisionResults){
+            Spatial workingTarget = result.getGeometry();
+            while(workingTarget !=null){
+                if (Boolean.TRUE.equals(workingTarget.getUserData(LemurSupport.TAMARIN_STOP_BUBBLING))){
+                    continue;
+                }
+
+                T control = workingTarget.getControl(searchClass);
+                if (control !=null){
+                    results.add(control);
+                }
+                workingTarget = workingTarget.getParent();
+            }
+        }
+        return results;
     }
 
 }

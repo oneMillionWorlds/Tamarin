@@ -12,9 +12,8 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
-import com.onemillionworlds.tamarin.vrhands.functions.LemurPressFunction;
+import com.onemillionworlds.tamarin.vrhands.functions.PressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
-import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractRelativeMovingGrabControl;
 import com.onemillionworlds.tamarin.vrhands.grabbing.RelativeMovingGrabControl;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Button;
@@ -80,9 +79,19 @@ public class DebugWindowState extends BaseAppState{
 
     double timeTillNextPositionCheck = 0;
 
+    private String hapticAction;
+
     public DebugWindowState(){
+        this(null);
+    }
+
+    /**
+     * @param hapticAction On touching a button on the debug window state this haptic will trigger (can be null)
+     */
+    public DebugWindowState(String hapticAction){
         assert INSTANCE == null : "Can only have 1 DebugWindowState";
         INSTANCE = this;
+        this.hapticAction = hapticAction;
     }
 
     @Override
@@ -113,7 +122,7 @@ public class DebugWindowState extends BaseAppState{
 
         if (!handControls.isEmpty()){
             handControls.forEach(hand ->
-                    deregistrations.add(hand.addFunction(new LemurPressFunction(debugWindowNode)))
+                    deregistrations.add(hand.addFunction(new PressFunction(debugWindowNode, false, hapticAction,0.5f )))
             );
             connectedToHands = true;
         }

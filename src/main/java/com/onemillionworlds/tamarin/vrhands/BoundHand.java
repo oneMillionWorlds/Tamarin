@@ -3,6 +3,7 @@ package com.onemillionworlds.tamarin.vrhands;
 import com.jme3.anim.Armature;
 import com.jme3.anim.Joint;
 import com.jme3.asset.AssetManager;
+import com.jme3.bounding.BoundingSphere;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.material.Material;
@@ -19,6 +20,7 @@ import com.jme3.scene.shape.Line;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
+import com.onemillionworlds.tamarin.debugwindow.DebugWindowState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
@@ -28,6 +30,7 @@ import com.onemillionworlds.tamarin.vrhands.functions.PickMarkerFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import lombok.Getter;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 public abstract class BoundHand{
 
@@ -373,21 +377,20 @@ public abstract class BoundHand{
     }
 
     /**
-     * Picks from just behind the index finger (to catch if the index finger has been plunged into something
-     * outward in the direction the index finger is pointing)
+     * Picks using a small sphere at the index finger tip (to catch if the index finger has been plunged into something)
      * @param nodeToPickAgainst the node that contains geometries to be picked from
      * @return the results
      */
     public CollisionResults pickIndexFingerTip(Node nodeToPickAgainst){
-        Vector3f pickOrigin = indexFingerTip_xPointing.getWorldTranslation();
-        Vector3f pickingPoint = indexFingerTip_xPointing.localToWorld(new Vector3f(1,0,0), null);
-        Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
-        pickOrigin.subtractLocal(pickingVector.mult(-1* PICK_INDEX_FINGER_STANDOFF_DISTANCE));//take the origin just inside the finger
+        float pickSphereRadius = 0.0075f;
+
+        Vector3f pickOrigin = new Vector3f(indexFingerTip_xPointing.getWorldTranslation());
+        Vector3f pickingOutwardPoint = indexFingerTip_xPointing.localToWorld(new Vector3f(1,0,0), null);
+        Vector3f pickingVector = pickingOutwardPoint.subtract(pickOrigin);
+        pickOrigin.addLocal(pickingVector.mult(-0.5f*pickSphereRadius));//take the origin just inside the finger
         CollisionResults results = new CollisionResults();
-
-        Ray ray = new Ray(pickOrigin, pickingVector);
-
-        nodeToPickAgainst.collideWith(ray, results);
+        BoundingSphere sphere = new BoundingSphere(pickSphereRadius, pickOrigin);
+        nodeToPickAgainst.collideWith(sphere, results);
         return results;
     }
 

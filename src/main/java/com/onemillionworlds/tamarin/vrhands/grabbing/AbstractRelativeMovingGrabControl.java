@@ -67,9 +67,6 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
         }
     }
 
-    @Override
-    protected void controlRender(RenderManager rm, ViewPort vp){}
-
     /**
      *
      * This method returns a QuaternionD that would take you from the initial rotation

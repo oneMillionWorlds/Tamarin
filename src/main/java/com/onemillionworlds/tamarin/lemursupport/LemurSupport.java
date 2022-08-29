@@ -25,9 +25,14 @@ public class LemurSupport{
     /**
      * Normally it's preferable to dispatch lemur click events but in some cases (like a physical button push) it can
      * be better to special handle it. This will look for handlable lemur "stuff" and do a beset effort of simulating a
-     * click on it. It will also handle keyboard popping as normal
+     * click on it. It will also handle keyboard popping as normal.
+     *
+     * Will return true if it found anything that triggered an event (or would have if it wasn't a dry run)
+     *
+     * @param dryRun If true then scans for things that would trigger, but doesn't actually trigger then. Used for
+     *               only triggering clicks on first touch, but then allowing a reset when nothing is touched
      */
-    public static void clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager){
+    public static boolean clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun){
         clickThroughCollisionResultsForSpecialHandling(nodePickedAgainst, results, stateManager);
         for( int i=0;i<results.size();i++ ){
             CollisionResult collision = results.getCollision(i);
@@ -37,21 +42,24 @@ public class LemurSupport{
                 Spatial processedSpatial = collision.getGeometry();
                 while(processedSpatial!=null){
                     if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
-                        return;
+                        return false;
                     }
                     if (processedSpatial instanceof Button){
-                        ((Button)processedSpatial).click();
-                        return;
+                        if (!dryRun){((Button)processedSpatial).click();}
+                        return true;
                     }
                     MouseEventControl mec = processedSpatial.getControl(MouseEventControl.class);
                     if ( mec!=null ){
-                        mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
-                        return;
+                        if (!dryRun){
+                            mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
+                        }
+                        return true;
                     }
                     processedSpatial = processedSpatial.getParent();
                 }
             }
         }
+        return false;
     }
 
     /**
