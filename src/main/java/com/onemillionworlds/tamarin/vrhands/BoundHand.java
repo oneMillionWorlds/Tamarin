@@ -736,6 +736,11 @@ public abstract class BoundHand{
         return handNode_xPointing.getWorldRotation().mult(Vector3f.UNIT_X);
     }
 
+    @Override
+    public String toString(){
+        return handSide.name() + " hand";
+    }
+
     public static void assertLemurAvailable(){
         if (!isLemurAvailable()){
             throw new RuntimeException("Lemur not available on class path. Lemur required for methods named _lemurSupport or classes with Lemur in name");
