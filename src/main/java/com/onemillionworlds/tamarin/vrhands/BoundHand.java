@@ -17,6 +17,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
+import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
@@ -32,6 +33,7 @@ import com.onemillionworlds.tamarin.vrhands.functions.PressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -48,7 +50,7 @@ public abstract class BoundHand{
     /**
      * How far (in meters) the index finger pick line starts inside the finger
      */
-    public static float PICK_INDEX_FINGER_STANDOFF_DISTANCE = 0.02f;
+    public static float PICK_INDEX_FINGER_STANDOFF_DISTANCE = 0.03f;
 
     private static boolean lemurCheckedAvailable = false ;
 
@@ -139,7 +141,19 @@ public abstract class BoundHand{
     @Getter
     private RotationalVelocity rotationalVelocity_world = new RotationalVelocity(new Vector3f());
 
-    List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
+    /**
+     * When doing a palm pick spheres of this radius are created above the palm
+     */
+    @Setter
+    private float palmPickSphereRadius = 0.02f;
+
+    /**
+     * When doing a palm pick these are the points where spheres are formed to detect if the palm is against anything
+     */
+    @Setter
+    private List<Vector3f> palmPickPoints;
+
+    private List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
 
     /**
      * A pointing arrangement is when the index finger is mostly straight and the ring ringer is not.
@@ -169,6 +183,9 @@ public abstract class BoundHand{
         this.handSide = handSide;
         this.rawOpenVrPosition.attachChild(handNode_xPointing);
         this.rawOpenVrPosition.attachChild(debugPointsNode);
+
+        float outOfPalm = (handSide == HandSide.LEFT ? 1 : -1);
+        this.palmPickPoints = List.of(new Vector3f(0,0,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.02f,-0.03f,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.03f,0.03f,outOfPalm*(0.005f+palmPickSphereRadius)), new Vector3f(-0.03f,0,outOfPalm*(0.01f+palmPickSphereRadius)));
 
         proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
         metacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
@@ -443,24 +460,56 @@ public abstract class BoundHand{
     /**
      * Picks from roughly the centre of the palm out from the palm (i.e. for the left hand it points right)
      *
-     * This can be useful to use picking to determine what the player wishes to grab
+     * This can be used to detect what the palm is pointing at (which is rarely useful to be honest)
      *
      * Note that the geometry of the hand itself may be the first result from the pick but more reasonable pick results
      * will follow. (These will have NO_PICK = true as userdata which can be used to ignore them)
      *
+     * deprecated as intend to move towards the pickPalmSpheres method
+     *
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      */
+    @Deprecated
     public CollisionResults pickPalm(Node nodeToPickAgainst){
         return pickPalm(nodeToPickAgainst, Vector3f.ZERO);
+    }
+
+    /**
+     * Picks (using a series of bounding shapes) just beyond the palm. Unlike pickPalm it does not pick out to an
+     * infinite range but uses a series of spheres
+     *
+     * This can be useful to use picking to determine what the player wishes to grab
+     */
+    public CollisionResults pickGrab(Node nodeToPickAgainst){
+        Vector3f worldPickLocation = new Vector3f();
+
+        CollisionResults overallResults = new CollisionResults();
+        for(Vector3f pickPoint : palmPickPoints){
+            worldPickLocation = getPalmNode().localToWorld(pickPoint, worldPickLocation);
+            CollisionResults results = new CollisionResults();
+            BoundingSphere sphere = new BoundingSphere(palmPickSphereRadius, worldPickLocation);
+            nodeToPickAgainst.collideWith(sphere, results);
+            for(int i=0;i<results.size();i++){
+                CollisionResult result = results.getCollision(i);
+                if(!Boolean.TRUE.equals(result.getGeometry().getUserData(NO_PICK))){
+                    overallResults.addCollision(result);
+                }
+            }
+        }
+        return overallResults;
     }
 
     /**
      * Picks outward away from the palm palmRelativePosition to {@link BoundHand#getPalmNode()}.
      * Note that x is towards the fingers, y is up and z is right (whether +z is the palm direction depends on if this
      * is the left or right hand)
+     *
+     * deprecated as intend to move towards the pickPalmSpheres method
+     *
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      * @param palmRelativePosition the position for the pick line to start
      */
+    @Deprecated
     public CollisionResults pickPalm(Node nodeToPickAgainst, Vector3f palmRelativePosition){
         Vector3f pickOrigin = getPalmNode().localToWorld(palmRelativePosition, null);
         Vector3f pickingPoint = getPalmNode().localToWorld(palmRelativePosition.add(0,0,handSide == HandSide.LEFT?1:-1), null);
@@ -527,6 +576,21 @@ public abstract class BoundHand{
     }
 
     /**
+     * spheres showing the current grab points for the palm.
+     *
+     * The first (index zero) points are bright, the last points (high index) are dark
+     * {@link BoundHand#getPalmNode()}
+     */
+    public void debugPalmGrabPoints(){
+        int index = 0;
+        for(Vector3f grabPoint: this.palmPickPoints){
+            float brightness = ((float)this.palmPickPoints.size()-index)/this.palmPickPoints.size();
+            index++;
+            palmNode_xPointing.attachChild(sphere(new ColorRGBA(brightness,brightness,brightness,1), grabPoint, palmPickSphereRadius));
+        }
+    }
+
+    /**
      * Returns a world position that a spatial's holdCentre should be at.
      * @param distanceFromSkin how far from the skin the hold position should be (provided so differing sized objects make sense)
      */
@@ -559,11 +623,6 @@ public abstract class BoundHand{
      */
     public FunctionRegistration setGrabAction(String grabAction, Node nodeToPickAgainst){
         GrabPickingFunction grabPickingFunction = new GrabPickingFunction(grabAction, nodeToPickAgainst);
-
-        float intoHandDepth = (handSide == HandSide.LEFT ? -1 : 1) * 0.02f; //by picking from slightly behind the hand misses are less likely from putting your hand into something before grabbing
-        List<Vector3f> palmPickPoints = List.of(new Vector3f(0,0,intoHandDepth), new Vector3f(0.02f,-0.03f,intoHandDepth), new Vector3f(0.03f,0.03f,intoHandDepth), new Vector3f(-0.03f,0,intoHandDepth));
-        grabPickingFunction.setPalmPickPoints(palmPickPoints);
-
         return addFunction(grabPickingFunction);
     }
 
@@ -696,6 +755,18 @@ public abstract class BoundHand{
         mat.setColor("Color", colorRGBA);
         geom.setMaterial(mat);
         geom.setUserData(NO_PICK, true);
+        return geom;
+    }
+
+    private Geometry sphere(ColorRGBA colorRGBA, Vector3f position, float radius){
+        Sphere b = new Sphere(10, 10, radius);
+        Geometry geom = new Geometry("debugHandSphere", b);
+        Material mat = new Material(assetManager,
+                "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", colorRGBA);
+        geom.setMaterial(mat);
+        geom.setUserData(NO_PICK, true);
+        geom.setLocalTranslation(position);
         return geom;
     }
 
