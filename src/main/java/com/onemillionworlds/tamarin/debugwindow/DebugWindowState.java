@@ -207,6 +207,21 @@ public class DebugWindowState extends BaseAppState{
         }
     }
 
+    /**
+     * The log is a special data entry that only ever grows. Use judiciously to avoid it getting huge
+     * @param logMessage
+     */
+    public void log(String logMessage){
+        String currentLog = displayDataTable.getOrDefault("log", "");
+
+        if (!currentLog.isEmpty()){
+            currentLog+="\n"+logMessage;
+        }else{
+            currentLog=logMessage;
+        }
+        setData("log", currentLog);
+    }
+
     @Override
     public void update(float tpf){
         super.update(tpf);
