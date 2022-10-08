@@ -427,6 +427,7 @@ public abstract class BoundHand{
         Vector3f pickOrigin = getHandNode_xPointing().getWorldTranslation();
         Vector3f pickingPoint = getHandNode_xPointing().localToWorld(new Vector3f(1,0,0), null);
         Vector3f pickingVector = pickingPoint.subtract(pickOrigin);
+        pickingVector.normalizeLocal();
         CollisionResults results = new CollisionResults();
 
         Ray ray = new Ray(pickOrigin, pickingVector);
