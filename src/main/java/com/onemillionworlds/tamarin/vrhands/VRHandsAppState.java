@@ -33,6 +33,8 @@ import java.util.Map;
  */
 public class VRHandsAppState extends BaseAppState{
 
+    public static final String ID = "VRHandsAppState";
+
     ActionBasedOpenVrState openVr;
 
     VRAppState vrAppState;
@@ -61,10 +63,12 @@ public class VRHandsAppState extends BaseAppState{
      * and it may be easier to do it this way instead.
      */
     public VRHandsAppState(HandSpec handSpec){
+        super(ID);
         pendingHandSpec = handSpec;
     }
 
     public VRHandsAppState(){
+        super(ID);
     }
 
     @Override

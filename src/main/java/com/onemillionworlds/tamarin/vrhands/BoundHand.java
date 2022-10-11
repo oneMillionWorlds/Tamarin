@@ -601,7 +601,7 @@ public abstract class BoundHand{
 
     /**
      * The rotation that should be applied to objects currently being held by this hand
-     * @return
+     *
      */
     public Quaternion getHoldRotation(){
         return getPalmNode().getWorldRotation();

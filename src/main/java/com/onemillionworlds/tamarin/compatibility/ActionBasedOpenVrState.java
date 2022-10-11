@@ -57,6 +57,8 @@ import java.util.logging.Logger;
  */
 public class ActionBasedOpenVrState extends BaseAppState{
 
+    public static final String ID = "ActionBasedOpenVrState";
+
     private static final Quaternion HALF_ROTATION_ABOUT_Y = new Quaternion();
 
     private static final Logger logger = Logger.getLogger(ActionBasedOpenVrState.class.getName());
@@ -129,6 +131,10 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     {
         inputHandles.put(null, VR.k_ulInvalidInputValueHandle);
+    }
+
+    public ActionBasedOpenVrState(){
+        super(ID);
     }
 
     @Override
