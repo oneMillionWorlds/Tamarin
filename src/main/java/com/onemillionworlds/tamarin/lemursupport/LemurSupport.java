@@ -14,11 +14,14 @@ import com.simsilica.lemur.TextField;
 import com.simsilica.lemur.core.GuiControl;
 import com.simsilica.lemur.event.MouseEventControl;
 
+import java.util.function.Consumer;
+
 import static com.onemillionworlds.tamarin.vrhands.BoundHand.NO_PICK;
 
 public class LemurSupport{
 
     public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
+    public static final String LEMUR_TAMARIN_KEYBOARD = "LEMUR_TAMARIN_KEYBOARD";
 
     public static KeyboardStyle keyboardStyle = new SimpleQwertyStyle();
 
@@ -31,9 +34,11 @@ public class LemurSupport{
      *
      * @param dryRun If true then scans for things that would trigger, but doesn't actually trigger then. Used for
      *               only triggering clicks on first touch, but then allowing a reset when nothing is touched
+     * @param newKeyboards New keyboards are given to this consumer. The intention is that the caller can close that keyboard (by detaching the state) if another is opened etc
      */
-    public static boolean clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun){
-        clickThroughCollisionResultsForSpecialHandling(nodePickedAgainst, results, stateManager);
+    public static FullHandlingClickThroughResult clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun, Consumer<LemurKeyboard> newKeyboards){
+        SpecialHandlingClickThroughResult specialClickResult = clickThroughCollisionResultsForSpecialHandling(nodePickedAgainst, results, stateManager, dryRun, newKeyboards);
+
         for( int i=0;i<results.size();i++ ){
             CollisionResult collision = results.getCollision(i);
             boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
@@ -42,31 +47,35 @@ public class LemurSupport{
                 Spatial processedSpatial = collision.getGeometry();
                 while(processedSpatial!=null){
                     if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
-                        return false;
+                        return new FullHandlingClickThroughResult(specialClickResult, false);
                     }
                     if (processedSpatial instanceof Button){
                         if (!dryRun){((Button)processedSpatial).click();}
-                        return true;
+                        return new FullHandlingClickThroughResult(specialClickResult, true);
                     }
                     MouseEventControl mec = processedSpatial.getControl(MouseEventControl.class);
                     if ( mec!=null ){
                         if (!dryRun){
                             mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
                         }
-                        return true;
+                        return new FullHandlingClickThroughResult(specialClickResult, true);
                     }
                     processedSpatial = processedSpatial.getParent();
                 }
             }
         }
-        return false;
+        return new FullHandlingClickThroughResult(specialClickResult, false);
     }
 
     /**
      * Given a set of collision results, looks through them for anything that needs to be handled in a non "traditional lemur" way, like opening keyboards
-     * @param results the result of a pick that returns things that could be a lemur ui
+     * @param nodePickedAgainst the node that is picked against (Used for attaching keyboards to)
+     * @param results the collision results to pick through
+     * @param stateManager the stateManager
+     * @param newKeyboards New keyboards are given to this consumer. The intention is that the caller can close that keyboard (by detaching the state) if another is opened etc
+     * @return if it did (or would have if dry run) opened a keyboard or other special handing
      */
-    public static void clickThroughCollisionResultsForSpecialHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager){
+    public static SpecialHandlingClickThroughResult clickThroughCollisionResultsForSpecialHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun, Consumer<LemurKeyboard> newKeyboards){
         for( int i=0;i<results.size();i++ ){
             CollisionResult collision = results.getCollision(i);
             boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
@@ -74,15 +83,17 @@ public class LemurSupport{
             if (!skip){
                 Spatial processedSpatial = collision.getGeometry();
                 while(processedSpatial!=null){
+                    if (Boolean.TRUE.equals(processedSpatial.getUserData(LEMUR_TAMARIN_KEYBOARD))){
+                        return SpecialHandlingClickThroughResult.CLICK_ON_LEMUR_KEYBOARD;
+                    }
                     if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
-                        return;
+                        return SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS;
                     }
 
                     if ( processedSpatial instanceof TextField){
-                        terminateAnyExistingKeyboards(stateManager);
                         TextField textField = ((TextField)processedSpatial);
                         textField.getControl(GuiControl.class).focusGained();
-                        stateManager.attach(new LemurKeyboard(
+                        LemurKeyboard keyboard = new LemurKeyboard(
                                 nodePickedAgainst,
                                 c -> textField.setText(textField.getText()+c),
                                 (event,data) -> {
@@ -101,28 +112,20 @@ public class LemurSupport{
                                             break;
                                     }
                                 }, keyboardStyle
-                                ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation()));
-                        return;
+                                ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation());
+                        if (!dryRun){
+                            stateManager.attach(keyboard);
+                            newKeyboards.accept(keyboard);
+                        }
+                        return SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD;
                     }
                     processedSpatial = processedSpatial.getParent();
                 }
-                //if we don't click on anything that cares then that closes the keyboard
-                terminateAnyExistingKeyboards(stateManager);
-                return;
+                return SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS;
             }
 
         }
-        //if we don't click on anything that cares then that closes the keyboard
-        terminateAnyExistingKeyboards(stateManager);
+        return SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS;
     }
-
-    public static void terminateAnyExistingKeyboards(AppStateManager stateManager){
-        LemurKeyboard keyboard = stateManager.getState(LemurKeyboard.class);
-
-        if (keyboard!=null){
-            stateManager.detach(keyboard);
-        }
-    }
-
 }
 

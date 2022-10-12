@@ -7,8 +7,10 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
-import com.onemillionworlds.tamarin.debugwindow.DebugWindowState;
+import com.onemillionworlds.tamarin.lemursupport.FullHandlingClickThroughResult;
+import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
@@ -47,15 +49,15 @@ public class PressFunction implements BoundHandFunction{
     private Camera syntheticCamera;
     private ViewPort syntheticViewport;
 
-    private VrLemurAppState mouseAppState;
-    private PickEventSession lemurSession;
-
     private ActionBasedOpenVrState actionBasedOpenVrState;
-    private VRHandsAppState vrHandsAppState;
+
+    private AppStateManager stateManager;
 
     Collection<AbstractTouchControl> currentlyTouching = new ArrayList<>(1);
 
     float timeSinceTouched = TOUCH_SUPPRESSION_TIME;
+
+    Optional<LemurKeyboard> openKeyboard = Optional.empty();
 
     /**
      *
@@ -74,11 +76,11 @@ public class PressFunction implements BoundHandFunction{
 
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
+        this.stateManager = stateManager;
         this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.class);
-        this.mouseAppState = stateManager.getState(VrLemurAppState.class);
-        this.vrHandsAppState = stateManager.getState(VRHandsAppState.class);
+        VrLemurAppState mouseAppState = stateManager.getState(VrLemurAppState.class);
         if (BoundHand.isLemurAvailable()){
-            lemurSession = LemurProtectedSupport.getSession(this.mouseAppState);
+            PickEventSession lemurSession = LemurProtectedSupport.getSession(mouseAppState);
         }
 
     }
@@ -96,9 +98,15 @@ public class PressFunction implements BoundHandFunction{
             CollisionResults results = boundHand.pickIndexFingerTip(pickAgainstNode);
             boolean shouldTriggerHaptic = false;
             if (BoundHand.isLemurAvailable()){
-                boolean lemurTouchedThisUpdate = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, lemurTouchedLastUpdate);
+                boolean dryRun = lemurTouchedLastUpdate;
+                FullHandlingClickThroughResult clickResult = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, dryRun, this::handleNewKeyboardOpening);
+                boolean lemurTouchedThisUpdate = clickResult.isClickRegularHandled() || clickResult.getSpecialHandlingClickThroughResult() == SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD;
                 shouldTriggerHaptic = !lemurTouchedLastUpdate && lemurTouchedThisUpdate;
                 lemurTouchedLastUpdate = lemurTouchedThisUpdate;
+
+                if (results.size()>0 && !dryRun && openKeyboard.isPresent() && (clickResult.getSpecialHandlingClickThroughResult() == SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS)){
+                    closeOpenKeyboard();
+                }
             }
 
             //go looking for tamarin touch controls
@@ -130,5 +138,16 @@ public class PressFunction implements BoundHandFunction{
             }
 
         }
+    }
+
+    private void handleNewKeyboardOpening(LemurKeyboard keyboard){
+        //may have already self detached, that's fine if so
+        closeOpenKeyboard();
+        openKeyboard = Optional.of(keyboard);
+    }
+
+    private void closeOpenKeyboard(){
+        openKeyboard.ifPresent(k -> this.stateManager.detach(k));
+        openKeyboard = Optional.empty();
     }
 }

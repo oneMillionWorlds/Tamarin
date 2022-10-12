@@ -58,8 +58,7 @@ public class LemurKeyboard extends BaseAppState{
      */
     public LemurKeyboard(Node nodeToAttachTo, Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, KeyboardStyle keyboardStyle, Vector3f ownerPosition, Quaternion ownerRotation){
         nodeToAttachTo.attachChild(rootNodeDelegate);
-        rootNodeDelegate.setLocalTranslation(nodeToAttachTo.getWorldTranslation());
-        rootNodeDelegate.setLocalRotation(nodeToAttachTo.getLocalRotation().inverse());
+        rootNodeDelegate.setLocalTransform(nodeToAttachTo.getWorldTransform().invert());
 
         this.textConsumer = textConsumer;
         this.eventConsumer = eventConsumer;
@@ -93,6 +92,7 @@ public class LemurKeyboard extends BaseAppState{
         keyboardNode.detachAllChildren();
 
         Container lemurWindow = new Container();
+        lemurWindow.setUserData(LemurSupport.LEMUR_TAMARIN_KEYBOARD, true);
         lemurWindow.setUserData(LemurSupport.TAMARIN_STOP_BUBBLING, true); //so that clicking on the keyboard doesn't close the keyboard
         lemurWindow.addMouseListener(new MouseListener(){
             @Override public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){event.setConsumed();} //prevent "clicking through" the keyboard if a button is missed

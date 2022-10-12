@@ -10,19 +10,19 @@ import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
+import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
+import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.simsilica.lemur.event.LemurProtectedSupport;
-import com.simsilica.lemur.event.MouseAppState;
 import com.simsilica.lemur.event.PickEventSession;
 import lombok.Setter;
 import lombok.SneakyThrows;
-import org.lwjgl.openvr.VR;
-import org.lwjgl.system.CallbackI;
 
 import java.util.List;
+import java.util.Optional;
 
 public class LemurClickFunction implements BoundHandFunction{
 
@@ -64,16 +64,20 @@ public class LemurClickFunction implements BoundHandFunction{
     private VrLemurAppState mouseAppState;
     private PickEventSession lemurSession;
 
+    Optional<LemurKeyboard> openKeyboard = Optional.empty();
+
     public LemurClickFunction(String clickAction, Node pickAgainstNode){
         this.pickAgainstNode = pickAgainstNode;
         this.clickAction = clickAction;
     }
 
-
     public void clickSpecialSupport(){
         BoundHand.assertLemurAvailable();
         CollisionResults results = this.boundHand.pickBulkHand(pickAgainstNode);
-        LemurSupport.clickThroughCollisionResultsForSpecialHandling(pickAgainstNode, results, actionBasedOpenVrState.getStateManager());
+        SpecialHandlingClickThroughResult specialHandlingClickThroughResult = LemurSupport.clickThroughCollisionResultsForSpecialHandling(pickAgainstNode, results, actionBasedOpenVrState.getStateManager(), false, this::handleNewKeyboardOpening);
+        if (openKeyboard.isPresent() && (specialHandlingClickThroughResult == SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS)){
+            closeOpenKeyboard();
+        }
     }
 
     @Override
@@ -120,6 +124,17 @@ public class LemurClickFunction implements BoundHandFunction{
             }
         }
         lastTriggerPressure = triggerPressure;
+    }
+
+    private void handleNewKeyboardOpening(LemurKeyboard keyboard){
+        //may have already self detached, that's fine if so
+        closeOpenKeyboard();
+        openKeyboard = Optional.of(keyboard);
+    }
+
+    private void closeOpenKeyboard(){
+        openKeyboard.ifPresent(k -> this.stateManager.detach(k));
+        openKeyboard = Optional.empty();
     }
 
     private float getClickActionPressure(String action){

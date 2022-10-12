@@ -105,11 +105,12 @@ public class TamarinUtilities{
      */
     public static <T extends Control> Collection<T> findAllControlsInResults(Class<T> searchClass, CollisionResults collisionResults){
         Set<T> results = new HashSet<>(1); //usually we find 1 or zero results
+        directResults:
         for(CollisionResult result : collisionResults){
             Spatial workingTarget = result.getGeometry();
             while(workingTarget !=null){
                 if (Boolean.TRUE.equals(workingTarget.getUserData(LemurSupport.TAMARIN_STOP_BUBBLING))){
-                    continue;
+                    continue directResults;
                 }
 
                 T control = workingTarget.getControl(searchClass);
