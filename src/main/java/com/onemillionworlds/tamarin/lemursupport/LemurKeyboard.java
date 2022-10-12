@@ -18,6 +18,7 @@ import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.event.MouseListener;
 import lombok.Getter;
+
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -30,7 +31,7 @@ import java.util.function.Consumer;
  */
 public class LemurKeyboard extends BaseAppState{
 
-    public static float keyboardScale = 0.005f;
+    public float keyboardScale;
 
     private final Node rootNodeDelegate = new Node("LemurKeyboardRootNodeDelegate");
     private final Node keyboardNode = new Node("LemurKeyboard");
@@ -55,9 +56,12 @@ public class LemurKeyboard extends BaseAppState{
      * @param eventConsumer when any event other than typing occurs it is published here, the first item is the category, the second is an object that may contain extra details (or may be null) depending on the event type
      * @param keyboardStyle the specific keys that the keyboard should use
      * @param ownerPosition the thing that triggered the keyboard to show's position. The keyboard will appear slightly closer to the player than this and a little below (so eyeline is not blocked)
+     * @param absoluteScale the scale the keyboard should be (the world scale will be this and the local scale will be adjusted such that
      */
-    public LemurKeyboard(Node nodeToAttachTo, Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, KeyboardStyle keyboardStyle, Vector3f ownerPosition, Quaternion ownerRotation){
+    public LemurKeyboard(Node nodeToAttachTo, Consumer<String> textConsumer, BiConsumer<KeyboardEvent,Object> eventConsumer, KeyboardStyle keyboardStyle, Vector3f ownerPosition, Quaternion ownerRotation, float absoluteScale){
         nodeToAttachTo.attachChild(rootNodeDelegate);
+
+        //the world transform includes scale, but we are dealing with that ourselves later so that's fine
         rootNodeDelegate.setLocalTransform(nodeToAttachTo.getWorldTransform().invert());
 
         this.textConsumer = textConsumer;
@@ -65,6 +69,7 @@ public class LemurKeyboard extends BaseAppState{
         this.keyboardStyle = keyboardStyle;
         this.ownerPosition= ownerPosition;
         this.ownerRotation = ownerRotation;
+        this.keyboardScale = absoluteScale;
     }
 
     @Override

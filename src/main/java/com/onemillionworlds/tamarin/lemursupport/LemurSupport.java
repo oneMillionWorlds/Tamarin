@@ -112,7 +112,8 @@ public class LemurSupport{
                                             break;
                                     }
                                 }, keyboardStyle
-                                ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation());
+                                ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation(),
+                                textField.getWorldScale().x);
                         if (!dryRun){
                             stateManager.attach(keyboard);
                             newKeyboards.accept(keyboard);
