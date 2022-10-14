@@ -10,6 +10,8 @@ import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards.SimpleQwertyStyle;
 import com.simsilica.lemur.Button;
+import com.simsilica.lemur.Container;
+import com.simsilica.lemur.Selector;
 import com.simsilica.lemur.TextField;
 import com.simsilica.lemur.core.GuiControl;
 import com.simsilica.lemur.event.MouseEventControl;
@@ -119,6 +121,11 @@ public class LemurSupport{
                             newKeyboards.accept(keyboard);
                         }
                         return SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD;
+                    }else if (processedSpatial instanceof Selector){
+                        //the popup state used by Selector does not work in 3d. Handle it ourselves
+                        Selector<?> selector = (Selector<?>)processedSpatial;
+                        SelectorPopUp<?> popUp = new SelectorPopUp<>(nodePickedAgainst, selector);
+                        stateManager.attach(popUp);
                     }
                     processedSpatial = processedSpatial.getParent();
                 }
