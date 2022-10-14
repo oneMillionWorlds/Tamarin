@@ -116,6 +116,8 @@ public class LemurSupport{
                                             textField.setText("");
                                             break;
                                         case CLOSED_KEYBOARD:
+                                            //its fairly normal to trigger actions off losing focus, so trigger that
+                                            textField.getControl(GuiControl.class).focusGained();
                                             textField.getControl(GuiControl.class).focusLost();
                                             break;
                                     }
