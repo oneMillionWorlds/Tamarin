@@ -10,6 +10,7 @@ import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
+import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
 import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
@@ -65,6 +66,7 @@ public class LemurClickFunction implements BoundHandFunction{
     private PickEventSession lemurSession;
 
     Optional<LemurKeyboard> openKeyboard = Optional.empty();
+    Optional<SelectorPopUp<?>> openDropdown = Optional.empty();
 
     public LemurClickFunction(String clickAction, Node pickAgainstNode){
         this.pickAgainstNode = pickAgainstNode;
@@ -74,9 +76,12 @@ public class LemurClickFunction implements BoundHandFunction{
     public void clickSpecialSupport(){
         BoundHand.assertLemurAvailable();
         CollisionResults results = this.boundHand.pickBulkHand(pickAgainstNode);
-        SpecialHandlingClickThroughResult specialHandlingClickThroughResult = LemurSupport.clickThroughCollisionResultsForSpecialHandling(pickAgainstNode, results, actionBasedOpenVrState.getStateManager(), false, this::handleNewKeyboardOpening);
-        if (openKeyboard.isPresent() && (specialHandlingClickThroughResult == SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS)){
+        SpecialHandlingClickThroughResult specialHandlingClickThroughResult = LemurSupport.clickThroughCollisionResultsForSpecialHandling(pickAgainstNode, results, actionBasedOpenVrState.getStateManager(), false, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
+        if (openKeyboard.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICK_ON_LEMUR_KEYBOARD)){
             closeOpenKeyboard();
+        }
+        if (openDropdown.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_DROPDOWN && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICKED_ON_DROPDOWN_POPUP)){
+            closeDropDown();
         }
     }
 
@@ -132,9 +137,19 @@ public class LemurClickFunction implements BoundHandFunction{
         openKeyboard = Optional.of(keyboard);
     }
 
+    private void handleNewDropdownOpening(SelectorPopUp<?> newSelectorPopup){
+        closeDropDown();
+        openDropdown = Optional.of(newSelectorPopup);
+    }
+
     private void closeOpenKeyboard(){
         openKeyboard.ifPresent(k -> this.stateManager.detach(k));
         openKeyboard = Optional.empty();
+    }
+
+    private void closeDropDown(){
+        openDropdown.ifPresent(k -> this.stateManager.detach(k));
+        openDropdown = Optional.empty();
     }
 
     private float getClickActionPressure(String action){

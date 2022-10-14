@@ -10,7 +10,6 @@ import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards.SimpleQwertyStyle;
 import com.simsilica.lemur.Button;
-import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Selector;
 import com.simsilica.lemur.TextField;
 import com.simsilica.lemur.core.GuiControl;
@@ -24,6 +23,7 @@ public class LemurSupport{
 
     public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
     public static final String LEMUR_TAMARIN_KEYBOARD = "LEMUR_TAMARIN_KEYBOARD";
+    public static final String LEMUR_SELECTOR_POPUP = "LEMUR_SELECTOR_POPUP";
 
     public static KeyboardStyle keyboardStyle = new SimpleQwertyStyle();
 
@@ -37,9 +37,10 @@ public class LemurSupport{
      * @param dryRun If true then scans for things that would trigger, but doesn't actually trigger then. Used for
      *               only triggering clicks on first touch, but then allowing a reset when nothing is touched
      * @param newKeyboards New keyboards are given to this consumer. The intention is that the caller can close that keyboard (by detaching the state) if another is opened etc
+     * @param newSelectorPopups new SelectorPopups (things that get created when drop downs are clicked on). The intention is that the caller can close that popup (by detaching the state) if another is opened etc
      */
-    public static FullHandlingClickThroughResult clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun, Consumer<LemurKeyboard> newKeyboards){
-        SpecialHandlingClickThroughResult specialClickResult = clickThroughCollisionResultsForSpecialHandling(nodePickedAgainst, results, stateManager, dryRun, newKeyboards);
+    public static FullHandlingClickThroughResult clickThroughFullHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun, Consumer<LemurKeyboard> newKeyboards, Consumer<SelectorPopUp<?>> newSelectorPopups){
+        SpecialHandlingClickThroughResult specialClickResult = clickThroughCollisionResultsForSpecialHandling(nodePickedAgainst, results, stateManager, dryRun, newKeyboards, newSelectorPopups);
 
         for( int i=0;i<results.size();i++ ){
             CollisionResult collision = results.getCollision(i);
@@ -75,9 +76,10 @@ public class LemurSupport{
      * @param results the collision results to pick through
      * @param stateManager the stateManager
      * @param newKeyboards New keyboards are given to this consumer. The intention is that the caller can close that keyboard (by detaching the state) if another is opened etc
+     * @param newSelectorPopups new SelectorPopups (things that get created when drop downs are clicked on). The intention is that the caller can close that popup (by detaching the state) if another is opened etc
      * @return if it did (or would have if dry run) opened a keyboard or other special handing
      */
-    public static SpecialHandlingClickThroughResult clickThroughCollisionResultsForSpecialHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun, Consumer<LemurKeyboard> newKeyboards){
+    public static SpecialHandlingClickThroughResult clickThroughCollisionResultsForSpecialHandling(Node nodePickedAgainst, CollisionResults results, AppStateManager stateManager, boolean dryRun, Consumer<LemurKeyboard> newKeyboards, Consumer<SelectorPopUp<?>> newSelectorPopups){
         for( int i=0;i<results.size();i++ ){
             CollisionResult collision = results.getCollision(i);
             boolean skip = Boolean.TRUE.equals(collision.getGeometry().getUserData(NO_PICK));
@@ -88,6 +90,10 @@ public class LemurSupport{
                     if (Boolean.TRUE.equals(processedSpatial.getUserData(LEMUR_TAMARIN_KEYBOARD))){
                         return SpecialHandlingClickThroughResult.CLICK_ON_LEMUR_KEYBOARD;
                     }
+                    if (Boolean.TRUE.equals(processedSpatial.getUserData(LEMUR_SELECTOR_POPUP))){
+                        return SpecialHandlingClickThroughResult.CLICKED_ON_DROPDOWN_POPUP;
+                    }
+
                     if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
                         return SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS;
                     }
@@ -125,7 +131,11 @@ public class LemurSupport{
                         //the popup state used by Selector does not work in 3d. Handle it ourselves
                         Selector<?> selector = (Selector<?>)processedSpatial;
                         SelectorPopUp<?> popUp = new SelectorPopUp<>(nodePickedAgainst, selector);
-                        stateManager.attach(popUp);
+                        if (!dryRun){
+                            stateManager.attach(popUp);
+                            newSelectorPopups.accept(popUp);
+                        }
+                        return SpecialHandlingClickThroughResult.OPENED_DROPDOWN;
                     }
                     processedSpatial = processedSpatial.getParent();
                 }

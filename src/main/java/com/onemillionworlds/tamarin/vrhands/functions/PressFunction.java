@@ -10,10 +10,10 @@ import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.lemursupport.FullHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
 import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
-import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
 import com.simsilica.lemur.event.LemurProtectedSupport;
 import com.simsilica.lemur.event.PickEventSession;
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 /**
  * This will use finger tip picking and will look for both lemur controls (optional dependant) and
@@ -32,6 +33,8 @@ import java.util.Optional;
  * event listeners and text boxes)
  */
 public class PressFunction implements BoundHandFunction{
+
+    private static final Logger logger = Logger.getLogger(PressFunction.class.getName());
 
     /**
      * If there are multiple touches within this time all but the first are suppressed
@@ -58,6 +61,8 @@ public class PressFunction implements BoundHandFunction{
     float timeSinceTouched = TOUCH_SUPPRESSION_TIME;
 
     Optional<LemurKeyboard> openKeyboard = Optional.empty();
+
+    Optional<SelectorPopUp<?>> openDropdown = Optional.empty();
 
     /**
      *
@@ -99,7 +104,7 @@ public class PressFunction implements BoundHandFunction{
             boolean shouldTriggerHaptic = false;
             if (BoundHand.isLemurAvailable()){
                 boolean dryRun = lemurTouchedLastUpdate;
-                FullHandlingClickThroughResult clickResult = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, dryRun, this::handleNewKeyboardOpening);
+                FullHandlingClickThroughResult clickResult = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, dryRun, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
                 boolean lemurTouchedThisUpdate = clickResult.isClickRegularHandled() || clickResult.getSpecialHandlingClickThroughResult() == SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD;
                 shouldTriggerHaptic = !lemurTouchedLastUpdate && lemurTouchedThisUpdate;
                 lemurTouchedLastUpdate = lemurTouchedThisUpdate;
@@ -146,8 +151,18 @@ public class PressFunction implements BoundHandFunction{
         openKeyboard = Optional.of(keyboard);
     }
 
+    private void handleNewDropdownOpening(SelectorPopUp<?> newSelectorPopup){
+        logger.warning("Selector used with finger tip interaction, this is not supported");
+        closeDropDown();
+        openDropdown = Optional.of(newSelectorPopup);
+    }
+
     private void closeOpenKeyboard(){
         openKeyboard.ifPresent(k -> this.stateManager.detach(k));
         openKeyboard = Optional.empty();
+    }
+    private void closeDropDown(){
+        openDropdown.ifPresent(k -> this.stateManager.detach(k));
+        openDropdown = Optional.empty();
     }
 }

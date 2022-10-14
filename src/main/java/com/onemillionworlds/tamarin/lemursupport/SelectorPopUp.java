@@ -71,6 +71,10 @@ public class SelectorPopUp <T> extends BaseAppState{
         int listDisplayedItems = owner.getMaximumVisibleItems() == 0 ? owner.getModel().size() : Math.min(owner.getModel().size() , owner.getMaximumVisibleItems());
         listBox.setVisibleItems(listDisplayedItems);
         Container container = new Container();
+
+        container.setUserData(LemurSupport.LEMUR_SELECTOR_POPUP, true);
+        container.setUserData(LemurSupport.TAMARIN_STOP_BUBBLING, true);
+
         container.addChild(listBox);
         container.setLocalScale(scale);
         popupNode.attachChild(container);

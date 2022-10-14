@@ -15,4 +15,15 @@ public enum SpecialHandlingClickThroughResult{
      * The click triggered a lemur keyboard to open
      */
     OPENED_LEMUR_KEYBOARD,
+
+    /**
+     * Opened the special support for drop-downs (as lemur ones only work in 2D)
+     */
+    OPENED_DROPDOWN,
+
+    /**
+     * Largely handled separately but the caller is informed so that clicking on the Up/Down arrows
+     * doesn't trigger a closure
+     */
+    CLICKED_ON_DROPDOWN_POPUP,
 }
