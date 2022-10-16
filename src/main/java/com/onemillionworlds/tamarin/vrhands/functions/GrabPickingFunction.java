@@ -59,7 +59,7 @@ public class GrabPickingFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.class);
+        this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.ID, ActionBasedOpenVrState.class);
     }
 
     @Override
