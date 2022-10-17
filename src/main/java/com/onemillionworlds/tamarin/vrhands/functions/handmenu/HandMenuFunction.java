@@ -38,9 +38,11 @@ public class HandMenuFunction<T> implements BoundHandFunction{
 
     private static final String MENU_BRANCH_PATH = "MENU_BRANCH_PATH";
 
+    private static final String ITEM_SELECTION = "ITEM_SELECTION";
+
     private final List<MenuItem<T>> menuItems;
 
-    private final Consumer<T> selectionConsumer;
+    private final Consumer<Optional<T>> selectionConsumer;
 
     String digitalActionToOpenMenu;
 
@@ -96,7 +98,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
      * @param selectionConsumer when an item is selected it is given to this consumer
      * @param digitalActionToOpenMenu The digital action (button press) that opens the menu
      */
-    public HandMenuFunction(List<MenuItem<T>> menuItems, Consumer<T> selectionConsumer, String digitalActionToOpenMenu){
+    public HandMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, String digitalActionToOpenMenu){
         this.menuItems = menuItems;
         this.selectionConsumer = selectionConsumer;
         this.digitalActionToOpenMenu = digitalActionToOpenMenu;
@@ -140,6 +142,8 @@ public class HandMenuFunction<T> implements BoundHandFunction{
 
     public void closeMenuAndSelect(){
         menuNode.setCullHint(Spatial.CullHint.Always);
+        selectionConsumer.accept(pickForItemData());
+
         menuOpen = false;
     }
 
@@ -176,6 +180,26 @@ public class HandMenuFunction<T> implements BoundHandFunction{
         return Optional.empty();
     }
 
+    private Optional<T> pickForItemData(){
+        CollisionResults results = new CollisionResults();
+
+        Vector3f palmCentre = boundHand.getPalmNode().getWorldTranslation();
+        BoundingSphere sphere = new BoundingSphere(0.02f, palmCentre);
+        menuNode.collideWith(sphere, results);
+
+        for(int index=0;index<results.size();index++){
+            CollisionResult collision = results.getCollision(index);
+            Spatial spatial = collision.getGeometry();
+            while(spatial!=null && spatial.getUserData(ITEM_SELECTION)==null){
+                spatial = spatial.getParent();
+            }
+            if (spatial!=null){
+                return Optional.of(spatial.getUserData(ITEM_SELECTION));
+            }
+        }
+        return Optional.empty();
+    }
+
     /**
      * Builds the entire menu, the menu is traversed by hiding and unhiding parts of it
      */
@@ -200,7 +224,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
                 buildSubItem(1, angle, menuBranch.getSubItems(), ringPathControlled);
             }else{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
-                //handle grab
+                menuItemNode.setUserData(ITEM_SELECTION, menuLeaf.getLeafItem());
             }
         }
     }
@@ -226,10 +250,11 @@ public class HandMenuFunction<T> implements BoundHandFunction{
                 MenuBranch<T> menuBranch = (MenuBranch<T>)menuItem;
                 ArrayList<MenuBranch<T>> childParents = new ArrayList<>(parents);
                 childParents.add(menuBranch);
+                configureMenuBranchForTouch(menuItemNode, childParents);
                 buildSubItem(ringIndex+1, angle, menuBranch.getSubItems(), childParents);
             }else{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
-                //handle grab
+                menuItemNode.setUserData(ITEM_SELECTION, menuLeaf.getLeafItem());
             }
         }
     }
