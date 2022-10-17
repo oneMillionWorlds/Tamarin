@@ -31,7 +31,8 @@ import java.util.function.Consumer;
  *
  * The menu can be a tree, where passing the hand through 1 item opens up a new set of branches
  *
- * Optionally a grab action may be required to select the items (either just the final leaf items or all items
+ * The menu remains open for as long as the digital action remains true. When the action is released where the hand is
+ * controls what is selected
  */
 public class HandMenuFunction<T> implements BoundHandFunction{
 
@@ -121,23 +122,23 @@ public class HandMenuFunction<T> implements BoundHandFunction{
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        DigitalActionState toggleMenuAction = actionBasedOpenVrState.getDigitalActionState(digitalActionToOpenMenu, boundHand.getHandSide().restrictToInputString);
-        boolean toggleMenu = toggleMenuAction.changed && toggleMenuAction.state;
-        if (toggleMenu){
-            if(menuOpen){
-                closeMenu();
-            } else{
-                openMenu();
-            }
+        DigitalActionState menuButtonPressed = actionBasedOpenVrState.getDigitalActionState(digitalActionToOpenMenu, boundHand.getHandSide().restrictToInputString);
+        if (menuButtonPressed.state && !this.menuOpen){
+            openMenu();
         }
-        if (menuOpen){
+
+        if (!menuButtonPressed.state && this.menuOpen){
+            closeMenuAndSelect();
+        }
+
+        if (this.menuOpen){
             //scan the palm area and finger tip area for menu items
             pickForMenuInteraction().ifPresent(this::updateRingVisibilityForSelectedPath);
         }
 
     }
 
-    public void closeMenu(){
+    public void closeMenuAndSelect(){
         menuNode.setCullHint(Spatial.CullHint.Always);
         menuOpen = false;
     }
