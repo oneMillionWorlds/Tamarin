@@ -286,12 +286,31 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         menuBranchGeometry.setUserData(MENU_BRANCH_PATH, pathToOpen);
     }
 
+    /**
+     * The default child ring positioner prefers to have the middle of the ring near the parent. But if the ring
+     * goes under the hand and could sensibly be positioned nearer the top (i.e. has loads of items) do that instead
+     */
     private float defaultChildRingPositioner(int itemIndex, int totalNumberOfSubItems, float angleOfParent, int ringDepth){
         float ringRadius = firstRingRadius + (ringDepth)*interRingDistance;
         float circumferencePerItem = 0.15f;
         float anglePerItem = circumferencePerItem/ringRadius;
 
-        return angleOfParent + (itemIndex- (totalNumberOfSubItems-1)/2f) *anglePerItem;
+        float totalAngleUsed = anglePerItem * totalNumberOfSubItems;
+
+        float centreOfRing = angleOfParent;
+
+        float maxAngle = centreOfRing + totalAngleUsed/2;
+        float minAngle = centreOfRing + totalAngleUsed/2;
+
+        if (totalAngleUsed > 1.5 * FastMath.PI){
+            centreOfRing = 0; //just put the ring starting at the top
+        }else if (maxAngle>0.75*FastMath.PI){
+            centreOfRing-=maxAngle-0.75*FastMath.PI;
+        }else if (minAngle<-0.75*FastMath.PI){
+            centreOfRing+=Math.abs(minAngle)-0.75*FastMath.PI;
+        }
+
+        return centreOfRing + (itemIndex- (totalNumberOfSubItems-1)/2f) *anglePerItem;
 
     }
 
