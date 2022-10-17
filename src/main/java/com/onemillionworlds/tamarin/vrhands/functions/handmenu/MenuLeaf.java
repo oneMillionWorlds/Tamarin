@@ -15,4 +15,9 @@ public class MenuLeaf<T> extends MenuItem<T>{
         super(optionGeometry);
         this.leafItem = leafItem;
     }
+
+    @Override
+    public String toString(){
+        return "MenuLeaf{" + leafItem +'}';
+    }
 }

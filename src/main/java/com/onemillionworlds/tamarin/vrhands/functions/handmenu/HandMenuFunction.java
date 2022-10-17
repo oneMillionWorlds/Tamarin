@@ -22,9 +22,13 @@ import com.onemillionworlds.tamarin.vrhands.HandSide;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Value;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,14 +44,11 @@ import java.util.function.Consumer;
  * controls what is selected
  */
 public class HandMenuFunction<T> implements BoundHandFunction{
-
-    public static float ARM_LENGTH = 0.6f; //this is about average, its better than nothing.
-
+    
     private static final String MENU_BRANCH_PATH = "MENU_BRANCH_PATH";
 
-    private static final String ITEM_SELECTION = "ITEM_SELECTION";
-
-    private final List<MenuItem<T>> menuItems;
+    private final List<MenuItem<T>> topLevelMenuItems;
+    private List<MenuBranch<T>> currentOpenPath = List.of();
 
     private final Consumer<Optional<T>> selectionConsumer;
 
@@ -59,6 +60,11 @@ public class HandMenuFunction<T> implements BoundHandFunction{
     Node menuNode = new Node("MenuNode");
     private boolean menuOpen = false;
 
+    /**
+     * For selecting leaves this is the futhest the palm can be from the centre and still be considered a select
+     */
+    @Setter
+    private float maximumSelectRange = 0.1f;
     /**
      * This records a set of menu item paths (The great grandparent -> grandparent -> parent etc) and the ring
      * centre node that should be shown if that path is active
@@ -100,13 +106,15 @@ public class HandMenuFunction<T> implements BoundHandFunction{
 
     private AppStateManager stateManager;
 
+    private final Collection<ItemPositionData> leafPositions = new HashSet<>();
+
     /**
      * @param menuItems the tree of menu items
      * @param selectionConsumer when an item is selected it is given to this consumer
      * @param digitalActionToOpenMenu The digital action (button press) that opens the menu
      */
     public HandMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, String digitalActionToOpenMenu){
-        this.menuItems = menuItems;
+        this.topLevelMenuItems = menuItems;
         this.selectionConsumer = selectionConsumer;
         this.digitalActionToOpenMenu = digitalActionToOpenMenu;
     }
@@ -190,23 +198,14 @@ public class HandMenuFunction<T> implements BoundHandFunction{
     }
 
     private Optional<T> pickForItemData(){
-        CollisionResults results = new CollisionResults();
 
         Vector3f palmCentre = boundHand.getPalmNode().getWorldTranslation();
-        BoundingSphere sphere = new BoundingSphere(0.02f, palmCentre);
-        menuNode.collideWith(sphere, results);
 
-        for(int index=0;index<results.size();index++){
-            CollisionResult collision = results.getCollision(index);
-            Spatial spatial = collision.getGeometry();
-            while(spatial!=null && spatial.getUserData(ITEM_SELECTION)==null){
-                spatial = spatial.getParent();
-            }
-            if (spatial!=null){
-                return Optional.of(spatial.getUserData(ITEM_SELECTION));
-            }
-        }
-        return Optional.empty();
+        return leafPositions.stream()
+                .filter(l -> l.position.distanceSquared(palmCentre)<maximumSelectRange*maximumSelectRange)
+                .filter(l -> currentOpenPath.containsAll(l.getParents())) //if the branch with this leaf is open
+                .min(Comparator.comparingDouble(l -> l.position.distanceSquared(palmCentre)))
+                .map(l -> l.getMenuLeaf().getLeafItem());
     }
 
     /**
@@ -214,14 +213,14 @@ public class HandMenuFunction<T> implements BoundHandFunction{
      */
     private void buildMenu(){
 
-        for(int menuItemIndex = 0; menuItemIndex<menuItems.size();menuItemIndex++){
-            float angle = innerRingItemPositioner.determineAngleForItem(menuItemIndex,menuItems.size());
+        for(int menuItemIndex = 0; menuItemIndex< topLevelMenuItems.size(); menuItemIndex++){
+            float angle = innerRingItemPositioner.determineAngleForItem(menuItemIndex, topLevelMenuItems.size());
 
             Vector3f position = new Vector3f(firstRingRadius* FastMath.sin(angle), firstRingRadius*FastMath.cos(angle), 0);
 
             Node menuItemNode = new Node();
             menuItemNode.setLocalTranslation(position);
-            MenuItem<T> menuItem = menuItems.get(menuItemIndex);
+            MenuItem<T> menuItem = topLevelMenuItems.get(menuItemIndex);
             menuItemNode.attachChild(menuItem.getOptionGeometry());
 
             menuNode.attachChild(menuItemNode);
@@ -233,7 +232,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
                 buildSubItem(1, angle, menuBranch.getSubItems(), ringPathControlled);
             }else{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
-                menuItemNode.setUserData(ITEM_SELECTION, menuLeaf.getLeafItem());
+                leafPositions.add(new ItemPositionData(List.of(), menuItemNode.getWorldTranslation(), menuLeaf));
             }
         }
     }
@@ -245,9 +244,8 @@ public class HandMenuFunction<T> implements BoundHandFunction{
         subRingCentreNodes.put(parents, ringCentreNode);
 
         float ringRadius = firstRingRadius + ringIndex*interRingDistance;
-        //all this stuff should make the items appear on the surface of a sphere, about the shoulder, as that's easy to reach than a flat series of rings
-        float ringToShoulderAngle = FastMath.atan(ringRadius/ARM_LENGTH);
-        float amountToBringRingCloser = ringRadius * (1-FastMath.tan(ringToShoulderAngle));
+        //flat rings get uncomfortably far away the greater the radius, bring them closer as they get wider
+        float amountToBringRingCloser =  ringIndex * interRingDistance;
 
         for(int menuItemIndex = 0; menuItemIndex<menuItems.size();menuItemIndex++){
             float angle = childRingPositioner.determineAngleForItem(menuItemIndex, menuItems.size(), angleOfParent, ringIndex);
@@ -268,7 +266,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
                 buildSubItem(ringIndex+1, angle, menuBranch.getSubItems(), childParents);
             }else{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
-                menuItemNode.setUserData(ITEM_SELECTION, menuLeaf.getLeafItem());
+                leafPositions.add(new ItemPositionData(parents, menuItemNode.getWorldTranslation(), menuLeaf));
             }
         }
     }
@@ -281,6 +279,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
                 ring.getValue().setCullHint(Spatial.CullHint.Always);
             }
         }
+        currentOpenPath = path;
     }
 
     private void configureMenuBranchForTouch(Spatial menuBranchGeometry, List<MenuBranch<T>> pathToOpen){
@@ -308,9 +307,8 @@ public class HandMenuFunction<T> implements BoundHandFunction{
         float headToShoulderAngle = headToHandAngle+ (boundHand.getHandSide() == HandSide.RIGHT?+1:-1)*0.4f*FastMath.PI; //the constant is a bit dead reckoning based on experiment
 
         float centreHeadToShoulderDistance = 0.12f; //the constant is a bit dead reckoning based on experiment
-        Vector3f shoulderPosition = new Vector3f(headPosition.x + centreHeadToShoulderDistance*FastMath.cos(headToShoulderAngle), shoulderHeight, headPosition.z +centreHeadToShoulderDistance*FastMath.sin(headToShoulderAngle));
 
-        return shoulderPosition;
+        return new Vector3f(headPosition.x + centreHeadToShoulderDistance*FastMath.cos(headToShoulderAngle), shoulderHeight, headPosition.z +centreHeadToShoulderDistance*FastMath.sin(headToShoulderAngle));
 
     }
 
@@ -333,5 +331,22 @@ public class HandMenuFunction<T> implements BoundHandFunction{
          * @param ringDepth what ring this is, the first child ring is 1, child of child is 2 etc
          */
         float determineAngleForItem(int itemIndex, int totalNumberOfSubItems, float angleOfParent, int ringDepth);
+    }
+
+    private Spatial colouredBox(ColorRGBA colour){
+        Box box = new Box(0.02f, 0.02f, 0.02f);
+        Geometry boxGeometry = new Geometry("box", box);
+        Material boxMat = new Material(stateManager.getApplication().getAssetManager(),"Common/MatDefs/Misc/Unshaded.j3md");
+        boxMat.setColor("Color", colour);
+        boxGeometry.setMaterial(boxMat);
+
+        return boxGeometry;
+    }
+
+    @Value
+    private class ItemPositionData{
+        List<MenuBranch<T>> parents;
+        Vector3f position;
+        MenuLeaf<T> menuLeaf;
     }
 }
