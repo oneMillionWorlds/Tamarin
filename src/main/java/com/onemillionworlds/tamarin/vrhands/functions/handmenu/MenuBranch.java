@@ -16,9 +16,10 @@ import java.util.function.Supplier;
  * @param <T> the type of objects that this menu contains
  */
 public class MenuBranch<T> extends MenuItem<T>{
-    List<HandMenuFunction<T>> subItems;
+    @Getter
+    List<MenuItem<T>> subItems;
 
-    public MenuBranch(Spatial optionGeometry, List<HandMenuFunction<T>> subItems){
+    public MenuBranch(Spatial optionGeometry, List<MenuItem<T>> subItems){
         super(optionGeometry);
         this.subItems = subItems;
     }
