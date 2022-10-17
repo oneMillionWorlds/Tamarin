@@ -6,14 +6,19 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.bounding.BoundingSphere;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
+import com.jme3.material.Material;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.shape.Box;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
+import com.onemillionworlds.tamarin.vrhands.HandSide;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import lombok.Getter;
 import lombok.Setter;
@@ -93,7 +98,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
     @Getter
     private float interRingDistance = 0.15f;
 
-
+    private AppStateManager stateManager;
 
     /**
      * @param menuItems the tree of menu items
@@ -112,7 +117,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
         this.boundHand= boundHand;
         this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.ID, ActionBasedOpenVrState.class);
         this.vrAppState = stateManager.getState(VRAppState.class);
-
+        this.stateManager = stateManager;
         Node rootNode = ((SimpleApplication)stateManager.getApplication()).getRootNode();
         rootNode.attachChild(menuNode);
         menuNode.setCullHint(Spatial.CullHint.Always);
@@ -151,8 +156,10 @@ public class HandMenuFunction<T> implements BoundHandFunction{
 
     public void openMenu(){
         menuNode.setCullHint(Spatial.CullHint.Inherit);
+        Vector3f handPosition = boundHand.getPalmNode().getWorldTranslation();
+        Vector3f headPosition = TamarinUtilities.getVrCameraPosition(this.vrAppState);
         menuNode.setLocalTranslation(boundHand.getPalmNode().getWorldTranslation());
-        menuNode.lookAt(TamarinUtilities.getVrCameraPosition(this.vrAppState), Vector3f.UNIT_Y);
+        menuNode.lookAt(guessShoulderPosition(headPosition, handPosition), Vector3f.UNIT_Y);
         subRingCentreNodes.values().forEach(n -> n.setCullHint(Spatial.CullHint.Always));
 
         menuOpen = true;
@@ -286,6 +293,24 @@ public class HandMenuFunction<T> implements BoundHandFunction{
         float anglePerItem = circumferencePerItem/ringRadius;
 
         return angleOfParent + (itemIndex- (totalNumberOfSubItems-1)/2f) *anglePerItem;
+
+    }
+
+    private Vector3f guessShoulderPosition(Vector3f headPosition, Vector3f handPosition){
+        Vector3f handRelativeToHead = handPosition.subtract(headPosition);
+        float shoulderHeight = headPosition.y - 0.15f;
+
+        /* Typically the player will be looking directly at the hand whose menu they are opening.
+         * This makes the look direction not very helpful, but together with which hand it is we can guess fairly
+         * confidently what angle the shoulder will be at relative to the line between the head and the hand
+         */
+        float headToHandAngle = FastMath.atan2(handRelativeToHead.z, handRelativeToHead.x);
+        float headToShoulderAngle = headToHandAngle+ (boundHand.getHandSide() == HandSide.RIGHT?+1:-1)*0.4f*FastMath.PI; //the constant is a bit dead reckoning based on experiment
+
+        float centreHeadToShoulderDistance = 0.12f; //the constant is a bit dead reckoning based on experiment
+        Vector3f shoulderPosition = new Vector3f(headPosition.x + centreHeadToShoulderDistance*FastMath.cos(headToShoulderAngle), shoulderHeight, headPosition.z +centreHeadToShoulderDistance*FastMath.sin(headToShoulderAngle));
+
+        return shoulderPosition;
 
     }
 
