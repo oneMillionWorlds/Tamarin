@@ -36,6 +36,8 @@ import java.util.function.Consumer;
  */
 public class HandMenuFunction<T> implements BoundHandFunction{
 
+    public static float ARM_LENGTH = 0.6f; //this is about average, its better than nothing.
+
     private static final String MENU_BRANCH_PATH = "MENU_BRANCH_PATH";
 
     private static final String ITEM_SELECTION = "ITEM_SELECTION";
@@ -234,10 +236,15 @@ public class HandMenuFunction<T> implements BoundHandFunction{
         ringCentreNode.setCullHint(Spatial.CullHint.Always);
         menuNode.attachChild(ringCentreNode);
         subRingCentreNodes.put(parents, ringCentreNode);
+
+        float ringRadius = firstRingRadius + ringIndex*interRingDistance;
+        //all this stuff should make the items appear on the surface of a sphere, about the shoulder, as that's easy to reach than a flat series of rings
+        float ringToShoulderAngle = FastMath.atan(ringRadius/ARM_LENGTH);
+        float amountToBringRingCloser = ringRadius * (1-FastMath.tan(ringToShoulderAngle));
+
         for(int menuItemIndex = 0; menuItemIndex<menuItems.size();menuItemIndex++){
             float angle = childRingPositioner.determineAngleForItem(menuItemIndex, menuItems.size(), angleOfParent, ringIndex);
-
-            Vector3f position = new Vector3f((firstRingRadius + ringIndex*interRingDistance)* FastMath.sin(angle), (firstRingRadius + ringIndex*interRingDistance)*FastMath.cos(angle), 0);
+            Vector3f position = new Vector3f(ringRadius* FastMath.sin(angle), ringRadius*FastMath.cos(angle), amountToBringRingCloser);
 
             Node menuItemNode = new Node();
             menuItemNode.setLocalTranslation(position);
