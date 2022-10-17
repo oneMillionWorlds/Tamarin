@@ -35,16 +35,16 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
- * A hand menu function has a menu of geometries that are opened from an action and then the hand is
+ * A hand ring menu function has a menu of geometries that are opened from an action and then the hand is
  * moved through them to select them.
  *
  * The menu can be a tree, where passing the hand through 1 item opens up a new set of branches
  *
- * The menu remains open for as long as the digital action remains true. When the action is released where the hand is
- * controls what is selected
+ * The menu remains open for as long as the digital action remains held. When the action is released where the hand is
+ * controls what is selected (if anything)
  */
-public class HandMenuFunction<T> implements BoundHandFunction{
-    
+public class HandRingMenuFunction<T> implements BoundHandFunction{
+
     private static final String MENU_BRANCH_PATH = "MENU_BRANCH_PATH";
 
     private final List<MenuItem<T>> topLevelMenuItems;
@@ -113,7 +113,7 @@ public class HandMenuFunction<T> implements BoundHandFunction{
      * @param selectionConsumer when an item is selected it is given to this consumer
      * @param digitalActionToOpenMenu The digital action (button press) that opens the menu
      */
-    public HandMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, String digitalActionToOpenMenu){
+    public HandRingMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, String digitalActionToOpenMenu){
         this.topLevelMenuItems = menuItems;
         this.selectionConsumer = selectionConsumer;
         this.digitalActionToOpenMenu = digitalActionToOpenMenu;
@@ -331,16 +331,6 @@ public class HandMenuFunction<T> implements BoundHandFunction{
          * @param ringDepth what ring this is, the first child ring is 1, child of child is 2 etc
          */
         float determineAngleForItem(int itemIndex, int totalNumberOfSubItems, float angleOfParent, int ringDepth);
-    }
-
-    private Spatial colouredBox(ColorRGBA colour){
-        Box box = new Box(0.02f, 0.02f, 0.02f);
-        Geometry boxGeometry = new Geometry("box", box);
-        Material boxMat = new Material(stateManager.getApplication().getAssetManager(),"Common/MatDefs/Misc/Unshaded.j3md");
-        boxMat.setColor("Color", colour);
-        boxGeometry.setMaterial(boxMat);
-
-        return boxGeometry;
     }
 
     @Value
