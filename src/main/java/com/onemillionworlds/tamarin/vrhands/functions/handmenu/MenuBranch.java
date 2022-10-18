@@ -23,4 +23,9 @@ public class MenuBranch<T> extends MenuItem<T>{
         super(optionGeometry);
         this.subItems = subItems;
     }
+
+    public MenuBranch(Supplier<Spatial> optionGeometry, List<MenuItem<T>> subItems){
+        super(optionGeometry);
+        this.subItems = subItems;
+    }
 }

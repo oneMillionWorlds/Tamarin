@@ -6,14 +6,10 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.bounding.BoundingSphere;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
-import com.jme3.material.Material;
-import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
-import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.shape.Box;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
@@ -33,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * A hand ring menu function has a menu of geometries that are opened from an action and then the hand is
@@ -104,9 +101,12 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     @Getter
     private float interRingDistance = 0.15f;
 
-    private AppStateManager stateManager;
-
     private final Collection<ItemPositionData> leafPositions = new HashSet<>();
+
+    /**
+     * Dynamic geometries update every time the menu is opened.
+     */
+    Map<Node, Supplier<Spatial>> dynamicGeometrySuppliers = new HashMap<>();
 
     /**
      * @param menuItems the tree of menu items
@@ -125,7 +125,6 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         this.boundHand= boundHand;
         this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.ID, ActionBasedOpenVrState.class);
         this.vrAppState = stateManager.getState(VRAppState.class);
-        this.stateManager = stateManager;
         Node rootNode = ((SimpleApplication)stateManager.getApplication()).getRootNode();
         rootNode.attachChild(menuNode);
         menuNode.setCullHint(Spatial.CullHint.Always);
@@ -169,7 +168,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         menuNode.setLocalTranslation(boundHand.getPalmNode().getWorldTranslation());
         menuNode.lookAt(guessShoulderPosition(headPosition, handPosition), Vector3f.UNIT_Y);
         subRingCentreNodes.values().forEach(n -> n.setCullHint(Spatial.CullHint.Always));
-
+        refreshDynamicGeometry();
         menuOpen = true;
     }
 
@@ -221,8 +220,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
             Node menuItemNode = new Node();
             menuItemNode.setLocalTranslation(position);
             MenuItem<T> menuItem = topLevelMenuItems.get(menuItemIndex);
-            menuItemNode.attachChild(menuItem.getOptionGeometry());
-
+            attachOrConfigureIcon(menuItemNode, menuItem);
             menuNode.attachChild(menuItemNode);
 
             if (menuItem instanceof MenuBranch){
@@ -234,6 +232,23 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
                 leafPositions.add(new ItemPositionData(List.of(), menuItemNode.getWorldTranslation(), menuLeaf));
             }
+        }
+    }
+
+    private void attachOrConfigureIcon(Node menuItemNode, MenuItem<T> menuItem){
+        if (menuItem.isDynamicIcon()){
+            Supplier<Spatial> dynamicOptionGeometry = menuItem.getDynamicOptionGeometry();
+            menuItemNode.attachChild(dynamicOptionGeometry.get());
+            dynamicGeometrySuppliers.put(menuItemNode, dynamicOptionGeometry);
+        }else{
+            menuItemNode.attachChild(menuItem.getOptionGeometry());
+        }
+    }
+
+    private void refreshDynamicGeometry(){
+        for(Map.Entry<Node,Supplier<Spatial>> entry: dynamicGeometrySuppliers.entrySet()){
+            entry.getKey().detachAllChildren();
+            entry.getKey().attachChild(entry.getValue().get());
         }
     }
 
@@ -254,7 +269,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
             Node menuItemNode = new Node();
             menuItemNode.setLocalTranslation(position);
             MenuItem<T> menuItem = menuItems.get(menuItemIndex);
-            menuItemNode.attachChild(menuItem.getOptionGeometry());
+            attachOrConfigureIcon(menuItemNode, menuItem);
 
             ringCentreNode.attachChild(menuItemNode);
 
