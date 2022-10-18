@@ -3,12 +3,8 @@ package com.onemillionworlds.tamarin.vrhands.functions.handmenu;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.VRAppState;
 import com.jme3.app.state.AppStateManager;
-import com.jme3.bounding.BoundingSphere;
-import com.jme3.collision.CollisionResult;
-import com.jme3.collision.CollisionResults;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
-import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.TamarinUtilities;
@@ -42,8 +38,6 @@ import java.util.function.Supplier;
  * controls what is selected (if anything)
  */
 public class HandRingMenuFunction<T> implements BoundHandFunction{
-
-    private static final String MENU_BRANCH_PATH = "MENU_BRANCH_PATH";
 
     private final List<MenuItem<T>> topLevelMenuItems;
     private List<MenuBranch<T>> currentOpenPath = List.of();
@@ -102,8 +96,8 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     @Getter
     private float interRingDistance = 0.15f;
 
-    private final Collection<ItemPositionData> leafPositions = new HashSet<>();
-
+    private final Collection<LeafPositionData> leafPositions = new HashSet<>();
+    private final Collection<BranchPositionData> branchPositions = new HashSet<>();
     /**
      * Dynamic geometries update every time the menu is opened.
      */
@@ -150,8 +144,8 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         }
 
         if (this.menuOpen){
-            //scan the palm area and finger tip area for menu items
-            pickForMenuInteraction().ifPresent(this::updateRingVisibilityForSelectedPath);
+            //scan the palm area for menu items
+            scanForMenuInteraction().ifPresent(this::updateRingVisibilityForSelectedPath);
         }
 
     }
@@ -159,7 +153,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     public void closeMenuAndSelect(){
         menuNode.setCullHint(Spatial.CullHint.Always);
         selectionConsumer.accept(pickForItemData());
-
+        currentOpenPath = List.of();
         menuOpen = false;
     }
 
@@ -178,24 +172,24 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
      * Looks through spatials near the hands and if it finds one that implies a menu path change returns it
      * @return A menu path that the spatial corresponds to
      */
-    private Optional<ArrayList<MenuBranch<T>>> pickForMenuInteraction(){
-        CollisionResults results = new CollisionResults();
+    private Optional<List<MenuBranch<T>>> scanForMenuInteraction(){
 
         Vector3f palmCentre = boundHand.getPalmNode().getWorldTranslation();
-        BoundingSphere sphere = new BoundingSphere(0.02f, palmCentre);
-        menuNode.collideWith(sphere, results);
 
-        for(int index=0;index<results.size();index++){
-            CollisionResult collision = results.getCollision(index);
-            Spatial spatial = collision.getGeometry();
-            while(spatial!=null && spatial.getUserData(MENU_BRANCH_PATH)==null){
-                spatial = spatial.getParent();
-            }
-            if (spatial!=null){
-                return Optional.of(spatial.getUserData(MENU_BRANCH_PATH));
-            }
-        }
-        return Optional.empty();
+        BranchPositionData interestingOne = branchPositions.stream().filter(l -> l.menuLeaf.subItems.size() == 4).findAny().orElseThrow();
+        float distance = interestingOne.position.distanceSquared(palmCentre);
+        boolean open = currentOpenPath.containsAll(interestingOne.getParents());
+
+
+
+        Optional<List<MenuBranch<T>>> result = branchPositions.stream()
+                .filter(l -> l.position.distanceSquared(palmCentre)<maximumSelectRange*maximumSelectRange)
+                .filter(l -> currentOpenPath.containsAll(l.getParents())) //if the branch is open
+                .min(Comparator.comparingDouble(l -> l.position.distanceSquared(palmCentre)))
+                .map(BranchPositionData::getOwnedPath);
+
+        System.out.println(" open " + open+" Dist " +distance + " r " + result);
+        return result;
     }
 
     private Optional<T> pickForItemData(){
@@ -213,7 +207,6 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
      * Builds the entire menu, the menu is traversed by hiding and unhiding parts of it
      */
     private void buildMenu(){
-
         for(int menuItemIndex = 0; menuItemIndex< topLevelMenuItems.size(); menuItemIndex++){
             float angle = innerRingItemPositioner.determineAngleForItem(menuItemIndex, topLevelMenuItems.size());
 
@@ -228,11 +221,11 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
             if (menuItem instanceof MenuBranch){
                 MenuBranch<T> menuBranch = (MenuBranch<T>)menuItem;
                 ArrayList<MenuBranch<T>> ringPathControlled = new ArrayList<>(List.of(menuBranch));
-                configureMenuBranchForTouch(menuItemNode, ringPathControlled);
                 buildSubItem(1, angle, menuBranch.getSubItems(), ringPathControlled);
+                branchPositions.add(new BranchPositionData(List.of(), ringPathControlled, menuItemNode.getWorldTranslation(), menuBranch));
             }else{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
-                leafPositions.add(new ItemPositionData(List.of(), menuItemNode.getWorldTranslation(), menuLeaf));
+                leafPositions.add(new LeafPositionData(List.of(), menuItemNode.getWorldTranslation(), menuLeaf));
             }
         }
     }
@@ -277,18 +270,22 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
             if (menuItem instanceof MenuBranch){
                 MenuBranch<T> menuBranch = (MenuBranch<T>)menuItem;
-                ArrayList<MenuBranch<T>> childParents = new ArrayList<>(parents);
-                childParents.add(menuBranch);
-                configureMenuBranchForTouch(menuItemNode, childParents);
-                buildSubItem(ringIndex+1, angle, menuBranch.getSubItems(), childParents);
+                ArrayList<MenuBranch<T>> branchOwnedPath = new ArrayList<>(parents);
+                branchOwnedPath.add(menuBranch);
+                buildSubItem(ringIndex+1, angle, menuBranch.getSubItems(), branchOwnedPath);
+                branchPositions.add(new BranchPositionData(parents, branchOwnedPath, menuItemNode.getWorldTranslation(), menuBranch));
             }else{
                 MenuLeaf<T> menuLeaf = (MenuLeaf<T>)menuItem;
-                leafPositions.add(new ItemPositionData(parents, menuItemNode.getWorldTranslation(), menuLeaf));
+                leafPositions.add(new LeafPositionData(parents, menuItemNode.getWorldTranslation(), menuLeaf));
             }
         }
     }
 
     private void updateRingVisibilityForSelectedPath(List<MenuBranch<T>> path){
+        if (currentOpenPath == path){
+            return;
+        }
+
         for(Map.Entry<ArrayList<MenuBranch<T>>, Node> ring : subRingCentreNodes.entrySet()){
             if(path.containsAll(ring.getKey())){
                 ring.getValue().setCullHint(Spatial.CullHint.Inherit);
@@ -297,10 +294,6 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
             }
         }
         currentOpenPath = path;
-    }
-
-    private void configureMenuBranchForTouch(Spatial menuBranchGeometry, List<MenuBranch<T>> pathToOpen){
-        menuBranchGeometry.setUserData(MENU_BRANCH_PATH, pathToOpen);
     }
 
     /**
@@ -370,9 +363,17 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     }
 
     @Value
-    private class ItemPositionData{
+    private class LeafPositionData{
         List<MenuBranch<T>> parents;
         Vector3f position;
         MenuLeaf<T> menuLeaf;
+    }
+
+    @Value
+    private class BranchPositionData{
+        List<MenuBranch<T>> parents;
+        List<MenuBranch<T>> ownedPath;
+        Vector3f position;
+        MenuBranch<T> menuLeaf;
     }
 }
