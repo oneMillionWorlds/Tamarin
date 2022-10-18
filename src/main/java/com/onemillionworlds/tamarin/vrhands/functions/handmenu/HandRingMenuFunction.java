@@ -8,6 +8,7 @@ import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.TamarinUtilities;
@@ -129,6 +130,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         rootNode.attachChild(menuNode);
         menuNode.setCullHint(Spatial.CullHint.Always);
         buildMenu();
+        stateManager.getApplication().getRenderManager().preloadScene(menuNode);
     }
 
     @Override
@@ -315,7 +317,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         float centreOfRing = angleOfParent;
 
         float maxAngle = centreOfRing + totalAngleUsed/2;
-        float minAngle = centreOfRing + totalAngleUsed/2;
+        float minAngle = centreOfRing - totalAngleUsed/2;
 
         if (totalAngleUsed > 1.5 * FastMath.PI){
             centreOfRing = 0; //just put the ring starting at the top
