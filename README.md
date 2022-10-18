@@ -11,7 +11,7 @@ To successfully use Tamarin you should typically have at least the following dep
 
 Optionally you can also have
 
-    implementation "com.simsilica:lemur:1.14.0"
+    implementation "com.simsilica:lemur:1.16.0"
 
 ## Logging
 
