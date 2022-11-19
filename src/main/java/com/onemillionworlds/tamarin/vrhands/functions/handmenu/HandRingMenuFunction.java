@@ -176,20 +176,11 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
         Vector3f palmCentre = boundHand.getPalmNode().getWorldTranslation();
 
-        BranchPositionData interestingOne = branchPositions.stream().filter(l -> l.menuLeaf.subItems.size() == 4).findAny().orElseThrow();
-        float distance = interestingOne.position.distanceSquared(palmCentre);
-        boolean open = currentOpenPath.containsAll(interestingOne.getParents());
-
-
-
-        Optional<List<MenuBranch<T>>> result = branchPositions.stream()
+        return branchPositions.stream()
                 .filter(l -> l.position.distanceSquared(palmCentre)<maximumSelectRange*maximumSelectRange)
                 .filter(l -> currentOpenPath.containsAll(l.getParents())) //if the branch is open
                 .min(Comparator.comparingDouble(l -> l.position.distanceSquared(palmCentre)))
                 .map(BranchPositionData::getOwnedPath);
-
-        System.out.println(" open " + open+" Dist " +distance + " r " + result);
-        return result;
     }
 
     private Optional<T> pickForItemData(){
@@ -255,7 +246,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
         float ringRadius = firstRingRadius + ringIndex*interRingDistance;
         //flat rings get uncomfortably far away the greater the radius, bring them closer as they get wider
-        float amountToBringRingCloser =  ringIndex * interRingDistance;
+        float amountToBringRingCloser =  0.5f * ringIndex * interRingDistance;
 
         for(int menuItemIndex = 0; menuItemIndex<menuItems.size();menuItemIndex++){
             float angle = childRingPositioner.determineAngleForItem(menuItemIndex, menuItems.size(), angleOfParent, ringIndex);

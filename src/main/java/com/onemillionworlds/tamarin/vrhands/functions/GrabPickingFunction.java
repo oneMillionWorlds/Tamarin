@@ -89,6 +89,10 @@ public class GrabPickingFunction implements BoundHandFunction{
 
                 while(picked != null && grabControl == null){
                     grabControl = picked.getControl(AbstractGrabControl.class);
+                    if (grabControl!=null && !grabControl.isCurrentlyGrabbable(boundHand)){
+                        grabControl = null;
+                    }
+
                     picked = picked.getParent();
                 }
 

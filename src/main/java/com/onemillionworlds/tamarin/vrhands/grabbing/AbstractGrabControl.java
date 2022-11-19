@@ -39,5 +39,14 @@ public abstract class AbstractGrabControl extends AbstractControl{
         return grabbingHand;
     }
 
+    /**
+     * If this control is currently accepting grabs from that hand
+     *
+     * Gives subclasses the opportunity to filter grabs
+     */
+    public boolean isCurrentlyGrabbable(BoundHand grabbedByHand){
+        return true;
+    }
+
     @Override protected void controlRender(RenderManager rm, ViewPort vp){}
 }

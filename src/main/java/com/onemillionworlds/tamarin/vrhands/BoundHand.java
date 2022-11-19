@@ -105,6 +105,14 @@ public abstract class BoundHand{
     private final Node debugPointsNode = new Node();
 
     /**
+     * A node at the wrist,
+     *
+     * with hands held with thumbs upwards  +x going to the left, +y goes upwards and +z goes towards the fingers
+     */
+    @Getter
+    private final Node wristNode = new Node();
+
+    /**
      * The hand will be detached from the scene graph and will no longer receive updates
      */
     public abstract void unbindHand();
@@ -173,6 +181,8 @@ public abstract class BoundHand{
     private final String ring2Name;
     private final String ring1Name;
 
+    private final String wristName;
+
     public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.vrState = Objects.requireNonNull(vrState);
         this.geometryNode.attachChild(handGeometry);
@@ -195,7 +205,7 @@ public abstract class BoundHand{
         ringEndName  = handSide == HandSide.LEFT ?"finger_ring_l_end":"finger_ring_r_end";
         ring2Name = handSide == HandSide.LEFT ?"finger_ring_2_l":"finger_ring_2_r";
         ring1Name = handSide == HandSide.LEFT ?"finger_ring_1_l":"finger_ring_1_r";
-
+        wristName = handSide == HandSide.LEFT ?"wrist_l":"wrist_r";
         searchForGeometry(handGeometry).forEach(g -> g.setUserData(NO_PICK, true));
 
         Quaternion naturalRotation = new Quaternion();
@@ -215,6 +225,7 @@ public abstract class BoundHand{
         rawOpenVrPosition.attachChild(palmNode_xPointing);
         rawOpenVrPosition.attachChild(geometryNode);
         rawOpenVrPosition.attachChild(indexFingerTip_xPointing);
+        rawOpenVrPosition.attachChild(wristNode);
         handNode_xPointing.attachChild(pickLineNode);
 
         addFunction(new ClimbSupport());
@@ -327,6 +338,7 @@ public abstract class BoundHand{
         }
         updatePalm(timeSlice, boneStances);
         updateFingerTips(boneStances);
+        updateWrist(boneStances);
         functions.forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
 
         updatePointingState(boneStances);
@@ -350,6 +362,14 @@ public abstract class BoundHand{
             float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index2.position.subtract(index1.position).normalizeLocal());
 
             handPointing = indexFingerAlignment > 0.9 && ringFingerAlignment < 0.8;
+        }
+    }
+
+    private void updateWrist( Map<String, BoneStance> boneStances){
+        BoneStance wrist = boneStances.get(wristName);
+        if (wrist!=null){
+            wristNode.setLocalTranslation(wrist.position);
+            wristNode.setLocalRotation(wrist.orientation);
         }
     }
 

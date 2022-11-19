@@ -3,19 +3,15 @@ package com.onemillionworlds.tamarin.vrhands;
 import com.jme3.anim.Armature;
 import com.jme3.anim.SkinningControl;
 import com.jme3.app.Application;
-import com.jme3.app.SimpleApplication;
 import com.jme3.app.VRAppState;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
-import com.jme3.material.Material;
 import com.jme3.math.Vector3f;
-import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.ObserverRelativePoseActionState;
-import com.onemillionworlds.tamarin.compatibility.PoseActionState;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
@@ -26,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * An app state that can control multiple hands (realistically 1 or 2 at once). Once bound to the state the hands will
@@ -50,7 +47,7 @@ public class VRHandsAppState extends BaseAppState{
     /**
      * If the player is climbing (i.e. is currently grabbing something which has
      * {@link com.onemillionworlds.tamarin.vrhands.grabbing.ClimbingPointGrabControl}) this is true.
-     *
+     * <p>
      * Available as convenience data to calling application
      */
     @Getter
@@ -58,7 +55,7 @@ public class VRHandsAppState extends BaseAppState{
 
     /**
      * This constructor allows for bound hands to be created as soon as the state has initialised.
-     *
+     * <p>
      * You could alternatively call bindHandModel yourself, but that can only be done much later in initialisation
      * and it may be easier to do it this way instead.
      */
@@ -147,7 +144,7 @@ public class VRHandsAppState extends BaseAppState{
     /**
      * If a teleport or other event happens mid-climb (e.g. ending a level) it can be useful to force
      * end any climb events. This method can be called to do so if necessary.
-     *
+     * <p>
      * Failing to call this method may mean that the player is pulled back to their previous position by the
      * hand that is still clinging on to a grab point
      */
@@ -173,7 +170,10 @@ public class VRHandsAppState extends BaseAppState{
 
     public List<BoundHand> getHandControls(){
         return Collections.unmodifiableList(handControls);
+    }
 
+    public Optional<BoundHand> getHandControl(HandSide handSide ){
+        return handControls.stream().filter(h -> h.getHandSide() == handSide).findAny();
     }
 
     /**
@@ -200,14 +200,14 @@ public class VRHandsAppState extends BaseAppState{
      * This expects to be given a spatial that has an armature and geometry. That geometry then becomes owned by this
      * app state (do not attempt to attach it to a node yourself). It's relatively unfussy about degenerate parent nodes
      * and will search for what it needs (primarily because blender exports can put such stuff in.)
-     *
+     * <p>
      * The spatial will most likely have been loaded using `assetManager.loadModel`
-     *
+     * <p>
      * After binding the armature will be deformed each update to conform to the action skeleton it has been bound to.
-     *
+     * <p>
      * An BoundHandControl object is returned. This can be used to unbind the hand, this cause it to be detached from
      * the node and will not be further updated.
-     *
+     * <p>
      * Note that the unbind object should only be used on the main thread as it will update the scene graph. Similarly,
      * this method should only be called on the main thread.
      *
