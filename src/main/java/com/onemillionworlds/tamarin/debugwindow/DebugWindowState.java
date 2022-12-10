@@ -29,12 +29,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * The debug window creates a ui element that will render debug information to a panel.
- *
+ * <p>
  * That panel will follow the player around but can be grabbed and moved if grab support is active in the hands.
- *
+ * <p>
  * Requires lemur
  */
 public class DebugWindowState extends BaseAppState{
@@ -45,7 +46,7 @@ public class DebugWindowState extends BaseAppState{
      * Because of the need to use this state for during development debugging this INSTANCE allows
      * the state to be statically accessed from anywhere
      */
-    public static DebugWindowState INSTANCE;
+    public static Optional<DebugWindowState> INSTANCE = Optional.empty();
 
     Node debugWindowNode = new Node("Tamarin-debug-window-node");
     Container lemurWindow = new Container();
@@ -80,7 +81,7 @@ public class DebugWindowState extends BaseAppState{
 
     double timeTillNextPositionCheck = 0;
 
-    private String hapticAction;
+    private final String hapticAction;
 
     public DebugWindowState(){
         this(null);
@@ -90,8 +91,8 @@ public class DebugWindowState extends BaseAppState{
      * @param hapticAction On touching a button on the debug window state this haptic will trigger (can be null)
      */
     public DebugWindowState(String hapticAction){
-        assert INSTANCE == null : "Can only have 1 DebugWindowState";
-        INSTANCE = this;
+        assert INSTANCE.isEmpty() : "Can only have 1 DebugWindowState";
+        INSTANCE = Optional.of(this);
         this.hapticAction = hapticAction;
     }
 
@@ -166,9 +167,9 @@ public class DebugWindowState extends BaseAppState{
     /**
      * This registers buttons with call backs when they are clicked. It is perfectly safe to call this over and
      * over again with the same data, all but the first will be ignored.
-     *
+     * <p>
      * Each time a button is clicked the appropriate callback will be called (and can do whatever you like).
-     *
+     * <p>
      * If you want to control the order of the buttons consider a LinkedHashMap
      */
     public void registerButtonsWithCallbacks(String categoryLabel, Map<String,Runnable> buttonsAndEvents){
@@ -208,8 +209,7 @@ public class DebugWindowState extends BaseAppState{
     }
 
     /**
-     * The log is a special data entry that only ever grows. Use judiciously to avoid it getting huge
-     * @param logMessage
+     * @param logMessage The log is a special data entry that only ever grows. Use judiciously to avoid it getting huge
      */
     public void log(String logMessage){
         String currentLog = displayDataTable.getOrDefault("log", "");
@@ -307,7 +307,7 @@ public class DebugWindowState extends BaseAppState{
         }
     }
 
-    private class CallbackButtonBar extends LineItem{
+    private static class CallbackButtonBar extends LineItem{
 
         Container container = new Container(new BoxLayout(Axis.X, FillMode.None));
 
