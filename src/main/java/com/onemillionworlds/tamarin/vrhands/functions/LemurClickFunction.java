@@ -2,7 +2,6 @@ package com.onemillionworlds.tamarin.vrhands.functions;
 
 import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
-import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
@@ -121,11 +120,11 @@ public class LemurClickFunction implements BoundHandFunction{
             lemurSession.cursorMoved(500,500);//the exact middle of the 1000 by 1000 synthetic camera
 
             if(triggerPressure > minTriggerToClick && lastTriggerPressure < minTriggerToClick){
-                mouseAppState.dispatch( new MouseButtonEvent(0, true, 500, 500));
+                mouseAppState.dispatch( new VrMouseButtonEvent(0, true, 500, 500, boundHand));
                 clickSpecialSupport();
             }
             if(triggerPressure < minTriggerToClick && lastTriggerPressure > minTriggerToClick){
-                mouseAppState.dispatch( new MouseButtonEvent(0, false, 500, 500));
+                mouseAppState.dispatch( new VrMouseButtonEvent(0, false, 500, 500, boundHand));
             }
         }
         lastTriggerPressure = triggerPressure;
@@ -175,9 +174,9 @@ public class LemurClickFunction implements BoundHandFunction{
     private void becomeDominant(){
         List<PickEventSession.RootEntry> pickRoots = LemurProtectedSupport.getPickRoots(lemurSession);
 
-        pickRoots.forEach(root -> {
-            mouseAppState.removeCollisionRoot(root.viewport);
-        });
+        pickRoots.forEach(root ->
+            mouseAppState.removeCollisionRoot(root.viewport)
+        );
 
         this.vrHandsAppState.getHandControls().forEach(h -> {
             LemurClickFunction lemurClick = h.getFunction(LemurClickFunction.class);
