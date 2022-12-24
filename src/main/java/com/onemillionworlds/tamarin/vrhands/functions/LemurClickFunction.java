@@ -120,11 +120,11 @@ public class LemurClickFunction implements BoundHandFunction{
             lemurSession.cursorMoved(500,500);//the exact middle of the 1000 by 1000 synthetic camera
 
             if(triggerPressure > minTriggerToClick && lastTriggerPressure < minTriggerToClick){
-                mouseAppState.dispatch( new VrMouseButtonEvent(0, true, 500, 500, boundHand));
+                mouseAppState.dispatch( new VrMouseButtonEvent(0, true, 500, 500, boundHand, clickAction));
                 clickSpecialSupport();
             }
             if(triggerPressure < minTriggerToClick && lastTriggerPressure > minTriggerToClick){
-                mouseAppState.dispatch( new VrMouseButtonEvent(0, false, 500, 500, boundHand));
+                mouseAppState.dispatch( new VrMouseButtonEvent(0, false, 500, 500, boundHand, clickAction));
             }
         }
         lastTriggerPressure = triggerPressure;
