@@ -2,6 +2,8 @@ package com.onemillionworlds.tamarin.vrhands.functions;
 
 import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
+import com.jme3.input.MouseInput;
+import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
@@ -15,6 +17,7 @@ import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
+import com.onemillionworlds.tamarin.vrhands.HandSide;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.simsilica.lemur.event.LemurProtectedSupport;
 import com.simsilica.lemur.event.PickEventSession;
@@ -119,12 +122,14 @@ public class LemurClickFunction implements BoundHandFunction{
             syntheticCamera.setRotation(boundHand.getHandNode_zPointing().getWorldRotation());
             lemurSession.cursorMoved(500,500);//the exact middle of the 1000 by 1000 synthetic camera
 
+            //left and right hands represented as left and right mouse buttons
+            int btnIndex = boundHand.getHandSide() == HandSide.LEFT ? MouseInput.BUTTON_LEFT : MouseInput.BUTTON_RIGHT;
             if(triggerPressure > minTriggerToClick && lastTriggerPressure < minTriggerToClick){
-                mouseAppState.dispatch( new VrMouseButtonEvent(0, true, 500, 500, boundHand, clickAction));
+                mouseAppState.dispatch( new MouseButtonEvent(btnIndex, true, 500, 500));
                 clickSpecialSupport();
             }
             if(triggerPressure < minTriggerToClick && lastTriggerPressure > minTriggerToClick){
-                mouseAppState.dispatch( new VrMouseButtonEvent(0, false, 500, 500, boundHand, clickAction));
+                mouseAppState.dispatch( new MouseButtonEvent(btnIndex, false, 500, 500));
             }
         }
         lastTriggerPressure = triggerPressure;
