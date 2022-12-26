@@ -21,7 +21,6 @@ import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.BoneStance;
 import com.onemillionworlds.tamarin.compatibility.HandMode;
-import com.onemillionworlds.tamarin.debugwindow.DebugWindowState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
@@ -35,7 +34,6 @@ import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -43,7 +41,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 
 public abstract class BoundHand{
 
@@ -64,14 +61,14 @@ public abstract class BoundHand{
 
     /**
      * Returns a node that will update with the hands position and rotation.
-     *
+     * <p>
      * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
      * pointing to the right
-     *
+     * <p>
      * This is an ideal node for things like picking lines, which can be put in the x direction
-     *
+     * <p>
      * Note that the (0,0,0) position is just in front of the thumb, not the centre of the hand.
-     *
+     * <p>
      * This node is primarily used for picking, but if you want a node to attach to that only cares about the bulk
      * hand position
      *
@@ -161,11 +158,11 @@ public abstract class BoundHand{
     @Setter
     private List<Vector3f> palmPickPoints;
 
-    private List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
+    private final List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
 
     /**
      * A pointing arrangement is when the index finger is mostly straight and the ring ringer is not.
-     *
+     * <p>
      * This is the sort of hand position that indicates pressing buttons with the index finger
      */
     @Getter
@@ -238,10 +235,10 @@ public abstract class BoundHand{
     /**
      * Returns a node that will update with the hands position and rotation. If you are dealing with raw bone positions
      * they are in this coordinate system.
-     *
+     * <p>
      * Note that this is in the orientation that OpenVR provides which isn't very helpful
      * (it doesn't map well to the direction the hand is pointing for example)
-     *
+     * <p>
      * You probably don't want this and probably want {@link BoundHand#getHandNode_xPointing}
      * which has a more natural rotation. Unless you are dealing with raw bone positions, which are in this coordinate
      * system.
@@ -255,7 +252,7 @@ public abstract class BoundHand{
 
     /**
      * Returns a node that will update with the hands position and rotation.
-     *
+     * <p>
      * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
      * pointing to the right, as defined by the middle finger metacarpal bone. Its X,Y and Z are likely to be in similar
      * directions to those of {@link BoundHand#getHandNode_xPointing()} but not precisely
@@ -437,7 +434,7 @@ public abstract class BoundHand{
     /**
      * Picks from a point just in front of the thumb (the point the getHandNode_zPointing() is at) in the direction
      * out away from the hand.
-     *
+     * <p>
      * Note that the geometry of the hand itself may be the first result from the pick but more reasonable pick results
      * will follow. (These will have NO_PICK = true as userdata which can be used to ignore them)
      *
@@ -460,7 +457,7 @@ public abstract class BoundHand{
      * This will set the hand to do a pick in the same direction as {@link BoundHand#pickBulkHand}/lemur clicks
      * and place a marker (by default a white sphere) at the point where the pick hits a geometry. This gives the
      * player an indication what they would pick it they clicked now; think of it like a mouse pointer in 3d space
-     *
+     * <p>
      * Run the returned runnable to remove the pick marker
      */
     public FunctionRegistration setPickMarkerContinuous(Node nodeToPickAgainst){
@@ -480,12 +477,12 @@ public abstract class BoundHand{
 
     /**
      * Picks from roughly the centre of the palm out from the palm (i.e. for the left hand it points right)
-     *
+     * <p>
      * This can be used to detect what the palm is pointing at (which is rarely useful to be honest)
-     *
+     * <p>
      * Note that the geometry of the hand itself may be the first result from the pick but more reasonable pick results
      * will follow. (These will have NO_PICK = true as userdata which can be used to ignore them)
-     *
+     * <p>
      * deprecated as intend to move towards the pickPalmSpheres method
      *
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
@@ -524,7 +521,7 @@ public abstract class BoundHand{
      * Picks outward away from the palm palmRelativePosition to {@link BoundHand#getPalmNode()}.
      * Note that x is towards the fingers, y is up and z is right (whether +z is the palm direction depends on if this
      * is the left or right hand)
-     *
+     * <p>
      * deprecated as intend to move towards the pickPalmSpheres method
      *
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
@@ -598,7 +595,7 @@ public abstract class BoundHand{
 
     /**
      * spheres showing the current grab points for the palm.
-     *
+     * <p>
      * The first (index zero) points are bright, the last points (high index) are dark
      * {@link BoundHand#getPalmNode()}
      */
@@ -632,11 +629,11 @@ public abstract class BoundHand{
      * (see {@link GrabPickingFunction#setGrabEvery}) if the action is true then a grab pick will occur and if the pick finds
      * any spatials with a control of type {@link AbstractGrabControl} then it will grab them. Equally, once bound if the
      * grab action is released then it will unbind from them.
-     *
+     * <p>
      * The action can be non hand specific as the hand restricts the action to only the hand this BoundHand represents
-     *
+     * <p>
      * The grab action can be either an analog or digital action
-     *
+     * <p>
      * Use the {@link FunctionRegistration} to end the function when done
      *
      * @param grabAction the openVr action name to use to decide if the hand is grabbing
@@ -653,19 +650,19 @@ public abstract class BoundHand{
 
     /**
      * Will bind an action (see actions manifest) against a lemur click (picks against the
-     * passed node). Call {@link BoundHand#clearClickAction_lemurSupport} to remove binding
-     *
+     * passed node).
+     * <p>
      * This requires lemur to be on the class path (or else you'll get an exception).
-     *
+     * <p>
      * It kind of "fakes" a click. So it's only limited in what it does. It tracks up the parents of things it hits looking
      * for things which are a button, or have a MouseEventControl. If it finds one it clicks that, then returns.
-     *
+     * <p>
      * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
-     *
+     * <p>
      * <strong>NOTE: at present only a single node can be picked against at a time and old click actions will be deregistered.
      * However, that restriction may be lifted in later versions so old actions should be explicitly removed for forwards
      * compatibility</strong>
-     *
+     * <p>
      * Use the {@link FunctionRegistration} to end the function when done
      *
      * @param clickAction the action (see action manifest) that will trigger a click, can be a vector1 or a digital action.
@@ -702,7 +699,7 @@ public abstract class BoundHand{
 
     /**
      * Set the depth between the centre of the palm and the skin of the palm used by the hand model you have bound.
-     *
+     * <p>
      * This ensures that held objects are flush against the palm
      * @param baseSkinDepth a value in meters (0.02 is a good example of the right kind of size)
      */
@@ -714,9 +711,9 @@ public abstract class BoundHand{
      * Broadly similar to attaching a geometry to {@link BoundHand#getHandNode_xPointing()} but it will get special
      * handling to ensure it doesn't block lemur picks (and will all get the {@link BoundHand#NO_PICK} label on all its
      * geometries which may make it easier to avoid when using manual picking. Also it can be easily removed with the
-     *
+     * <p>
      * Use the {@link FunctionRegistration} to end the function when done
-     *
+     * <p>
      * {@link BoundHand#removePickLine()} method
      * @param spatial the pick line (+X should be in the direction of the pick line)
      * @return a FunctionRegistration that will remove the pick line
