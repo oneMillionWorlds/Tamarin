@@ -103,7 +103,7 @@ public abstract class BoundHand{
 
     /**
      * A node at the wrist,
-     *
+     * <p>
      * with hands held with thumbs upwards  +x going to the left, +y goes upwards and +z goes towards the fingers
      */
     @Getter
@@ -495,7 +495,7 @@ public abstract class BoundHand{
     /**
      * Picks (using a series of bounding shapes) just beyond the palm. Unlike pickPalm it does not pick out to an
      * infinite range but uses a series of spheres
-     *
+     * <p>
      * This can be useful to use picking to determine what the player wishes to grab
      */
     public CollisionResults pickGrab(Node nodeToPickAgainst){
@@ -659,20 +659,20 @@ public abstract class BoundHand{
      * <p>
      * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
      * <p>
-     * <strong>NOTE: at present only a single node can be picked against at a time and old click actions will be deregistered.
+     * <strong>NOTE: at present only a single action can be picked against (but potentially many nodes) at a time and old click actions will be deregistered.
      * However, that restriction may be lifted in later versions so old actions should be explicitly removed for forwards
      * compatibility</strong>
      * <p>
      * Use the {@link FunctionRegistration} to end the function when done
      *
      * @param clickAction the action (see action manifest) that will trigger a click, can be a vector1 or a digital action.
-     * @param nodeToPickAgainst The node that is picked against to look for lemur UIs
+     * @param nodesToPickAgainst The node(s) that is picked against to look for lemur UIs
      * @return a Runnable that if called will end the click action
      */
-    public FunctionRegistration setClickAction_lemurSupport(String clickAction, Node nodeToPickAgainst){
+    public FunctionRegistration setClickAction_lemurSupport(String clickAction, Node... nodesToPickAgainst){
         assertLemurAvailable();
-        clearClickAction_lemurSupport();
-        return addFunction(new LemurClickFunction(clickAction, nodeToPickAgainst));
+        clearClickAction_lemurSupport(); //the reason for this is the way that with many nodes dominance becomes a problem, if attached as several ClickActions (would probably be fine if bound to different buttons)
+        return addFunction(new LemurClickFunction(clickAction, nodesToPickAgainst));
     }
     /**
      * Will continuously look for touches between the node and the index finger tip. Will trigger lemur buttons etc (if

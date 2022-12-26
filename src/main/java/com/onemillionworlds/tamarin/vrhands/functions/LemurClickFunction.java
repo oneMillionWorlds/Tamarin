@@ -24,6 +24,7 @@ import com.simsilica.lemur.event.PickEventSession;
 import lombok.Setter;
 import lombok.SneakyThrows;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +42,7 @@ public class LemurClickFunction implements BoundHandFunction{
      */
     public static float PICK_MAXIMUM = 500f;
 
-    private final Node pickAgainstNode;
+    private final List<Node> pickAgainstNodes;
     private final String clickAction;
 
     /**
@@ -70,20 +71,23 @@ public class LemurClickFunction implements BoundHandFunction{
     Optional<LemurKeyboard> openKeyboard = Optional.empty();
     Optional<SelectorPopUp<?>> openDropdown = Optional.empty();
 
-    public LemurClickFunction(String clickAction, Node pickAgainstNode){
-        this.pickAgainstNode = pickAgainstNode;
+    public LemurClickFunction(String clickAction, Node... pickAgainstNodes){
+        this.pickAgainstNodes = Arrays.asList(pickAgainstNodes);
         this.clickAction = clickAction;
     }
 
     public void clickSpecialSupport(){
         BoundHand.assertLemurAvailable();
-        CollisionResults results = this.boundHand.pickBulkHand(pickAgainstNode);
-        SpecialHandlingClickThroughResult specialHandlingClickThroughResult = LemurSupport.clickThroughCollisionResultsForSpecialHandling(pickAgainstNode, results, actionBasedOpenVrState.getStateManager(), false, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
-        if (openKeyboard.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICK_ON_LEMUR_KEYBOARD)){
-            closeOpenKeyboard();
-        }
-        if (openDropdown.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_DROPDOWN && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICKED_ON_DROPDOWN_POPUP)){
-            closeDropDown();
+
+        for(Node node : pickAgainstNodes){
+            CollisionResults results = this.boundHand.pickBulkHand(node);
+            SpecialHandlingClickThroughResult specialHandlingClickThroughResult = LemurSupport.clickThroughCollisionResultsForSpecialHandling(node, results, actionBasedOpenVrState.getStateManager(), false, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
+            if(openKeyboard.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICK_ON_LEMUR_KEYBOARD)){
+                closeOpenKeyboard();
+            }
+            if(openDropdown.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_DROPDOWN && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICKED_ON_DROPDOWN_POPUP)){
+                closeDropDown();
+            }
         }
     }
 
@@ -112,7 +116,6 @@ public class LemurClickFunction implements BoundHandFunction{
         if (triggerPressure>minTriggerToClick && lastTriggerPressure<minTriggerToClick){
             if (!dominant){
                 becomeDominant();
-
             }
         }
 
@@ -194,7 +197,9 @@ public class LemurClickFunction implements BoundHandFunction{
         syntheticCamera.setFrustumNear(PICK_MINIMUM);
         syntheticCamera.setFrustumFar(PICK_MAXIMUM);
         syntheticViewport = new ViewPort("tamarinHandSyntheticViewport", syntheticCamera);
-        syntheticViewport.attachScene(pickAgainstNode);
+        for(Node node : pickAgainstNodes){
+            syntheticViewport.attachScene(node);
+        }
         mouseAppState.addCollisionRoot(syntheticViewport);
 
         dominant = true;
