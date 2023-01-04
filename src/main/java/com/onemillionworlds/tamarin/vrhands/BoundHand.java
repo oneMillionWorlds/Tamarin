@@ -102,9 +102,9 @@ public abstract class BoundHand{
     private final Node debugPointsNode = new Node();
 
     /**
-     * A node at the wrist,
+     * A node at the wrist.
      * <p>
-     * with hands held with thumbs upwards  +x going to the left, +y goes upwards and +z goes towards the fingers
+     * <b>With hands held with thumbs upwards</b> +x going to the left, +y goes upwards and +z goes towards the fingers
      */
     @Getter
     private final Node wristNode = new Node();
