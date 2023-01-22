@@ -12,4 +12,12 @@ public enum HandSide{
     HandSide(String restrictToInputString){
         this.restrictToInputString = restrictToInputString;
     }
+
+    public HandSide getOtherHand(){
+        switch(this){
+            case LEFT: return RIGHT;
+            case RIGHT: return LEFT;
+        }
+        throw new RuntimeException("Unexpected hand side");
+    }
 }
