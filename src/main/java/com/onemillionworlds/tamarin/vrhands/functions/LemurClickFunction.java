@@ -27,6 +27,7 @@ import lombok.SneakyThrows;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public class LemurClickFunction implements BoundHandFunction{
 
@@ -71,24 +72,29 @@ public class LemurClickFunction implements BoundHandFunction{
     Optional<LemurKeyboard> openKeyboard = Optional.empty();
     Optional<SelectorPopUp<?>> openDropdown = Optional.empty();
 
+    private Consumer<HandSide> clickOnNothingConsumer = (handSide) -> {};
+
     public LemurClickFunction(String clickAction, Node... pickAgainstNodes){
         this.pickAgainstNodes = Arrays.asList(pickAgainstNodes);
         this.clickAction = clickAction;
     }
 
-    public void clickSpecialSupport(){
+    public boolean clickSpecialSupport(){
         BoundHand.assertLemurAvailable();
-
+        boolean anyAction = false;
         for(Node node : pickAgainstNodes){
             CollisionResults results = this.boundHand.pickBulkHand(node);
             SpecialHandlingClickThroughResult specialHandlingClickThroughResult = LemurSupport.clickThroughCollisionResultsForSpecialHandling(node, results, actionBasedOpenVrState.getStateManager(), false, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
             if(openKeyboard.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICK_ON_LEMUR_KEYBOARD)){
                 closeOpenKeyboard();
+                anyAction = true;
             }
             if(openDropdown.isPresent() && (specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.OPENED_DROPDOWN && specialHandlingClickThroughResult != SpecialHandlingClickThroughResult.CLICKED_ON_DROPDOWN_POPUP)){
                 closeDropDown();
+                anyAction = true;
             }
         }
+        return anyAction;
     }
 
     @Override
@@ -128,14 +134,29 @@ public class LemurClickFunction implements BoundHandFunction{
             //left and right hands represented as left and right mouse buttons
             int btnIndex = boundHand.getHandSide() == HandSide.LEFT ? MouseInput.BUTTON_LEFT : MouseInput.BUTTON_RIGHT;
             if(triggerPressure > minTriggerToClick && lastTriggerPressure < minTriggerToClick){
-                mouseAppState.dispatch( new MouseButtonEvent(btnIndex, true, 500, 500));
-                clickSpecialSupport();
+                MouseButtonEvent event = new MouseButtonEvent(btnIndex, true, 500, 500);
+                mouseAppState.dispatch(event);
+                boolean anySpecialAction = clickSpecialSupport();
+
+                if (!event.isConsumed() && !anySpecialAction){
+                    clickOnNothingConsumer.accept(boundHand.getHandSide());
+                }
             }
             if(triggerPressure < minTriggerToClick && lastTriggerPressure > minTriggerToClick){
-                mouseAppState.dispatch( new MouseButtonEvent(btnIndex, false, 500, 500));
+                mouseAppState.dispatch( new MouseButtonEvent(btnIndex, false, 500, 500) );
             }
         }
         lastTriggerPressure = triggerPressure;
+    }
+
+    /**
+     * If a click occurs but no event gets consumed this consumer is called (and told which hand this is)
+     * <p>
+     * Note; it's very important to make sure your click events consume the event if you want to make use of this functionality
+     * (Or else everything will be interpreted as "clicking on nothing")
+     */
+    public void setClickOnNothingConsumer(Consumer<HandSide> onClickOnNothing){
+        this.clickOnNothingConsumer = onClickOnNothing;
     }
 
     private void handleNewKeyboardOpening(LemurKeyboard keyboard){

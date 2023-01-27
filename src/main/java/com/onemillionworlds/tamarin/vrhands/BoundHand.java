@@ -659,6 +659,9 @@ public abstract class BoundHand{
      * <p>
      * Its worth noting that the MouseButtonEvents will not have meaningful x,y coordinates
      * <p>
+     * More advanced functionality, like receiving on click on nothing events can be obtained by using the {@link BoundHand#addFunction(BoundHandFunction)}
+     * method and adding a configured LemurClickFunction
+     * <p>
      * <strong>NOTE: at present only a single action can be picked against (but potentially many nodes) at a time and old click actions will be deregistered.
      * However, that restriction may be lifted in later versions so old actions should be explicitly removed for forwards
      * compatibility</strong>
