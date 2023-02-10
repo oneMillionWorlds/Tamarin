@@ -679,8 +679,10 @@ public abstract class BoundHand{
     }
     /**
      * Will continuously look for touches between the node and the index finger tip. Will trigger lemur buttons etc (if
-     * lemur is available) and Tamarin {@link AbstractTouchControl}
-     *
+     * lemur is available) and Tamarin {@link AbstractTouchControl}. Filters out accidental double taps and only fires
+     * when the fingertip first touches (I.e. putting your finger on a button will only generate a single event, not
+     * continuous events while the finger remains in contact)
+     * <p>
      * Use the {@link FunctionRegistration} to end the function when done
      *
      * @param nodeToScanForTouches the note to scan for contact with the fingertip

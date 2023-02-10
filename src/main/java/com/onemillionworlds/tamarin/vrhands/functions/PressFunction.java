@@ -2,8 +2,6 @@ package com.onemillionworlds.tamarin.vrhands.functions;
 
 import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
-import com.jme3.renderer.Camera;
-import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
@@ -12,11 +10,8 @@ import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
 import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
-import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
-import com.simsilica.lemur.event.LemurProtectedSupport;
-import com.simsilica.lemur.event.PickEventSession;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,9 +44,6 @@ public class PressFunction implements BoundHandFunction{
     Optional<String> vibrateActionOnTouch;
     float vibrateOnTouchIntensity;
 
-    private Camera syntheticCamera;
-    private ViewPort syntheticViewport;
-
     private ActionBasedOpenVrState actionBasedOpenVrState;
 
     private AppStateManager stateManager;
@@ -83,11 +75,6 @@ public class PressFunction implements BoundHandFunction{
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.stateManager = stateManager;
         this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.class);
-        VrLemurAppState mouseAppState = stateManager.getState(VrLemurAppState.class);
-        if (BoundHand.isLemurAvailable()){
-            PickEventSession lemurSession = LemurProtectedSupport.getSession(mouseAppState);
-        }
-
     }
 
     @Override
