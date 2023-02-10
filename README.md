@@ -58,11 +58,13 @@ Project is provisioned on https://s01.oss.sonatype.org/
 
 Deploy to sonatype by:
 - Editing the build.gradle file to have a non snapshot version
-- Running the gradle task publishMavenJavaPublicationToSonarTypeRepository (see see https://docs.gradle.org/current/userguide/publishing_maven.html)
+- Running the gradle task publishMavenJavaPublicationToSonaTypeRepository (see https://docs.gradle.org/current/userguide/publishing_maven.html)
 - Go to https://s01.oss.sonatype.org/ and log in
 - Go to the staging repository and select the repository
 - If all looks well "close" the repository and then Release it
 - Tag the release
+
+
 ## Upgrade
 
 This library forward ports JMonkeyEngine 3.6 functionality into JMonkeyEngine 3.5. Expect breaking changes on upgrading
