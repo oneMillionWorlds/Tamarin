@@ -34,7 +34,7 @@ import java.util.Optional;
 /**
  * The debug window creates a ui element that will render debug information to a panel.
  * <p>
- * That panel will follow the player around but can be grabbed and moved if grab support is active in the hands.
+ * That panel will follow the player around but can be grabbed and moved.
  * <p>
  * Requires lemur
  */
@@ -82,18 +82,21 @@ public class DebugWindowState extends BaseAppState{
     double timeTillNextPositionCheck = 0;
 
     private final String hapticAction;
+    private final String grabAction;
 
     public DebugWindowState(){
-        this(null);
+        this(null, null);
     }
 
     /**
      * @param hapticAction On touching a button on the debug window state this haptic will trigger (can be null)
+     * @param grabAction action that allows the window to be grabbed and moved (can be null)
      */
-    public DebugWindowState(String hapticAction){
+    public DebugWindowState(String hapticAction, String grabAction){
         assert INSTANCE.isEmpty() : "Can only have 1 DebugWindowState";
         INSTANCE = Optional.of(this);
         this.hapticAction = hapticAction;
+        this.grabAction = grabAction;
     }
 
     @Override
@@ -123,9 +126,13 @@ public class DebugWindowState extends BaseAppState{
         List<BoundHand> handControls = vrHandsAppState.getHandControls();
 
         if (!handControls.isEmpty()){
-            handControls.forEach(hand ->
-                    deregistrations.add(hand.addFunction(new PressFunction(debugWindowNode, false, hapticAction,0.5f )))
-            );
+            handControls.forEach(hand -> {
+                deregistrations.add(hand.addFunction(new PressFunction(debugWindowNode, false, hapticAction, 0.5f)));
+                if (this.grabAction != null){
+                    deregistrations.add(hand.setGrabAction(this.grabAction, debugWindowNode));
+                }
+
+            });
             connectedToHands = true;
         }
     }
@@ -247,9 +254,7 @@ public class DebugWindowState extends BaseAppState{
                 });
             }
 
-            currentLineItems.forEach((label, lineItem) -> {
-                lineItem.update(tpf);
-            });
+            currentLineItems.forEach((label, lineItem) -> lineItem.update(tpf));
         }
 
         ticksSinceLastSet.replaceAll((key, ticks) -> ticks+1);
