@@ -2,6 +2,7 @@ package com.onemillionworlds.tamarin.vrhands.grabbing;
 
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.math.Line3f;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
@@ -41,21 +42,24 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
         if (grabbingHandOpt.isPresent()){
             BoundHand hand = grabbingHandOpt.get();
-            Spatial moveTargetSpatial = getMoveTargetSpatial();
 
+            Spatial moveTargetSpatial = getMoveTargetSpatial();
+            Node targetParent = moveTargetSpatial.getParent();
             if (startTargetPosition == null){
-                startTargetPosition = new Vector3f(moveTargetSpatial.getLocalTranslation());
-                startTargetRotation = new Quaternion(moveTargetSpatial.getLocalRotation());
-                startHandPosition = new Vector3f(hand.getHandNode_xPointing().getWorldTranslation());
-                startHandRotation = new Quaternion(hand.getHandNode_xPointing().getWorldRotation());
+                startTargetPosition = targetParent.worldToLocal(moveTargetSpatial.getWorldTranslation(), null);
+                startTargetRotation = targetParent.getWorldRotation().inverse().mult(new Quaternion(moveTargetSpatial.getWorldRotation()));
+                startHandPosition = targetParent.worldToLocal(new Vector3f(hand.getHandNode_xPointing().getWorldTranslation()), null);
+                startHandRotation = targetParent.getWorldRotation().inverse().mult(new Quaternion(hand.getHandNode_xPointing().getWorldRotation()));
                 handToTargetOffset = startTargetPosition.subtract(startHandPosition);
             }
-            Vector3f currentHandPosition = hand.getHandNode_xPointing().getWorldTranslation();
-            Quaternion currentHandRotation = hand.getHandNode_xPointing().getWorldRotation();
+            Vector3f currentHandPosition = targetParent.worldToLocal(hand.getHandNode_xPointing().getWorldTranslation(), null);
+            Quaternion currentHandRotation = targetParent.getWorldRotation().inverse().mult(hand.getHandNode_xPointing().getWorldRotation());
 
             Vector3f bulkMotion = currentHandPosition.subtract(startHandPosition);
 
             Quaternion changeInRotation = getQuaternionFromTo(startHandRotation, currentHandRotation);
+
+            System.out.println(bulkMotion);
 
             if (this.shouldApplyRotation){
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
@@ -80,7 +84,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
     /**
      * Restricts the move target (often, but not always the spatial this control is attached to).
      * <p>
-     * The move target will remain on that path
+     * The move target will remain on that path. The path is relative to the move target's parent
      */
     public void restrictToPath(Vector3f startPoint, Vector3f endPoint){
         restrictToLine = Optional.of(new Line3f(startPoint, endPoint));
