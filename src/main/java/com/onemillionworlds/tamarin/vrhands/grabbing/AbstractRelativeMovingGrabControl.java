@@ -59,8 +59,6 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
             Quaternion changeInRotation = getQuaternionFromTo(startHandRotation, currentHandRotation);
 
-            System.out.println(bulkMotion);
-
             if (this.shouldApplyRotation){
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
                 moveTargetSpatial.setLocalRotation(changeInRotation.mult(startTargetRotation));
