@@ -3,30 +3,23 @@ package com.onemillionworlds.tamarin.vrhands.functions;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
-import com.jme3.material.Material;
-import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector3f;
-import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.shape.Line;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
 import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
-import com.onemillionworlds.tamarin.vrhands.HandSide;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import lombok.Setter;
 
-import java.util.List;
 import java.util.Optional;
 
 public class GrabPickingFunction implements BoundHandFunction{
 
-    private String grabAction;
+    private final String grabAction;
 
-    private Node nodeToGrabPickAgainst;
+    private final Node nodeToGrabPickAgainst;
 
     private float timeSinceGrabbed;
 
@@ -40,6 +33,7 @@ public class GrabPickingFunction implements BoundHandFunction{
      * Allows the amount of pressure required to pick something up to be changed.
      * A value between 0 and 1
      */
+    @Setter
     private float minimumGripToTrigger = 0.5f;
 
     private boolean grabActionIsAnalog = true;
@@ -109,6 +103,23 @@ public class GrabPickingFunction implements BoundHandFunction{
         }
     }
 
+    public boolean isCurrentlyHoldingSomething(){
+        return currentlyGrabbed.isPresent();
+    }
+
+    /**
+     * Usually grabbing handles itself. However sometimes you may want to give an already clenched hand an item that has
+     * been freshly created. An example of this would be when you are building and every time you clench your hand a
+     * new item is "magicked up" in that hand (and then the user places that item). This method can be used in that case.
+     * <p>
+     * Note that if the user isn't currently clenching the hand then they will immediately drop the item.
+     */
+    public void manuallyGiveControlToHold(AbstractGrabControl grabControl){
+        currentlyGrabbed.ifPresent(abstractGrabControl -> abstractGrabControl.onRelease(boundHand));
+        currentlyGrabbed = Optional.of(grabControl);
+        grabControl.onGrab(boundHand);
+    }
+
     private float getGripActionPressure(BoundHand boundHand, String action){
         try{
             if (grabActionIsAnalog){
@@ -125,14 +136,4 @@ public class GrabPickingFunction implements BoundHandFunction{
         }
     }
 
-    private Geometry microLine(ColorRGBA colorRGBA, Vector3f vector){
-        Line line = new Line(new Vector3f(0, 0, 0), vector);
-        Geometry geometry = new Geometry("debugHandLine", line);
-        Material material = new Material(boundHand.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        material.getAdditionalRenderState().setLineWidth(5);
-        material.setColor("Color", colorRGBA);
-        geometry.setMaterial(material);
-        geometry.setUserData(BoundHand.NO_PICK, true);
-        return geometry;
-    }
 }
