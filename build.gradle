@@ -14,12 +14,14 @@ repositories {
 java {
     withJavadocJar()
     withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 group = 'com.onemillionworlds'
-version = '1.4'
+version = '1.4.1'
 
-def jme3 = [v:'3.5.2-stable', g:'org.jmonkeyengine']
+def jme3 = [v:'3.6.0-stable', g:'org.jmonkeyengine']
 
 dependencies {
     // Use JUnit test framework.
@@ -37,8 +39,14 @@ dependencies {
      */
     compileOnly "${jme3.g}:jme3-core:${jme3.v}"
     compileOnly "${jme3.g}:jme3-vr:${jme3.v}"
+    /*
+     * Lemur is an optional dependency
+     */
     compileOnly "com.simsilica:lemur:1.16.0"
     compileOnly "com.simsilica:lemur-proto:1.13.0"
+    /*
+     * Lombok is only required during compile (it's an annotation processor)
+     */
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
 }
 
