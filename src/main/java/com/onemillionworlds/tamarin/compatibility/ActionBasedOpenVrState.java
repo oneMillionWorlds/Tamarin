@@ -26,11 +26,8 @@ import org.lwjgl.openvr.InputDigitalActionData;
 import org.lwjgl.openvr.InputPoseActionData;
 import org.lwjgl.openvr.VR;
 import org.lwjgl.openvr.VRActiveActionSet;
-import org.lwjgl.openvr.VRApplications;
 import org.lwjgl.openvr.VRBoneTransform;
 import org.lwjgl.openvr.VRInput;
-import org.lwjgl.openvr.VRSystem;
-
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
@@ -411,7 +408,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * {@link #registerActionManifest} must have been called before using this method.
      *
      * @param actionName The name of the action. E.g. /actions/main/in/openInventory
-     * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
+     * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
      */
     public AnalogActionState getAnalogActionState( String actionName ){
         return getAnalogActionState(actionName, null);
@@ -419,21 +416,21 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Gets the current state of the action (abstract version of a button press).
-     *
+     * <p>
      * This is called for analog style actions (most commonly joysticks, but button pressure can also be mapped in analog).
-     *
+     * <p>
      * This method is commonly called when it is important which hand the action is found on. For example an "in universe"
      * joystick that has a hat control might (while you are holding it) bind to the on-controller hat, but only on the hand
      * holding it
-     *
+     * <p>
      * Note that restrictToInput only restricts, it must still be bound to the input you want to receive the input from in
      * the action manifest default bindings.
-     *
+     * <p>
      * {@link #registerActionManifest} must have been called before using this method.
      *
      * @param actionName The name of the action. E.g. /actions/main/in/openInventory
      * @param restrictToInput the input to restrict the action to. E.g. /user/hand/right. Or null, which means "any input"
-     * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
+     * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
      */
     public AnalogActionState getAnalogActionState(String actionName, String restrictToInput ){
         assert inputMode == InputMode.ACTION_BASED : "registerActionManifest must be called before attempting to fetch action states";
@@ -576,9 +573,9 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * it will pull from the requested action name and update the bones to be at the
      * appropriate positions. Note that all OpenVr compatible devices will have the same bone names
      * (although the fidelity of their positions may vary)
-     *
-     * See https://github.com/ValveSoftware/openvr/wiki/Hand-Skeleton
-     *
+     * <p>
+     * See <a href="https://github.com/ValveSoftware/openvr/wiki/Hand-Skeleton">Hand-Skeleton</a>
+     * <p>
      * NOTE: the bone orientation is surprising and non-natural. If you build a hand model, and it appears
      * distorted try importing the example (as described in the above link) into blender from the fbx format. This will
      * give bones that appear not to lie along the anatomical bone set. Despite looking odd those bones work correctly
