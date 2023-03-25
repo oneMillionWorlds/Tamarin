@@ -21,6 +21,8 @@ This library uses simple java.util.Logger for maximum compatibility. Bind that t
 
 See https://github.com/oneMillionWorlds/Tamarin/wiki for documentation 
 
+See https://github.com/oneMillionWorlds/TamarinTestBed for examples
+
 ## Best practices
 
 Grabbing and menu picking both use geometry picking. With simple scenes performance may be fine picking
