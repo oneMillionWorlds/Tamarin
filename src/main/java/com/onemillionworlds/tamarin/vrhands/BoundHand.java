@@ -166,10 +166,14 @@ public abstract class BoundHand{
     public boolean handPointing = false;
 
     private final String proximalName;
-    private final String metacarpalName;
+    private final String middleMetacarpalName;
+
+    private final String indexMetacarpalName;
     private final String indexEndName;
     private final String index2Name;
     private final String index1Name;
+
+    private final String ringMetacarpalName;
 
     private final String ringEndName;
     private final String ring2Name;
@@ -192,13 +196,15 @@ public abstract class BoundHand{
         this.palmPickPoints = List.of(new Vector3f(0,0,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.02f,-0.03f,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.03f,0.03f,outOfPalm*(0.005f+palmPickSphereRadius)), new Vector3f(-0.03f,0,outOfPalm*(0.01f+palmPickSphereRadius)));
 
         proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
-        metacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
+        middleMetacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
         indexEndName = handSide == HandSide.LEFT ?"finger_index_l_end":"finger_index_r_end";
         index2Name = handSide == HandSide.LEFT ?"finger_index_2_l":"finger_index_2_r";
         index1Name  = handSide == HandSide.LEFT ?"finger_index_1_l":"finger_index_1_r";
+        indexMetacarpalName = handSide == HandSide.LEFT ?"finger_index_meta_l":"finger_index_meta_r";
         ringEndName  = handSide == HandSide.LEFT ?"finger_ring_l_end":"finger_ring_r_end";
         ring2Name = handSide == HandSide.LEFT ?"finger_ring_2_l":"finger_ring_2_r";
         ring1Name = handSide == HandSide.LEFT ?"finger_ring_1_l":"finger_ring_1_r";
+        ringMetacarpalName = handSide == HandSide.LEFT ?"finger_ring_meta_l":"finger_ring_meta_r";
         wristName = handSide == HandSide.LEFT ?"wrist_l":"wrist_r";
         searchForGeometry(handGeometry).forEach(g -> g.setUserData(NO_PICK, true));
 
@@ -346,16 +352,18 @@ public abstract class BoundHand{
         BoneStance indexEnd = boneStances.get(indexEndName);
         BoneStance index2= boneStances.get(index2Name);
         BoneStance index1 = boneStances.get(index1Name);
+        BoneStance indexMeta = boneStances.get(indexMetacarpalName);
 
         BoneStance ringEnd = boneStances.get(ringEndName);
         BoneStance ring2= boneStances.get(ring2Name);
         BoneStance ring1 = boneStances.get(ring1Name);
+        BoneStance ringMeta = boneStances.get(ringMetacarpalName);
 
-        if (notNull(indexEnd, index2, index1, ringEnd, ring2, ring1)) {
-            float ringFingerAlignment = ringEnd.position.subtract(ring2.position).normalizeLocal().dot(ring2.position.subtract(ring1.position).normalizeLocal());
-            float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index2.position.subtract(index1.position).normalizeLocal());
+        if (notNull(indexEnd, index2, index1, ringEnd, ring2, ring1, indexMeta, ringMeta)){
+            float ringFingerAlignment = ringEnd.position.subtract(ring2.position).normalizeLocal().dot(ring1.position.subtract(ringMeta.position).normalizeLocal());
+            float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index1.position.subtract(indexMeta.position).normalizeLocal());
+            handPointing = indexFingerAlignment > 0.85 && ringFingerAlignment < 0.8;
 
-            handPointing = indexFingerAlignment > 0.9 && ringFingerAlignment < 0.8;
         }
     }
 
@@ -371,7 +379,7 @@ public abstract class BoundHand{
         //the palm node is put at the position between the finger_middle_0_l bone and finger_middle_meta_l, but with the
         // rotation of the finger_middle_meta_l bone. This gives roughly the position of a grab point, with a sensible rotation
 
-        BoneStance metacarpel = boneStances.get(metacarpalName);
+        BoneStance metacarpel = boneStances.get(middleMetacarpalName);
         BoneStance proximal = boneStances.get(proximalName);
         if (metacarpel != null){
 
