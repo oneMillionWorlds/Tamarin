@@ -12,6 +12,8 @@ import java.util.Optional;
 
 public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabControl{
 
+    private static final Quaternion UNROTATED_QUATERNION = new Quaternion().fromAngleAxis(0, Vector3f.UNIT_Y);
+
     Vector3f startTargetPosition;
     Vector3f startHandPosition;
     Vector3f handToTargetOffset;
@@ -61,10 +63,21 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
             if (this.shouldApplyRotation){
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
-                moveTargetSpatial.setLocalRotation(changeInRotation.mult(startTargetRotation));
-                moveTargetSpatial.setLocalTranslation(applyLineRestriction(startTargetPosition.add(bulkMotion).add(rotationInducedMotion)));
+
+                Vector3f fullMotionDuringFullGrab = bulkMotion.add(rotationInducedMotion);
+                Vector3f newLocalTranslation = applyLineRestriction(startTargetPosition.add(fullMotionDuringFullGrab));
+                Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
+                Quaternion newLocalRotation = changeInRotation.mult(startTargetRotation);
+                Quaternion changeInLocalRotationThisTick = getQuaternionFromTo(moveTargetSpatial.getLocalRotation(), newLocalRotation);
+
+                moveTargetSpatial.setLocalRotation(newLocalRotation);
+                moveTargetSpatial.setLocalTranslation(newLocalTranslation);
+                whileGrabbing(hand, changeInLocalTranslationThisTick, changeInLocalRotationThisTick);
             }else{
-                moveTargetSpatial.setLocalTranslation(applyLineRestriction(startTargetPosition.add(bulkMotion)));
+                Vector3f newLocalTranslation = applyLineRestriction(startTargetPosition.add(bulkMotion));
+                Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
+                moveTargetSpatial.setLocalTranslation(newLocalTranslation);
+                whileGrabbing(hand, changeInLocalTranslationThisTick, UNROTATED_QUATERNION);
             }
         }else if (startTargetPosition !=null){
             startTargetPosition = null;
@@ -74,6 +87,23 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
             startHandRotation = null;
         }
     }
+
+    /**
+     * Called every frame that the hand is grabbing this control and is informed of how much
+     * control has moved this frame (after any restrictions have been applied).
+     * <p>
+     * Intended as a callback that child classes may implement if they want to do something with the change beyond
+     * just letting the spatial be moved
+     *
+     * @param grabbedByHand The hand that is grabbing this control
+     * @param bulkMotionThisTick How much control has moved this tick
+     * @param rotationChangeThisTick How much the rotation has changed this tick
+     */
+    @SuppressWarnings("unused")
+    public void whileGrabbing(BoundHand grabbedByHand, Vector3f bulkMotionThisTick, Quaternion rotationChangeThisTick){
+        //do nothing by default, this is a callback if child classes want to do something with the change
+    }
+
 
     private Vector3f applyLineRestriction(Vector3f unrestrictedPosition){
         return restrictToLine.map(l -> l.findPointOfClosedApproach(unrestrictedPosition)).orElse(unrestrictedPosition);
