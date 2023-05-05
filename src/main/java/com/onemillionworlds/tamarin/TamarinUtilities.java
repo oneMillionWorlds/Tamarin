@@ -3,7 +3,6 @@ package com.onemillionworlds.tamarin;
 import com.jme3.app.VRAppState;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
-import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
@@ -11,10 +10,8 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.Control;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class TamarinUtilities{
@@ -33,16 +30,12 @@ public class TamarinUtilities{
 
         Vector3f currentObserverPosition = observerNode.getLocalTranslation();
 
-        currentObserverPosition.x+=movement.x;
-        currentObserverPosition.z+=movement.z;
-        currentObserverPosition.y = feetPosition.y;
+        observerNode.setLocalTranslation(currentObserverPosition.x+movement.x, feetPosition.y, currentObserverPosition.z+movement.z);
     }
 
     /**
      * Often you'll want to programatically turn the player, which should be done by rotating the observer.
-     *
      * However, if the player isn't standing directly above the observer this rotation will induce motion.
-     *
      * This method corrects for that and gives the impression the player is just turning
      * @param vrAppState the VRAppState
      * @param angleAboutYAxis the requested turn angle. Positive numbers turn left, negative numbers turn right
@@ -82,12 +75,10 @@ public class TamarinUtilities{
 
     /**
      * Often you'll want to programatically turn the player, which should be done by rotating the observer.
-     *
      * However, if the player isn't standing directly above the observer this rotation will induce motion.
-     *
-     * Deprecated, no need to pass observerNode
-     *
      * This method corrects for that and gives the impression the player is just turning
+     * <p>
+     * Deprecated, no need to pass observerNode
      * @param observerNode the node that represents the observer (see tamarin wiki for explanation on observer node)
      * @param vrAppState the VRAppState
      * @param angleAboutYAxis the requested turn angle. Positive numbers turn left, negative numbers turn right
@@ -99,7 +90,7 @@ public class TamarinUtilities{
 
     /**
      * Will search the collision results (and all parents) looking for controls of that class.
-     *
+     * <p>
      * Note that this method respects the TAMARIN_STOP_BUBBLING user data. Meaning if a boolean of true is registered
      * with that key then it will stop looking up the parent chain
      */
