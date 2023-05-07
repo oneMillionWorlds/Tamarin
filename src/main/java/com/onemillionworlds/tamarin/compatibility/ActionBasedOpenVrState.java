@@ -45,9 +45,9 @@ import java.util.logging.Logger;
 /**
  * This app state provides action based OpenVR calls (aka semi modern VR), this is functionality that will come in
  * JMonkey 3.6 but does not yet exist. This provides that functionality but makes it available in JMonkey 3.4 and 3.5.
- *
+ * <p>
  * This app state closely follows LWJGLOpenVRInput as it will exist in 3.6
- *
+ * <p>
  * Before binding this app state the VR context should already have been booted (using JMonkey) and the JMonkey
  * app state {@link VRAppState} will already have been bound. The setting VRConstants.SETTING_VRAPI must have been set to
  * VRConstants.SETTING_VRAPI_OPENVR_LWJGL_VALUE (as this uses LWJGL)
@@ -82,7 +82,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * These are the cached skeleton data (what bones there are, what the handles are etc)
-     *
+     * <p>
      * It is a map of action name to that name (/skeleton/hand/left or /skeleton/hand/right should be bound to an
      * action of type skeleton in the action manifest).
      */
@@ -90,7 +90,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * A map of input names (e.g. /user/hand/right) to the handle used to address it.
-     *
+     * <p>
      * Note that null is a special case that maps to VR.k_ulInvalidInputValueHandle and means "any input"
      */
     private final Map<String, Long> inputHandles = new HashMap<>();
@@ -171,13 +171,13 @@ public class ActionBasedOpenVrState extends BaseAppState{
      * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make.
      * (An action is an abstract version of a button press). The action manifest may then also include references to
      * further files that define default mappings between those actions and physical buttons on the VR controllers.
-     *
+     * <p>
      * Note that registering an actions manifest will deactivate legacy inputs (i.e. methods such as isButtonDown
      * will no longer work
-     *
-     * See https://github.com/ValveSoftware/openvr/wiki/Action-manifest for documentation on how to create an
-     * action manifest
-     *
+     * <p>
+     * See <a href="https://github.com/ValveSoftware/openvr/wiki/Action-manifest">https://github.com/ValveSoftware/openvr/wiki/Action-manifest</a>
+     * for documentation on how to create an action manifest
+     * <p>
      * This option is only relevant to OpenVR
      *
      * @param actionManifestAbsolutePath
@@ -197,15 +197,6 @@ public class ActionBasedOpenVrState extends BaseAppState{
     }
 
     /**
-     * Deprecated, use setActiveActionSetsBothHands
-     * @param actionSets
-     */
-    @Deprecated
-    public void setActiveActionSet(String... actionSets){
-        setActiveActionSetsBothHands(actionSets);
-    }
-
-    /**
      * This sets action sets active for all hands
      * @param actionSets the action sets to set as active
      */
@@ -218,7 +209,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * This sets action sets active for the left hand only
-     *
+     * <p>
      * Note that setting an action to left and right (or left and both) is equivalent to setting it to both
      * @param actionSets the action sets to set as active
      */
@@ -231,7 +222,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * This sets action sets active for the right hand only
-     *
+     * <p>
      * Note that setting an action to left and right (or right and both) is equivalent to setting it to both
      *
      * @param actionSets the action sets to set as active
@@ -245,9 +236,9 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Gets the current state of the action (abstract version of a button press).
-     *
+     * <p>
      * This is called for digital style actions (a button is pressed, or not)
-     *
+     * <p>
      * {@link #registerActionManifest} must have been called before using this method.
      *
      * @param actionName The name of the action. E.g. /actions/main/in/openInventory
@@ -259,16 +250,16 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Gets the current state of the action (abstract version of a button press).
-     *
+     * <p>
      * This is called for digital style actions (a button is pressed, or not)
-     *
+     * <p>
      * This method is commonly called when it is important which hand the action is found on. For example while
      * holding a weapon a button may be bound to "eject magazine" to allow you to load a new one, but that would only
      * want to take effect on the hand that is holding the weapon
-     *
+     * <p>
      * Note that restrictToInput only restricts, it must still be bound to the input you want to receive the input from in
      * the action manifest default bindings.
-     *
+     * <p>
      * {@link #registerActionManifest} must have been called before using this method.
      *
      * @param actionName The name of the action. E.g. /actions/main/in/openInventory
@@ -320,7 +311,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * A pose is where a hand is, and what its rotation is.
-     *
+     * <p>
      * This returns the pose in the observers coordinate system (note that observer does not mean "eyes", it means
      * a reference point placed in the scene that corresponds to the real world VR origin)
      *
@@ -349,10 +340,10 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * A pose is where a hand is, and what its rotation is.
-     *
+     * <p>
      * Pose means the bulk position and rotation of the hand. Be aware that the direction the hand is pointing by this
      * may be surprising, the relative bone positions also need to be taken into account for this to really make sense.
-     *
+     * <p>
      * This returns the pose in world coordinate system
      *
      * @param actionName the action name that has been bound to a pose in the action manifest
@@ -396,13 +387,13 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Gets the current state of the action (abstract version of a button press).
-     *
+     * <p>
      * This is called for analog style actions (most commonly joysticks, but button pressure can also be mapped in analog).
-     *
+     * <p>
      * This method is commonly called when it's not important which hand the action is bound to (e.g. if the thumb stick
      * is controlling a third-person character in-game that could be bound to either left or right hand and that would
      * not matter).
-     *
+     * <p>
      * If the handedness matters use {@link #getAnalogActionState(String, String)}
      *
      * {@link #registerActionManifest} must have been called before using this method.
@@ -455,7 +446,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Triggers a haptic action (aka a vibration).
-     *
+     * <p>
      * Note if you want a haptic action in only one hand that is done either by only binding the action to one hand in
      * the action manifest's standard bindings or by binding to both and using {@link #triggerHapticAction(String, float, float, float, String)}
      * to control which input it gets set to at run time
@@ -471,10 +462,10 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Triggers a haptic action (aka a vibration) restricted to just one input (e.g. left or right hand).
-     *
+     * <p>
      * Note that restrictToInput only restricts, it must still be bound to the input you want to send the haptic to in
      * the action manifest default bindings.
-     *
+     * <p>
      * This method is typically used to bind the haptic to both hands then decide at run time which hand to sent to     *
      *
      * @param actionName The name of the action. Will be something like /actions/main/out/vibrate
@@ -521,7 +512,7 @@ public class ActionBasedOpenVrState extends BaseAppState{
 
     /**
      * Given an input name returns the handle to address it.
-     *
+     * <p>
      * If a cached handle is available it is returned, if not it is fetched from openVr
      *
      * @param inputName the input name, e.g. /user/hand/right. Or null, which means "any input"

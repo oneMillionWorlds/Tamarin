@@ -470,17 +470,6 @@ public abstract class BoundHand{
     }
 
     /**
-     * This will stop that action started by {@link BoundHand#setPickMarkerContinuous}
-     *
-     * Deprecated as assumes only 1 pick marker at a time. Instead call the Runnable returned
-     * by  {@link BoundHand#setPickMarkerContinuous} to remove the marker
-     */
-    @Deprecated
-    public void clearPickMarkerContinuous(){
-        removeFunction(PickMarkerFunction.class);
-    }
-
-    /**
      * Picks from roughly the centre of the palm out from the palm (i.e. for the left hand it points right)
      * <p>
      * This can be used to detect what the palm is pointing at (which is rarely useful to be honest)

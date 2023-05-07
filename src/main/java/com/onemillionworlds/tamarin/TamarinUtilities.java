@@ -62,7 +62,9 @@ public class TamarinUtilities{
         requestedLookDirection.y = 0  ;
 
         if (currentLookDirection.lengthSquared()>0 && requestedLookDirection.lengthSquared()>0){
+            @SuppressWarnings("SuspiciousNameCombination")
             float currentAngle = FastMath.atan2(currentLookDirection.x, currentLookDirection.z);
+            @SuppressWarnings("SuspiciousNameCombination")
             float requestedAngle = FastMath.atan2(requestedLookDirection.x, requestedLookDirection.z);
             float changeInAngle = requestedAngle - currentAngle;
             rotateObserverWithoutMovingPlayer(vrAppState, changeInAngle);
@@ -107,21 +109,6 @@ public class TamarinUtilities{
      */
     public static Vector3f getVrCameraPosition(VRAppState vrAppState){
         return vrAppState.getVRViewManager().getLeftCamera().getLocation().add(vrAppState.getVRViewManager().getRightCamera().getLocation()).mult(0.5f);
-    }
-
-    /**
-     * Often you'll want to programatically turn the player, which should be done by rotating the observer.
-     * However, if the player isn't standing directly above the observer this rotation will induce motion.
-     * This method corrects for that and gives the impression the player is just turning
-     * <p>
-     * Deprecated, no need to pass observerNode
-     * @param observerNode the node that represents the observer (see tamarin wiki for explanation on observer node)
-     * @param vrAppState the VRAppState
-     * @param angleAboutYAxis the requested turn angle. Positive numbers turn left, negative numbers turn right
-     */
-    @Deprecated
-    public static void rotateObserverWithoutMovingPlayer(Node observerNode, VRAppState vrAppState, float angleAboutYAxis){
-        rotateObserverWithoutMovingPlayer(vrAppState, angleAboutYAxis);
     }
 
     /**
