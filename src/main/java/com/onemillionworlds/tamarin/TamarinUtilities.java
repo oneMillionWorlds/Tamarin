@@ -3,6 +3,7 @@ package com.onemillionworlds.tamarin;
 import com.jme3.app.VRAppState;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
+import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
@@ -31,6 +32,41 @@ public class TamarinUtilities{
         Vector3f currentObserverPosition = observerNode.getLocalTranslation();
 
         observerNode.setLocalTranslation(currentObserverPosition.x+movement.x, feetPosition.y, currentObserverPosition.z+movement.z);
+    }
+
+    /**
+     * This will rotate the observer such that the player is looking at the requested position. Only considered rotation
+     * int the X-Z plane so the y coordinate is ignored (and so you won't get your universe all messed up relative to the
+     * real world).
+     * If the position is the same as the current position, this will do nothing.
+     */
+    public static void playerLookAtPosition(VRAppState vrAppState, Vector3f position){
+        Vector3f currentPosition = getVrCameraPosition(vrAppState);
+
+        Vector3f desiredLookDirection = position.subtract(currentPosition);
+        desiredLookDirection.y = 0;
+        if (desiredLookDirection.lengthSquared()>0){
+            playerLookInDirection(vrAppState, desiredLookDirection.normalizeLocal());
+        }
+    }
+
+    /**
+     * This will rotate the observer such that the player is looking in the requested direction. Only considered rotation
+     * int the X-Z plane so the y coordinate is ignored (and so you won't get your universe all messed up relative to the
+     * real world).
+     */
+    public static void playerLookInDirection(VRAppState vrAppState, Vector3f lookDirection){
+        Vector3f currentLookDirection = new Vector3f(getVrCameraLookDirection(vrAppState));
+        currentLookDirection.y = 0;
+        Vector3f requestedLookDirection = new Vector3f(lookDirection);
+        requestedLookDirection.y = 0  ;
+
+        if (currentLookDirection.lengthSquared()>0 && requestedLookDirection.lengthSquared()>0){
+            float currentAngle = FastMath.atan2(currentLookDirection.x, currentLookDirection.z);
+            float requestedAngle = FastMath.atan2(requestedLookDirection.x, requestedLookDirection.z);
+            float changeInAngle = requestedAngle - currentAngle;
+            rotateObserverWithoutMovingPlayer(vrAppState, changeInAngle);
+        }
     }
 
     /**
