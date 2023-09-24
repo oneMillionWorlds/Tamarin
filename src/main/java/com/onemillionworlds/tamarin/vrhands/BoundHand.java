@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+@SuppressWarnings("unused")
 public abstract class BoundHand{
 
     private static boolean lemurCheckedAvailable = false ;
@@ -593,13 +594,18 @@ public abstract class BoundHand{
      * The first (index zero) points are bright, the last points (high index) are dark
      * {@link BoundHand#getPalmNode()}
      */
-    public void debugPalmGrabPoints(){
+    public FunctionRegistration debugPalmGrabPoints(){
+        List<Geometry> addedPoints = new ArrayList<>();
+
         int index = 0;
         for(Vector3f grabPoint: this.palmPickPoints){
             float brightness = ((float)this.palmPickPoints.size()-index)/this.palmPickPoints.size();
             index++;
-            palmNode_xPointing.attachChild(sphere(new ColorRGBA(brightness,brightness,brightness,1), grabPoint, palmPickSphereRadius));
+            Geometry sphere = sphere(new ColorRGBA(brightness,brightness,brightness,1), grabPoint, palmPickSphereRadius);
+            addedPoints.add(sphere);
+            palmNode_xPointing.attachChild(sphere);
         }
+        return () -> addedPoints.forEach(Spatial::removeFromParent);
     }
 
     /**
