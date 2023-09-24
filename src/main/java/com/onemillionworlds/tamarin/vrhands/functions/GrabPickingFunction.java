@@ -1,10 +1,9 @@
 package com.onemillionworlds.tamarin.vrhands.functions;
 
 import com.jme3.app.state.AppStateManager;
-import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
-import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
 import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
 import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
@@ -70,29 +69,11 @@ public class GrabPickingFunction implements BoundHandFunction{
 
             //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
             if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
-                //looking for things in the world to grab
                 CollisionResults results = boundHand.pickGrab(nodeToGrabPickAgainst);
-                Spatial picked = null;
-                for(CollisionResult hit : results){
-                    if(!Boolean.TRUE.equals(hit.getGeometry().getUserData(BoundHand.NO_PICK))){
-                        picked = hit.getGeometry();
-                        break;
-                    }
-                }
-                AbstractGrabControl grabControl = null;
-
-                while(picked != null && grabControl == null){
-                    grabControl = picked.getControl(AbstractGrabControl.class);
-                    if (grabControl!=null && !grabControl.isCurrentlyGrabbable(boundHand)){
-                        grabControl = null;
-                    }
-
-                    picked = picked.getParent();
-                }
-
-                if(grabControl != null){
-                    currentlyGrabbed = Optional.of(grabControl);
-                    grabControl.onGrab(boundHand);
+                Optional<AbstractGrabControl> grabControl = TamarinUtilities.findAllControlsInResults(AbstractGrabControl.class, results).stream().findFirst();
+                if(grabControl.isPresent()){
+                    currentlyGrabbed = grabControl;
+                    grabControl.get().onGrab(boundHand);
                 }
             }else if (gripPressure<minimumGripToTrigger && currentlyGrabbed.isPresent()){
                 //drop current item

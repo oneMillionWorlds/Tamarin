@@ -9,6 +9,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards.SimpleQwertyStyle;
+import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Selector;
 import com.simsilica.lemur.TextField;
@@ -21,7 +22,7 @@ import static com.onemillionworlds.tamarin.vrhands.BoundHand.NO_PICK;
 
 public class LemurSupport{
 
-    public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
+    public static final String TAMARIN_STOP_BUBBLING = BoundHand.TAMARIN_STOP_BUBBLING;
     public static final String LEMUR_TAMARIN_KEYBOARD = "LEMUR_TAMARIN_KEYBOARD";
     public static final String LEMUR_SELECTOR_POPUP = "LEMUR_SELECTOR_POPUP";
 

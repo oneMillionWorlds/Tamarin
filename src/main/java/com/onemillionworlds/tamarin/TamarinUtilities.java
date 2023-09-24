@@ -9,11 +9,10 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.Control;
-import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+import com.onemillionworlds.tamarin.vrhands.BoundHand;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TamarinUtilities{
 
@@ -117,18 +116,21 @@ public class TamarinUtilities{
      * Note that this method respects the TAMARIN_STOP_BUBBLING user data. Meaning if a boolean of true is registered
      * with that key then it will stop looking up the parent chain
      */
-    public static <T extends Control> Collection<T> findAllControlsInResults(Class<T> searchClass, CollisionResults collisionResults){
-        Set<T> results = new HashSet<>(1); //usually we find 1 or zero results
+    public static <T extends Control> List<T> findAllControlsInResults(Class<T> searchClass, CollisionResults collisionResults){
+        List<T> results = new ArrayList<>(1); //usually we find 1 or zero results
         directResults:
         for(CollisionResult result : collisionResults){
+            if (Boolean.TRUE.equals(result.getGeometry().getUserData(BoundHand.NO_PICK))){
+                continue;
+            }
             Spatial workingTarget = result.getGeometry();
             while(workingTarget !=null){
-                if (Boolean.TRUE.equals(workingTarget.getUserData(LemurSupport.TAMARIN_STOP_BUBBLING))){
+                if (Boolean.TRUE.equals(workingTarget.getUserData(BoundHand.TAMARIN_STOP_BUBBLING))){
                     continue directResults;
                 }
 
                 T control = workingTarget.getControl(searchClass);
-                if (control !=null){
+                if (control !=null && !results.contains(control)){
                     results.add(control);
                 }
                 workingTarget = workingTarget.getParent();

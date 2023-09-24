@@ -49,7 +49,16 @@ public abstract class BoundHand{
 
     private static boolean lemurCheckedAvailable = false ;
 
-    public static String NO_PICK = "noPick";
+    /**
+     * Placed on GEOMETRIES that should not be picked by the hand (either grab or point pick)
+     */
+    public static String NO_PICK = "TAMARIN_NO_PICK";
+
+    /**
+     * Placed on nodes where if a pick is done on a child it will stop looking higher in the parent chain for
+     * grab controls or similar.
+     */
+    public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
 
     private HandMode handMode = HandMode.WITHOUT_CONTROLLER;
 
