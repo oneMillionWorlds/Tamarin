@@ -1,21 +1,23 @@
 package com.onemillionworlds.tamarin.vrhands.functions.handmenu;
 
 import com.jme3.app.SimpleApplication;
-import com.jme3.app.VRAppState;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
-import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
+import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
+import com.onemillionworlds.tamarin.openxr.XrAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
-import com.onemillionworlds.tamarin.vrhands.HandSide;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
+import org.lwjgl.openxr.XrAction;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,9 +33,9 @@ import java.util.function.Supplier;
 /**
  * A hand ring menu function has a menu of geometries that are opened from an action and then the hand is
  * moved through them to select them.
- *
+ * <p>
  * The menu can be a tree, where passing the hand through 1 item opens up a new set of branches
- *
+ * <p>
  * The menu remains open for as long as the digital action remains held. When the action is released where the hand is
  * controls what is selected (if anything)
  */
@@ -44,11 +46,11 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
     private final Consumer<Optional<T>> selectionConsumer;
 
-    String digitalActionToOpenMenu;
+    ActionHandle digitalActionToOpenMenu;
 
     private BoundHand boundHand;
-    private ActionBasedOpenVrState actionBasedOpenVrState;
-    private VRAppState vrAppState;
+    private OpenXrActionState actionBasedOpenVrState;
+    private XrAppState vrAppState;
     Node menuNode = new Node("MenuNode");
     private boolean menuOpen = false;
 
@@ -108,7 +110,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
      * @param selectionConsumer when an item is selected it is given to this consumer
      * @param digitalActionToOpenMenu The digital action (button press) that opens the menu
      */
-    public HandRingMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, String digitalActionToOpenMenu){
+    public HandRingMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, ActionHandle digitalActionToOpenMenu){
         this.topLevelMenuItems = menuItems;
         this.selectionConsumer = selectionConsumer;
         this.digitalActionToOpenMenu = digitalActionToOpenMenu;
@@ -118,8 +120,8 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.ID, ActionBasedOpenVrState.class);
-        this.vrAppState = stateManager.getState(VRAppState.class);
+        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
+        this.vrAppState = stateManager.getState(XrAppState.ID, XrAppState.class);
         Node rootNode = ((SimpleApplication)stateManager.getApplication()).getRootNode();
         rootNode.attachChild(menuNode);
         menuNode.setCullHint(Spatial.CullHint.Always);
@@ -134,12 +136,12 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        DigitalActionState menuButtonPressed = actionBasedOpenVrState.getDigitalActionState(digitalActionToOpenMenu, boundHand.getHandSide().restrictToInputString);
-        if (menuButtonPressed.state && !this.menuOpen){
+        BooleanActionState menuButtonPressed = actionBasedOpenVrState.getBooleanActionState(digitalActionToOpenMenu, boundHand.getHandSide().restrictToInputString);
+        if (menuButtonPressed.getState() && !this.menuOpen){
             openMenu();
         }
 
-        if (!menuButtonPressed.state && this.menuOpen){
+        if (!menuButtonPressed.getState() && this.menuOpen){
             closeMenuAndSelect();
         }
 
@@ -160,7 +162,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     public void openMenu(){
         menuNode.setCullHint(Spatial.CullHint.Inherit);
         Vector3f handPosition = boundHand.getPalmNode().getWorldTranslation();
-        Vector3f headPosition = TamarinUtilities.getVrCameraPosition(this.vrAppState);
+        Vector3f headPosition = this.vrAppState.getVrCameraPosition();
         menuNode.setLocalTranslation(boundHand.getPalmNode().getWorldTranslation());
         menuNode.lookAt(guessShoulderPosition(headPosition, handPosition), Vector3f.UNIT_Y);
         subRingCentreNodes.values().forEach(n -> n.setCullHint(Spatial.CullHint.Always));
@@ -209,8 +211,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
             attachOrConfigureIcon(menuItemNode, menuItem);
             menuNode.attachChild(menuItemNode);
 
-            if (menuItem instanceof MenuBranch){
-                MenuBranch<T> menuBranch = (MenuBranch<T>)menuItem;
+            if (menuItem instanceof MenuBranch<T> menuBranch){
                 ArrayList<MenuBranch<T>> ringPathControlled = new ArrayList<>(List.of(menuBranch));
                 buildSubItem(1, angle, menuBranch.getSubItems(), ringPathControlled);
                 branchPositions.add(new BranchPositionData(List.of(), ringPathControlled, menuItemNode.getWorldTranslation(), menuBranch));
@@ -259,8 +260,7 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
             ringCentreNode.attachChild(menuItemNode);
 
-            if (menuItem instanceof MenuBranch){
-                MenuBranch<T> menuBranch = (MenuBranch<T>)menuItem;
+            if (menuItem instanceof MenuBranch<T> menuBranch){
                 ArrayList<MenuBranch<T>> branchOwnedPath = new ArrayList<>(parents);
                 branchOwnedPath.add(menuBranch);
                 buildSubItem(ringIndex+1, angle, menuBranch.getSubItems(), branchOwnedPath);
@@ -306,9 +306,9 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
         if (totalAngleUsed > 1.5 * FastMath.PI){
             centreOfRing = 0; //just put the ring starting at the top
         }else if (maxAngle>0.75*FastMath.PI){
-            centreOfRing-=maxAngle-0.75*FastMath.PI;
+            centreOfRing-=maxAngle-0.75f*FastMath.PI;
         }else if (minAngle<-0.75*FastMath.PI){
-            centreOfRing+=Math.abs(minAngle)-0.75*FastMath.PI;
+            centreOfRing+=Math.abs(minAngle)-0.75f*FastMath.PI;
         }
 
         return centreOfRing + (itemIndex- (totalNumberOfSubItems-1)/2f) *anglePerItem;

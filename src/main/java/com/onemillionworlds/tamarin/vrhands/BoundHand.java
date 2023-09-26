@@ -18,11 +18,13 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
 import com.jme3.scene.shape.Sphere;
-import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
-import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
-import com.onemillionworlds.tamarin.compatibility.BoneStance;
-import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
-import com.onemillionworlds.tamarin.compatibility.HandMode;
+import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.state.BonePose;
+import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
+import com.onemillionworlds.tamarin.actions.state.FloatActionState;
+import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
@@ -47,6 +49,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @SuppressWarnings("unused")
 public abstract class BoundHand{
 
+    private static final float FINGER_PICK_SPHERE_RADIUS = 0.0075f;
+
     private static boolean lemurCheckedAvailable = false ;
 
     /**
@@ -60,17 +64,25 @@ public abstract class BoundHand{
      */
     public static final String TAMARIN_STOP_BUBBLING = "TAMARIN_STOP_BUBBLING";
 
-    private HandMode handMode = HandMode.WITHOUT_CONTROLLER;
-
-    private final Node rawOpenVrPosition = new Node();
+    private final Node rawOpenXrPosition = new Node();
 
     private final Node geometryNode = new Node();
 
     /**
      * Returns a node that will update with the hands position and rotation.
      * <p>
-     * This node has an orientation such that x aligns with the hands pointing direction, Y pointing upwards and Z
-     * pointing to the right
+     * The exact position and rotation of this node depends on the pose type specified for the hand:
+     *  <p>
+     * If the pose is AIM them it will be just in front and above the hand with +X pointing in the direction a held weapon
+     * would fire with Y pointing upwards and Z pointing to the right (when the hands are held with the palms
+     * facing each other)
+     *  <p>
+     * If the pose is GRIP them it will be away from the palm, with +X pointing in the direction a held weapon
+     * would fire with Y pointing upwards and Z pointing to the right (when the hands are held with the palms
+     * facing each other)
+     * <p>
+     * This node has an orientation such that x aligns with the grip direction (like you are holding a sword, and Z
+     * pointing to the right (when the hands are held with the palms facing each other).
      * <p>
      * This is an ideal node for things like picking lines, which can be put in the x direction
      * <p>
@@ -84,7 +96,7 @@ public abstract class BoundHand{
     private final Node handNode_xPointing = new Node();
 
     /**
-     * A hand node, with +z pointing in the direction of the bulk hand. This is used primarily for direct lemur interactions
+     * A hand node, with +z pointing in the direction of the bulk hand (if an AIM pose). This is used primarily for direct lemur interactions
      */
     @Getter
     private final Node handNode_zPointing = new Node();
@@ -92,16 +104,19 @@ public abstract class BoundHand{
     private final Node pickLineNode = new Node();
 
     /**
-     * This is a node that sits on the palm (but near the fingers) whose +x points out way from the palm (towards whatever
-     * would be grabbed). It is live updated based on the skeleton positions so its exact relations to other nodes may change as
+     * This is a node that sits on the palm (but near the fingers) such that with the hands held so the palms face each other
+     * +X faces forwards (along the line of the fingers) the +Y points upwards and +Z points to the right.
+     * It is live updated based on the skeleton positions so its exact relations to other nodes may change as
      * the node moves.
-     *
      */
     private final Node palmNode_xPointing = new Node();
 
     /**
-     * This is a node that sits on the tip of the index finger whose +x points out way from the index
-     * finger. A pick from slightly negative on this and pointing in +X can detect things the index finger is pressing
+     * This is a node that sits near on the tip of the index finger whose +x points out way from the index
+     * finger (and Y point up and Z points right if the hands are held with palms facing each other. This node sits inside
+     * the finger such that a sphere would touch the skin of the finger in 5 directions.
+     * The exact distance from the skin can vary (it is reported by OpenXr) but for bound hand's perspective it is considered
+     * to be {@link BoundHand#FINGER_PICK_SPHERE_RADIUS} away from the skin.
      */
     @Getter
     private final Node indexFingerTip_xPointing = new Node();
@@ -121,18 +136,25 @@ public abstract class BoundHand{
      */
     public abstract void unbindHand();
 
-    private final String postActionName;
+    @Getter
+    private final ActionHandle handPoseActionName;
 
-    private final String skeletonActionName;
+    @Getter
+    private final ActionHandle skeletonActionName;
 
+    @Getter
     private final Armature armature;
 
     @Getter
     private final AssetManager assetManager;
 
+    /**
+     * Left or right hand
+     */
+    @Getter
     private final HandSide handSide;
 
-    private final ActionBasedOpenVrState vrState;
+    private final OpenXrActionState vrState;
 
     /**
      * Debug points add markers onto the hands where the bone positions are, and their directions
@@ -175,51 +197,40 @@ public abstract class BoundHand{
     @Getter
     public boolean handPointing = false;
 
-    private final String proximalName;
-    private final String middleMetacarpalName;
+    private final HandJoint middleProximalName = HandJoint.MIDDLE_PROXIMAL_EXT;
+    private final HandJoint middleMetacarpalName = HandJoint.MIDDLE_METACARPAL_EXT;
 
-    private final String indexMetacarpalName;
-    private final String indexEndName;
-    private final String index2Name;
-    private final String index1Name;
+    private final HandJoint indexMetacarpalName = HandJoint.INDEX_METACARPAL_EXT;
+    private final HandJoint indexEndName = HandJoint.INDEX_TIP_EXT;
+    private final HandJoint index2Name = HandJoint.INDEX_INTERMEDIATE_EXT;
+    private final HandJoint index1Name = HandJoint.INDEX_PROXIMAL_EXT;
 
-    private final String ringMetacarpalName;
+    private final HandJoint ringMetacarpalName = HandJoint.RING_METACARPAL_EXT;
 
-    private final String ringEndName;
-    private final String ring2Name;
-    private final String ring1Name;
+    private final HandJoint ringEndName = HandJoint.RING_TIP_EXT;
+    private final HandJoint ring2Name = HandJoint.RING_INTERMEDIATE_EXT;
+    private final HandJoint ring1Name = HandJoint.RING_PROXIMAL_EXT;
 
-    private final String wristName;
+    private final HandJoint wristName = HandJoint.WRIST_EXT;
 
-    public BoundHand(ActionBasedOpenVrState vrState, String postActionName, String skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
+    public BoundHand(OpenXrActionState vrState, ActionHandle handPoseActionName, ActionHandle skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.vrState = Objects.requireNonNull(vrState);
         this.geometryNode.attachChild(handGeometry);
-        this.postActionName = postActionName;
+        this.handPoseActionName = handPoseActionName;
         this.skeletonActionName = skeletonActionName;
         this.armature = armature;
         this.assetManager = assetManager;
         this.handSide = handSide;
-        this.rawOpenVrPosition.attachChild(handNode_xPointing);
-        this.rawOpenVrPosition.attachChild(debugPointsNode);
+        this.rawOpenXrPosition.attachChild(handNode_xPointing);
+        this.rawOpenXrPosition.attachChild(debugPointsNode);
 
         float outOfPalm = (handSide == HandSide.LEFT ? 1 : -1);
         this.palmPickPoints = List.of(new Vector3f(0,0,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.02f,-0.03f,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.03f,0.03f,outOfPalm*(0.005f+palmPickSphereRadius)), new Vector3f(-0.03f,0,outOfPalm*(0.01f+palmPickSphereRadius)));
 
-        proximalName = handSide == HandSide.LEFT ? "finger_middle_0_l" : "finger_middle_0_r";
-        middleMetacarpalName = handSide == HandSide.LEFT ? "finger_middle_meta_l" : "finger_middle_meta_r";
-        indexEndName = handSide == HandSide.LEFT ?"finger_index_l_end":"finger_index_r_end";
-        index2Name = handSide == HandSide.LEFT ?"finger_index_2_l":"finger_index_2_r";
-        index1Name  = handSide == HandSide.LEFT ?"finger_index_1_l":"finger_index_1_r";
-        indexMetacarpalName = handSide == HandSide.LEFT ?"finger_index_meta_l":"finger_index_meta_r";
-        ringEndName  = handSide == HandSide.LEFT ?"finger_ring_l_end":"finger_ring_r_end";
-        ring2Name = handSide == HandSide.LEFT ?"finger_ring_2_l":"finger_ring_2_r";
-        ring1Name = handSide == HandSide.LEFT ?"finger_ring_1_l":"finger_ring_1_r";
-        ringMetacarpalName = handSide == HandSide.LEFT ?"finger_ring_meta_l":"finger_ring_meta_r";
-        wristName = handSide == HandSide.LEFT ?"wrist_l":"wrist_r";
         searchForGeometry(handGeometry).forEach(g -> g.setUserData(NO_PICK, true));
 
         Quaternion naturalRotation = new Quaternion();
-        naturalRotation.fromAngleAxis(-0.75f* FastMath.PI, Vector3f.UNIT_X);
+        naturalRotation.fromAngleAxis(-0.5f* FastMath.PI, Vector3f.UNIT_X);
         Quaternion zToXRotation = new Quaternion();
         zToXRotation.fromAngleAxis(0.5f* FastMath.PI, Vector3f.UNIT_Z);
         Quaternion rotateAxes = new Quaternion();
@@ -232,17 +243,13 @@ public abstract class BoundHand{
         handNode_zPointing.setLocalRotation(xPointingToZPointing);
         handNode_xPointing.attachChild(handNode_zPointing);
 
-        rawOpenVrPosition.attachChild(palmNode_xPointing);
-        rawOpenVrPosition.attachChild(geometryNode);
-        rawOpenVrPosition.attachChild(indexFingerTip_xPointing);
-        rawOpenVrPosition.attachChild(wristNode);
+        rawOpenXrPosition.attachChild(palmNode_xPointing);
+        rawOpenXrPosition.attachChild(geometryNode);
+        rawOpenXrPosition.attachChild(indexFingerTip_xPointing);
+        rawOpenXrPosition.attachChild(wristNode);
         handNode_xPointing.attachChild(pickLineNode);
 
         addFunction(new ClimbSupport());
-    }
-
-    public HandMode getHandMode(){
-        return handMode;
     }
 
     /**
@@ -259,7 +266,7 @@ public abstract class BoundHand{
      * @return the raw hand node
      */
     public Node getRawOpenVrNode(){
-        return rawOpenVrPosition;
+        return rawOpenXrPosition;
     }
 
 
@@ -273,26 +280,6 @@ public abstract class BoundHand{
      */
     public Node getPalmNode(){
         return palmNode_xPointing;
-    }
-
-    /**
-     * The way the hand is being held, see javadoc on HandMode itself for more details
-     * @param handMode the handMode
-     */
-    public void setHandMode(HandMode handMode){
-        this.handMode = handMode;
-    }
-
-    public String getPostActionName(){
-        return postActionName;
-    }
-
-    public String getSkeletonActionName(){
-        return skeletonActionName;
-    }
-
-    public Armature getArmature(){
-        return armature;
     }
 
     /**
@@ -341,7 +328,7 @@ public abstract class BoundHand{
         return getFunctionOpt(function).orElseThrow();
     }
 
-    protected void update(float timeSlice, Map<String, BoneStance> boneStances){
+    protected void update(float timeSlice, Map<HandJoint, BonePose> boneStances){
         if (debugPoints){
             debugPointsNode.detachAllChildren();
             debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
@@ -358,73 +345,72 @@ public abstract class BoundHand{
      * Updates the hand to check if it's in a pointing arrangement;
      * fist with index finger outstretched, like when pressing a button
      */
-    private void updatePointingState(Map<String, BoneStance> boneStances){
-        BoneStance indexEnd = boneStances.get(indexEndName);
-        BoneStance index2= boneStances.get(index2Name);
-        BoneStance index1 = boneStances.get(index1Name);
-        BoneStance indexMeta = boneStances.get(indexMetacarpalName);
+    private void updatePointingState(Map<HandJoint, BonePose> boneStances){
+        BonePose indexEnd = boneStances.get(indexEndName);
+        BonePose index2= boneStances.get(index2Name);
+        BonePose index1 = boneStances.get(index1Name);
+        BonePose indexMeta = boneStances.get(indexMetacarpalName);
 
-        BoneStance ringEnd = boneStances.get(ringEndName);
-        BoneStance ring2= boneStances.get(ring2Name);
-        BoneStance ring1 = boneStances.get(ring1Name);
-        BoneStance ringMeta = boneStances.get(ringMetacarpalName);
+        BonePose ringEnd = boneStances.get(ringEndName);
+        BonePose ring2= boneStances.get(ring2Name);
+        BonePose ring1 = boneStances.get(ring1Name);
+        BonePose ringMeta = boneStances.get(ringMetacarpalName);
 
         if (notNull(indexEnd, index2, index1, ringEnd, ring2, ring1, indexMeta, ringMeta)){
-            float ringFingerAlignment = ringEnd.position.subtract(ring2.position).normalizeLocal().dot(ring1.position.subtract(ringMeta.position).normalizeLocal());
-            float indexFingerAlignment = indexEnd.position.subtract(index2.position).normalizeLocal().dot(index1.position.subtract(indexMeta.position).normalizeLocal());
+            float ringFingerAlignment = ringEnd.position().subtract(ring2.position()).normalizeLocal().dot(ring1.position().subtract(ringMeta.position()).normalizeLocal());
+            float indexFingerAlignment = indexEnd.position().subtract(index2.position()).normalizeLocal().dot(index1.position().subtract(indexMeta.position()).normalizeLocal());
             handPointing = indexFingerAlignment > 0.85 && ringFingerAlignment < 0.8;
 
         }
     }
 
-    private void updateWrist( Map<String, BoneStance> boneStances){
-        BoneStance wrist = boneStances.get(wristName);
+    private void updateWrist( Map<HandJoint, BonePose> boneStances){
+        BonePose wrist = boneStances.get(wristName);
         if (wrist!=null){
-            wristNode.setLocalTranslation(wrist.position);
-            wristNode.setLocalRotation(wrist.orientation);
+            wristNode.setLocalTranslation(wrist.position());
+            wristNode.setLocalRotation(wrist.orientation());
         }
     }
 
-    private void updatePalm(float timeSlice, Map<String, BoneStance> boneStances){
+    private void updatePalm(float timeSlice, Map<HandJoint, BonePose> boneStances){
         //the palm node is put at the position between the finger_middle_0_l bone and finger_middle_meta_l, but with the
         // rotation of the finger_middle_meta_l bone. This gives roughly the position of a grab point, with a sensible rotation
 
-        BoneStance metacarpel = boneStances.get(middleMetacarpalName);
-        BoneStance proximal = boneStances.get(proximalName);
+        BonePose metacarpel = boneStances.get(middleMetacarpalName);
+        BonePose proximal = boneStances.get(middleProximalName);
         if (metacarpel != null){
 
-            Quaternion coordinateStandardisingRotation;
+            Quaternion coordinateStandardisingRotation = new Quaternion();
             if (handSide == HandSide.LEFT){
-                coordinateStandardisingRotation = new Quaternion();
-                coordinateStandardisingRotation.fromAngleAxis(-0.5f*FastMath.PI, Vector3f.UNIT_X);
+                coordinateStandardisingRotation.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
+                coordinateStandardisingRotation.multLocal(new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_X));
             }else{
-                Quaternion aboutY = new Quaternion();
-                aboutY.fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
-
-                Quaternion aboutX = new Quaternion();
-                aboutX.fromAngleAxis(-0.5f*FastMath.PI, Vector3f.UNIT_X);
-
-                coordinateStandardisingRotation = aboutY.mult(aboutX);
+                coordinateStandardisingRotation.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
+                coordinateStandardisingRotation.multLocal(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_X));
             }
 
-            palmNode_xPointing.setLocalTranslation(proximal.position.add(metacarpel.position).multLocal(0.5f));
-            palmNode_xPointing.setLocalRotation(metacarpel.orientation.mult(coordinateStandardisingRotation));
+
+            palmNode_xPointing.setLocalTranslation(proximal.position().add(metacarpel.position()).multLocal(0.5f));
+            palmNode_xPointing.setLocalRotation(metacarpel.orientation().mult(coordinateStandardisingRotation));
         }
     }
 
-    private void updateFingerTips(Map<String, BoneStance> boneStances){
-        BoneStance indexFingerTip = boneStances.get(indexEndName);
+    private void updateFingerTips(Map<HandJoint, BonePose> boneStances){
+        BonePose indexFingerTip = boneStances.get(indexEndName);
         if (indexFingerTip!=null){
-            indexFingerTip_xPointing.setLocalTranslation(indexFingerTip.position);
+            indexFingerTip_xPointing.setLocalTranslation(indexFingerTip.position());
 
-            Quaternion rotation = indexFingerTip.orientation;
-            if(handSide == HandSide.RIGHT){
-                Quaternion rightSideCorrection = new Quaternion();
-                rightSideCorrection.fromAngleNormalAxis(FastMath.PI, Vector3f.UNIT_Y);
-                rotation = rotation.mult(rightSideCorrection);
+            Quaternion rotation = indexFingerTip.orientation();
+            Quaternion coordinateStandardisingRotation = new Quaternion();
+            if (handSide == HandSide.LEFT){
+                coordinateStandardisingRotation.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
+                coordinateStandardisingRotation.multLocal(new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_X));
+            }else{
+                coordinateStandardisingRotation.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
+                coordinateStandardisingRotation.multLocal(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_X));
             }
 
-            indexFingerTip_xPointing.setLocalRotation(rotation);
+            indexFingerTip_xPointing.setLocalRotation(rotation.mult(coordinateStandardisingRotation));
         }
     }
 
@@ -434,14 +420,8 @@ public abstract class BoundHand{
      * @return the results
      */
     public CollisionResults pickIndexFingerTip(Node nodeToPickAgainst){
-        float pickSphereRadius = 0.005f;
-
-        Vector3f pickOrigin = new Vector3f(indexFingerTip_xPointing.getWorldTranslation());
-        Vector3f pickingOutwardPoint = indexFingerTip_xPointing.localToWorld(new Vector3f(1,0,0), null);
-        Vector3f pickingVector = pickingOutwardPoint.subtract(pickOrigin);
-        pickOrigin.addLocal(pickingVector.mult(-0.5f*pickSphereRadius));//take the origin just inside the finger
         CollisionResults results = new CollisionResults();
-        BoundingSphere sphere = new BoundingSphere(pickSphereRadius, pickOrigin);
+        BoundingSphere sphere = new BoundingSphere(FINGER_PICK_SPHERE_RADIUS, indexFingerTip_xPointing.getWorldTranslation());
         nodeToPickAgainst.collideWith(sphere, results);
         return results;
     }
@@ -545,13 +525,6 @@ public abstract class BoundHand{
     }
 
     /**
-     * @return Left or right hand
-     */
-    public HandSide getHandSide(){
-        return handSide;
-    }
-
-    /**
      * Will start rendering the positions of the bones (note if all is well they will be inside the hands, so not really
      * visible (doing this is not performant, debug only)
      */
@@ -563,8 +536,8 @@ public abstract class BoundHand{
      * Adds a debug line in the direction the hand would use for picking or clicking
      */
     public void debugPointingPickLine(){
-        handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0.25f,0,0)));
-        indexFingerTip_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0.25f,0,0) ));
+        handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
+        indexFingerTip_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0) ));
     }
 
     /**
@@ -648,7 +621,7 @@ public abstract class BoundHand{
      * @param grabAction the openVr action name to use to decide if the hand is grabbing
      * @param nodeToPickAgainst the node to scan for items to grab (probably the root node)
      */
-    public FunctionRegistration setGrabAction(String grabAction, Node nodeToPickAgainst){
+    public FunctionRegistration setGrabAction(ActionHandle grabAction, Node nodeToPickAgainst){
         GrabPickingFunction grabPickingFunction = new GrabPickingFunction(grabAction, nodeToPickAgainst);
         return addFunction(grabPickingFunction);
     }
@@ -681,7 +654,7 @@ public abstract class BoundHand{
      * @param nodesToPickAgainst The node(s) that is picked against to look for lemur UIs
      * @return a Runnable that if called will end the click action
      */
-    public FunctionRegistration setClickAction_lemurSupport(String clickAction, Node... nodesToPickAgainst){
+    public FunctionRegistration setClickAction_lemurSupport(ActionHandle clickAction, Node... nodesToPickAgainst){
         assertLemurAvailable();
         clearClickAction_lemurSupport(); //the reason for this is the way that with many nodes dominance becomes a problem, if attached as several ClickActions (would probably be fine if bound to different buttons)
         return addFunction(new LemurClickFunction(clickAction, nodesToPickAgainst));
@@ -700,7 +673,7 @@ public abstract class BoundHand{
      * @param vibrateActionOnTouch the action name of the vibration binding (e.g. "/actions/main/out/haptic"). Can be null for no vibrate
      * @param vibrateOnTouchIntensity how hard the vibration response is. Should be between 0 (none) and 1 (lots)
      */
-    public FunctionRegistration setFingerTipPressDetection(Node nodeToScanForTouches, boolean requireFingerPointing, String vibrateActionOnTouch, float vibrateOnTouchIntensity){
+    public FunctionRegistration setFingerTipPressDetection(Node nodeToScanForTouches, boolean requireFingerPointing, ActionHandle vibrateActionOnTouch, float vibrateOnTouchIntensity){
         return addFunction(new PressFunction(nodeToScanForTouches, requireFingerPointing, vibrateActionOnTouch, vibrateOnTouchIntensity));
     }
 
@@ -884,16 +857,12 @@ public abstract class BoundHand{
      * <p>
      * Note that restrictToInput only restricts, it must still be bound to the input you want to receive the input from in
      * the action manifest default bindings.
-     *  <p>
-     * {@link ActionBasedOpenVrState#registerActionManifest} must have been called before using this method.
      * <p>
-     * This is a convenience method that wraps the {@link ActionBasedOpenVrState#registerActionManifest}
-     *
-     * @param actionName The name of the action. E.g. /actions/main/in/openInventory
+     * @param actionHandle the handle for the action (just an object with the set name and action name)
      * @return the AnalogActionState that has details on if the state has changed, what the state is etc.
      */
-    public AnalogActionState getAnalogActionState(String actionName){
-        return vrState.getAnalogActionState(actionName, getHandSide().restrictToInputString);
+    public FloatActionState getFloatActionState(ActionHandle actionHandle){
+        return vrState.getFloatActionState(actionHandle, getHandSide().restrictToInputString);
     }
 
     /**
@@ -901,15 +870,13 @@ public abstract class BoundHand{
      * <p>
      * This method is typically used to bind the haptic to both hands then decide at run time which hand to sent to     *
      * <p>
-     * This is a convenience method that wraps the {@link ActionBasedOpenVrState#registerActionManifest}
-     *
-     * @param actionName The name of the action (as bound in the action manifest). Will be something like /actions/main/out/vibrate
+     * @param actionHandle the handle for the action (just an object with the set name and action name)
      * @param duration how long in seconds the
      * @param frequency in cycles per second
      * @param amplitude between 0 and 1
      */
-    public void triggerHapticAction(String actionName, float duration, float frequency, float amplitude){
-        vrState.triggerHapticAction(actionName, duration, frequency, amplitude, getHandSide().restrictToInputString);
+    public void triggerHapticAction(ActionHandle actionHandle, float duration, float frequency, float amplitude){
+        vrState.triggerHapticAction(actionHandle, duration, frequency, amplitude, getHandSide().restrictToInputString);
     }
 
     /**
@@ -922,13 +889,11 @@ public abstract class BoundHand{
      * want to take effect on the hand that is holding the weapon
      * <p>
      * Note that this action must still be bound in the action manifest against this hand it to receive the input
-     * <p>
-     * {@link ActionBasedOpenVrState#registerActionManifest} must have been called before using this method.
      *
-     * @param actionName The name of the action. E.g. /actions/main/in/openInventory
+     * @param actionHandle the handle for the action (just an object with the set name and action name)
      * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
      */
-    public DigitalActionState getDigitalActionState(String actionName){
-        return vrState.getDigitalActionState(actionName, getHandSide().restrictToInputString);
+    public BooleanActionState getBooleanActionState(ActionHandle actionHandle){
+        return vrState.getBooleanActionState(actionHandle, getHandSide().restrictToInputString);
     }
 }

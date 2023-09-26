@@ -1,24 +1,15 @@
 package com.onemillionworlds.tamarin.lemursupport;
 
 import com.jme3.app.Application;
-import com.jme3.app.VRAppState;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.app.state.BaseAppState;
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.input.event.MouseMotionEvent;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
-import com.jme3.scene.Spatial;
-import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardEvent;
-import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.KeyboardButton;
-import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.ListBox;
 import com.simsilica.lemur.Selector;
 import com.simsilica.lemur.core.VersionedReference;
-import com.simsilica.lemur.event.MouseListener;
-import com.simsilica.lemur.list.SelectionModel;
 
 import java.util.List;
 

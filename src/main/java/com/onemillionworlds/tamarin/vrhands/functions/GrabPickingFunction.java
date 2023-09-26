@@ -4,19 +4,20 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
-import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
-import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
-import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
+import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
+import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import lombok.Setter;
+import org.lwjgl.openxr.XrAction;
 
 import java.util.Optional;
 
 public class GrabPickingFunction implements BoundHandFunction{
 
-    private final String grabAction;
+    private final ActionHandle grabAction;
 
     private final Node nodeToGrabPickAgainst;
 
@@ -35,6 +36,7 @@ public class GrabPickingFunction implements BoundHandFunction{
     @Setter
     private float minimumGripToTrigger = 0.5f;
 
+    @Setter
     private boolean grabActionIsAnalog = true;
 
     private float lastGripPressure;
@@ -42,9 +44,9 @@ public class GrabPickingFunction implements BoundHandFunction{
     Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
 
     private BoundHand boundHand;
-    private ActionBasedOpenVrState actionBasedOpenVrState;
+    private OpenXrActionState actionBasedOpenVrState;
 
-    public GrabPickingFunction(String grabAction, Node nodeToGrabPickAgainst){
+    public GrabPickingFunction(ActionHandle grabAction, Node nodeToGrabPickAgainst){
         this.grabAction = grabAction;
         this.nodeToGrabPickAgainst = nodeToGrabPickAgainst;
     }
@@ -52,7 +54,7 @@ public class GrabPickingFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.ID, ActionBasedOpenVrState.class);
+        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
     }
 
     @Override
@@ -101,19 +103,13 @@ public class GrabPickingFunction implements BoundHandFunction{
         grabControl.onGrab(boundHand);
     }
 
-    private float getGripActionPressure(BoundHand boundHand, String action){
-        try{
-            if (grabActionIsAnalog){
-                AnalogActionState grabActionState = actionBasedOpenVrState.getAnalogActionState(action, boundHand.getHandSide().restrictToInputString);
-                return grabActionState.x;
-            }else{
-                DigitalActionState grabActionState = actionBasedOpenVrState.getDigitalActionState(action, boundHand.getHandSide().restrictToInputString);
-                return grabActionState.state?1:0;
-            }
-        }catch(WrongActionTypeException wrongActionTypeException){
-            //it's the opposite type of action, switch automatically, on the next update the correct type will be used
-            grabActionIsAnalog = !grabActionIsAnalog;
-            return 0;
+    private float getGripActionPressure(BoundHand boundHand, ActionHandle action){
+        if (grabActionIsAnalog){
+            FloatActionState grabActionState = actionBasedOpenVrState.getFloatActionState(action, boundHand.getHandSide().restrictToInputString);
+            return grabActionState.getState();
+        }else{
+            BooleanActionState grabActionState = actionBasedOpenVrState.getBooleanActionState(action, boundHand.getHandSide().restrictToInputString);
+            return grabActionState.getState()?1:0;
         }
     }
 

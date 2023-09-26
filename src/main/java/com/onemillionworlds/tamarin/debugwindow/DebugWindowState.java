@@ -3,13 +3,14 @@ package com.onemillionworlds.tamarin.debugwindow;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.StatsAppState;
-import com.jme3.app.VRAppState;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.openxr.XrAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.FunctionRegistration;
@@ -23,6 +24,7 @@ import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.BoxLayout;
 import lombok.AllArgsConstructor;
+import org.lwjgl.openxr.XrAction;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,7 +66,7 @@ public class DebugWindowState extends BaseAppState{
     Map<String, LineItem> newLineItems = new LinkedHashMap<>();
     Map<String, LineItem> currentLineItems = new HashMap<>();
 
-    VRAppState vrAppState;
+    XrAppState xrAppState;
     VRHandsAppState vrHandsAppState;
     StatsAppState statsAppState;
 
@@ -81,8 +83,8 @@ public class DebugWindowState extends BaseAppState{
 
     double timeTillNextPositionCheck = 0;
 
-    private final String hapticAction;
-    private final String grabAction;
+    private final ActionHandle hapticAction;
+    private final ActionHandle grabAction;
 
     public DebugWindowState(){
         this(null, null);
@@ -92,7 +94,7 @@ public class DebugWindowState extends BaseAppState{
      * @param hapticAction On touching a button on the debug window state this haptic will trigger (can be null)
      * @param grabAction action that allows the window to be grabbed and moved (can be null)
      */
-    public DebugWindowState(String hapticAction, String grabAction){
+    public DebugWindowState(ActionHandle hapticAction, ActionHandle grabAction){
         assert INSTANCE.isEmpty() : "Can only have 1 DebugWindowState";
         INSTANCE = Optional.of(this);
         this.hapticAction = hapticAction;
@@ -110,7 +112,7 @@ public class DebugWindowState extends BaseAppState{
         AbstractGrabControl control = new RelativeMovingGrabControl();
         debugWindowNode.addControl(control);
 
-        vrAppState = getState(VRAppState.class);
+        xrAppState = getState(XrAppState.class);
         vrHandsAppState = getState(VRHandsAppState.class);
         statsAppState = getState(StatsAppState.class);
         ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
@@ -138,7 +140,7 @@ public class DebugWindowState extends BaseAppState{
     }
 
     private void autoSelectPosition(){
-        Vector3f vrCameraPosition = getVrCameraPosition(vrAppState);
+        Vector3f vrCameraPosition = getVrCameraPosition(xrAppState);
         debugWindowNode.setLocalTranslation(vrCameraPosition.add(new Vector3f(0.4f, 0, 0f)));
         debugWindowNode.lookAt(vrCameraPosition, Vector3f.UNIT_Y);
     }
@@ -261,7 +263,7 @@ public class DebugWindowState extends BaseAppState{
 
         timeTillNextPositionCheck-=tpf;
         if (timeTillNextPositionCheck<=0){
-            Vector3f headPosition = getVrCameraPosition(vrAppState);
+            Vector3f headPosition = getVrCameraPosition(xrAppState);
 
             Vector3f relativeDebugPosition = debugWindowNode.getWorldTranslation().subtract(headPosition);
             double distance = relativeDebugPosition.length();
@@ -278,8 +280,8 @@ public class DebugWindowState extends BaseAppState{
 
     }
 
-    private static Vector3f getVrCameraPosition(VRAppState vrAppState){
-        return vrAppState.getVRViewManager().getLeftCamera().getLocation().add(vrAppState.getVRViewManager().getRightCamera().getLocation()).mult(0.5f);
+    private static Vector3f getVrCameraPosition(XrAppState vrAppState){
+        return vrAppState.getLeftCamera().getLocation().add(vrAppState.getRightCamera().getLocation()).mult(0.5f);
     }
 
     private class NonFadingRenderText extends LineItem{

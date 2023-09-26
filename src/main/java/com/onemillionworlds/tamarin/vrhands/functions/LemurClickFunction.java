@@ -7,17 +7,17 @@ import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
-import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
-import com.onemillionworlds.tamarin.compatibility.AnalogActionState;
-import com.onemillionworlds.tamarin.compatibility.DigitalActionState;
-import com.onemillionworlds.tamarin.compatibility.WrongActionTypeException;
+import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
+import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
 import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
-import com.onemillionworlds.tamarin.vrhands.HandSide;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.simsilica.lemur.event.LemurProtectedSupport;
 import com.simsilica.lemur.event.PickEventSession;
@@ -44,7 +44,7 @@ public class LemurClickFunction implements BoundHandFunction{
     public static float PICK_MAXIMUM = 500f;
 
     private final List<Node> pickAgainstNodes;
-    private final String clickAction;
+    private final ActionHandle clickAction;
 
     /**
      * When an analog action is being used then this is its minimum value to actually cause a trigger event
@@ -55,9 +55,10 @@ public class LemurClickFunction implements BoundHandFunction{
     private float lastTriggerPressure = 0;
 
     private BoundHand boundHand;
-    private ActionBasedOpenVrState actionBasedOpenVrState;
+    private OpenXrActionState actionBasedOpenVrState;
     private VRHandsAppState vrHandsAppState;
 
+    @Setter
     private boolean clickActionIsAnalog = true;
 
     private AppStateManager stateManager;
@@ -74,7 +75,7 @@ public class LemurClickFunction implements BoundHandFunction{
 
     private Consumer<HandSide> clickOnNothingConsumer = (handSide) -> {};
 
-    public LemurClickFunction(String clickAction, Node... pickAgainstNodes){
+    public LemurClickFunction(ActionHandle clickAction, Node... pickAgainstNodes){
         this.pickAgainstNodes = Arrays.asList(pickAgainstNodes);
         this.clickAction = clickAction;
     }
@@ -100,7 +101,7 @@ public class LemurClickFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.class);
+        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
         this.stateManager = stateManager;
         this.mouseAppState = this.stateManager.getState(VrLemurAppState.class);
         this.vrHandsAppState = this.stateManager.getState(VRHandsAppState.class);
@@ -155,6 +156,7 @@ public class LemurClickFunction implements BoundHandFunction{
      * Note; it's very important to make sure your click events consume the event if you want to make use of this functionality
      * (Or else everything will be interpreted as "clicking on nothing")
      */
+    @SuppressWarnings("unused")
     public void setClickOnNothingConsumer(Consumer<HandSide> onClickOnNothing){
         this.clickOnNothingConsumer = onClickOnNothing;
     }
@@ -180,19 +182,13 @@ public class LemurClickFunction implements BoundHandFunction{
         openDropdown = Optional.empty();
     }
 
-    private float getClickActionPressure(String action){
-        try{
-            if (clickActionIsAnalog){
-                AnalogActionState grabActionState = actionBasedOpenVrState.getAnalogActionState(action, boundHand.getHandSide().restrictToInputString);
-                return grabActionState.x;
-            }else{
-                DigitalActionState grabActionState = actionBasedOpenVrState.getDigitalActionState(action, boundHand.getHandSide().restrictToInputString);
-                return grabActionState.state?1:0;
-            }
-        }catch(WrongActionTypeException wrongActionTypeException){
-            //its the opposite type of action, switch automatically, on the next update the correct type will be used
-            clickActionIsAnalog = !clickActionIsAnalog;
-            return 0;
+    private float getClickActionPressure(ActionHandle action){
+        if (clickActionIsAnalog){
+            FloatActionState grabActionState = actionBasedOpenVrState.getFloatActionState(action, boundHand.getHandSide().restrictToInputString);
+            return grabActionState.getState();
+        }else{
+            BooleanActionState grabActionState = actionBasedOpenVrState.getBooleanActionState(action, boundHand.getHandSide().restrictToInputString);
+            return grabActionState.getState()?1:0;
         }
     }
 

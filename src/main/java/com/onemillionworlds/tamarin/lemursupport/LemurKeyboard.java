@@ -1,8 +1,6 @@
 package com.onemillionworlds.tamarin.lemursupport;
 
 import com.jme3.app.Application;
-import com.jme3.app.SimpleApplication;
-import com.jme3.app.VRAppState;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.input.event.MouseButtonEvent;
@@ -14,6 +12,7 @@ import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.KeyboardButton;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardEvent;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
+import com.onemillionworlds.tamarin.openxr.XrAppState;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.event.MouseListener;
@@ -24,9 +23,9 @@ import java.util.function.Consumer;
 
 /**
  * This is a free floating keyboard that is probably opened as a result of a click on a lemur text field.
- *
+ * <p>
  * The key inputs are reported back to the caller.
- *
+ * <p>
  * It is expected that the desired picking lines and pick markers are already turned on
  */
 public class LemurKeyboard extends BaseAppState{
@@ -76,8 +75,8 @@ public class LemurKeyboard extends BaseAppState{
     protected void initialize(Application app){
         rootNodeDelegate.attachChild(keyboardNode);
 
-        VRAppState vrAppState = app.getStateManager().getState(VRAppState.class);
-        Vector3f cameraLocation = vrAppState.getVRViewManager().getLeftCamera().getLocation().add(vrAppState.getVRViewManager().getRightCamera().getLocation()).mult(0.5f);
+        XrAppState vrAppState = app.getStateManager().getState(XrAppState.ID, XrAppState.class);
+        Vector3f cameraLocation = vrAppState.getLeftCamera().getLocation().add(vrAppState.getRightCamera().getLocation()).mult(0.5f);
         Vector3f toCameraDirection = cameraLocation.subtract(ownerPosition).normalizeLocal();
         float cameraDistance = cameraLocation.distance(ownerPosition);
 

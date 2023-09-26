@@ -4,7 +4,8 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.compatibility.ActionBasedOpenVrState;
+import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.lemursupport.FullHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
@@ -12,6 +13,7 @@ import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
 import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
+import org.lwjgl.openxr.XrAction;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,10 +43,10 @@ public class PressFunction implements BoundHandFunction{
     boolean requireFingerPointing;
 
     boolean lemurTouchedLastUpdate = false;
-    Optional<String> vibrateActionOnTouch;
+    Optional<ActionHandle> vibrateActionOnTouch;
     float vibrateOnTouchIntensity;
 
-    private ActionBasedOpenVrState actionBasedOpenVrState;
+    private OpenXrActionState actionBasedOpenVrState;
 
     private AppStateManager stateManager;
 
@@ -61,10 +63,10 @@ public class PressFunction implements BoundHandFunction{
      * @param pickAgainstNode the note to scan for contact with the fingertip)
      * @param requireFingerPointing if the scan should only occure if the hand is in a pointing arrangement
      *                              (index finger outstretched, other fingers curled)
-     * @param vibrateActionOnTouch the action name of the vibration binding (e.g. "/actions/main/out/haptic"). Can be null for no vibrate
+     * @param vibrateActionOnTouch the action of the vibration binding. Can be null for no vibrate
      * @param vibrateOnTouchIntensity how hard the vibration response is. Should be between 0 and 1
      */
-    public PressFunction(Node pickAgainstNode, boolean requireFingerPointing, String vibrateActionOnTouch, float vibrateOnTouchIntensity){
+    public PressFunction(Node pickAgainstNode, boolean requireFingerPointing, ActionHandle vibrateActionOnTouch, float vibrateOnTouchIntensity){
         this.pickAgainstNode = pickAgainstNode;
         this.requireFingerPointing = requireFingerPointing;
         this.vibrateActionOnTouch = Optional.ofNullable(vibrateActionOnTouch);
@@ -74,7 +76,7 @@ public class PressFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.stateManager = stateManager;
-        this.actionBasedOpenVrState = stateManager.getState(ActionBasedOpenVrState.class);
+        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
     }
 
     @Override

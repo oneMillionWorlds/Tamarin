@@ -14,40 +14,49 @@ repositories {
 java {
     withJavadocJar()
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 group = 'com.onemillionworlds'
-version = '1.5.0'
+version = '2.0.0'
 
-def jme3 = [v:'3.6.0-stable', g:'org.jmonkeyengine']
+ext{
+    lwjgl3Version = '3.3.1' //it is important that this is the same as JME which provides the rest of LWJGL
+}
+test {
+    useJUnitPlatform()
+}
+
+
+def jme3 = [v:'3.6.1-stable', g:'org.jmonkeyengine']
 
 dependencies {
-    // Use JUnit test framework.
-    testImplementation 'junit:junit:4.13.2'
 
-    // This dependency is exported to consumers, that is to say found on their compile classpath.
-    //api 'org.apache.commons:commons-math3:3.6.1'
-
-    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    //implementation 'com.google.guava:guava:30.1.1-jre'
+    api "org.lwjgl:lwjgl-openxr:${lwjgl3Version}"
+    runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-windows"
+    runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-linux"
+    api "org.lwjgl:lwjgl-egl:${lwjgl3Version}" // Necessary for the cross platform XrGraphicsBindingEGLMNDX binding
 
     /*
      * It is presumed any user of Tamarin will already be using JMonkey but we don't want to force a version on them.
      * That is why this is a compileOnly dependency
      */
     compileOnly "${jme3.g}:jme3-core:${jme3.v}"
-    compileOnly "${jme3.g}:jme3-vr:${jme3.v}"
+    compileOnly "${jme3.g}:jme3-lwjgl3:${jme3.v}"
+    compileOnly "${jme3.g}:jme3-desktop:${jme3.v}"
     /*
      * Lemur is an optional dependency
      */
-    compileOnly "com.simsilica:lemur:1.16.0"
-    compileOnly "com.simsilica:lemur-proto:1.13.0"
+    compileOnly ("com.simsilica:lemur:1.16.0")
+    compileOnly ("com.simsilica:lemur-proto:1.13.0")
     /*
      * Lombok is only required during compile (it's an annotation processor)
      */
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+    testImplementation "${jme3.g}:jme3-core:${jme3.v}"
 }
 
 publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.html
