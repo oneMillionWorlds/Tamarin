@@ -70,6 +70,7 @@ public class Action{
         return actionHandle.actionSetName();
     }
 
+    @SuppressWarnings("unused")
     public static ActionBuilder builder(){
         return new ActionBuilder();
     }
@@ -135,10 +136,11 @@ public class Action{
          *     <li>{@link OculusGoController#PROFILE}</li>
          *     <li>{@link OculusTouchController#PROFILE}</li>
          *     <li>{@link ValveIndexController#PROFILE}</li>
-         *
+         *</ul>
          * @param profile the name of the controller (e.g. {@link OculusTouchController#PROFILE})
-         * @param binding the physics binding (e.g. {@link OculusTouchController#pathBuilder().leftHand().haptic()})
+         * @param binding the physics binding (e.g. `OculusTouchController.pathBuilder().leftHand().haptic()`)
          */
+        @SuppressWarnings("UnusedReturnValue")
         public ActionBuilder withSuggestedBinding(String profile, String binding){
             this.suggestedBindings.add(new SuggestedBinding(profile, binding));
             return this;
