@@ -1,5 +1,5 @@
 # Tamarin
-A VR utilities library for JMonkeyEngine. 
+A VR utilities library for JMonkeyEngine using OpenXR. 
 
 ## Typical imports
 
@@ -7,11 +7,11 @@ To successfully use Tamarin you should typically have at least the following dep
 
     implementation "org.jmonkeyengine:jme3-core:$jmonkeyengine_version"
     implementation "org.jmonkeyengine:jme3-lwjgl3:$jmonkeyengine_version"
-    implementation "org.jmonkeyengine:jme3-vr:$jmonkeyengine_version"
+    implementation "org.jmonkeyengine:jme3-desktop:$jmonkeyengine_version"
 
 Optionally you can also have
 
-    implementation "com.simsilica:lemur:1.16.0"
+    implementation "com.simsilica:lemur:$lemur_version"
 
 ## Logging
 

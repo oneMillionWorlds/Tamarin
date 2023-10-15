@@ -57,6 +57,7 @@ public class XrAppState extends BaseAppState{
 
     private final Queue<Runnable> runOnceHaveCameraPositions = new LinkedList<>();
 
+    @SuppressWarnings("unused")
     public XrAppState(){
         this(new XrSettings());
     }
@@ -287,13 +288,13 @@ public class XrAppState extends BaseAppState{
      * <p>
      * Note that it's probably a bad idea to apply any sort of rotation other than about the Y axis, but you can (this is
      * the only rotation method that supports that).
-     * <p>
+     * </p>
      * This is a highly technical method, and you're more likely to want one of these methods:
      * <ul>
      *     <li>{@link XrAppState#rotateObserverWithoutMovingPlayer}</li>
      *     <li>{@link XrAppState#playerLookInDirection}</li>
      *     <li>{@link XrAppState#playerLookAtPosition}</li>
-     * <ul>
+     * </ul>
      * @param observerRotation observer rotation
      */
     @SuppressWarnings("unused")
