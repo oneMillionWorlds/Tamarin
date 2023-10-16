@@ -4,6 +4,7 @@ import com.jme3.app.Application;
 import com.jme3.app.FlyCamAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.audio.AudioListenerState;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -15,6 +16,7 @@ import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.onemillionworlds.tamarin.TamarinUtilities;
+import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import lombok.Getter;
 
 import java.util.LinkedList;
@@ -81,7 +83,6 @@ public class XrAppState extends BaseAppState{
             xrSettings.setApplicationName(app.getContext().getSettings().getTitle());
         }
 
-
         xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings);
         int width = xrSession.getSwapchainWidth();
         int height = xrSession.getSwapchainHeight();
@@ -121,6 +122,14 @@ public class XrAppState extends BaseAppState{
             if (flyCam!=null){
                 getStateManager().detach(flyCam);
             }
+        }
+
+        if (xrSettings.isEarsFollowVrCamera()){
+            AudioListenerState audioListenerState = getStateManager().getState(AudioListenerState.class);
+            if (audioListenerState!=null){
+                getStateManager().detach(audioListenerState);
+            }
+            getStateManager().attach(new VrAudioListenerState());
         }
     }
 

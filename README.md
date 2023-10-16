@@ -66,8 +66,3 @@ Deploy to sonatype by:
 - If all looks well "close" the repository and then Release it
 - Tag the release
 
-
-## Upgrade
-
-This library forward ports JMonkeyEngine 3.6 functionality into JMonkeyEngine 3.5. Expect breaking changes on upgrading
-to JMonkeyEngine 3.6 (Although as this tracks the intended functionality in 3.6, so shouldn't be too painful)

@@ -36,6 +36,13 @@ public class XrSettings{
     XrVrMode xrVrMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
     /**
+     * If true the ears will no longer follow the main camera but will instead follow the VR cameras mid positions.
+     */
+    @Getter
+    @Setter
+    boolean earsFollowVrCamera = true;
+
+    /**
      * If true, the main camera will follow the VR camera. If false, the main camera continue to be controlled in whatever
      * way the main application has been set up.
      */

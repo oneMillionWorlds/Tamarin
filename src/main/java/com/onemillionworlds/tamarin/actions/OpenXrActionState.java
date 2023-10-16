@@ -109,14 +109,6 @@ public class OpenXrActionState extends BaseAppState{
     private final Map<ActionHandle,Map<String, Long>> poseActionInputSpaceHandles = new HashMap<>();
 
     /**
-     * These are the cached skeleton data (what bones there are, what the handles are etc)
-     * <p>
-     * It is a map of action name to that name (/skeleton/hand/left or /skeleton/hand/right should be bound to an
-     * action of type skeleton in the action manifest).
-     */
-    //private final Map<String, LWJGLSkeletonData> skeletonActions = new HashMap<>();
-
-    /**
      * A map of paths (e.g. /user/hand/right) to the handle used to address it.
      */
     private final Map<String, Long> pathCache = new HashMap<>();
@@ -465,12 +457,14 @@ public class OpenXrActionState extends BaseAppState{
     }
 
 
+    @SuppressWarnings("unused")
     public Vector3f getObserverPosition(){
         Node obs = xrAppState.getObserver();
         return obs.getWorldTranslation();
     }
 
 
+    @SuppressWarnings("unused")
     public Quaternion getObserverRotation(){
         Node obs = xrAppState.getObserver();
         return obs.getWorldRotation();
@@ -705,7 +699,7 @@ public class OpenXrActionState extends BaseAppState{
      * This method is typically used to bind the haptic to both hands then decide at run time which hand to sent to     *
      *
      * @param action The action for haptic vibration.
-     * @param duration how long in seconds the
+     * @param duration how long in seconds the vibration should be.
      * @param frequency in cycles per second (aka Hz)
      * @param amplitude between 0 and 1
      * @param restrictToInput the input to restrict the action to. E.g. /user/hand/right, /user/hand/left. Or null, which means "both hands"
