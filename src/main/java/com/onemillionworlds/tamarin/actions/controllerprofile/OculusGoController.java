@@ -89,26 +89,25 @@ public class OculusGoController {
             return handPart + ComponentPaths.TRACKPAD_TOUCH;
         }
 
-        //these  can be used once JME upgrades to LWJGL 3.3.3 or higher
-//        public String trackpadDpadUp(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
-//        }
-//
-//        public String trackpadDpadDown(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
-//        }
-//
-//        public String trackpadDpadLeft(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
-//        }
-//
-//        public String trackpadDpadRight(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
-//        }
-//
-//        public String trackpadDpadCenter(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;
-//        }
+        public String trackpadDpadUp(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
+        }
+
+        public String trackpadDpadDown(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
+        }
+
+        public String trackpadDpadLeft(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
+        }
+
+        public String trackpadDpadRight(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
+        }
+
+        public String trackpadDpadCenter(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;
+        }
 
         public String gripPose(){
             return handPart + ComponentPaths.GRIP_POSE;

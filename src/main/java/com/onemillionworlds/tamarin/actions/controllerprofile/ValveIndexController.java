@@ -41,26 +41,25 @@ public class ValveIndexController {
         public static final String THUMB_STICK_TOUCH = "/input/thumbstick/touch";
 
 
-        //below need LWJGL 3.3.3 and extension for DPAD
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public static final String THUMB_DPAD_UP ="/input/thumbstick/dpad_up";
-//
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public static final String THUMB_DPAD_DOWN ="/input/thumbstick/dpad_down";
-//
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public static final String THUMB_DPAD_LEFT ="/input/thumbstick/dpad_left";
-//
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public static final String THUMB_DPAD_RIGHT ="/input/thumbstick/dpad_right";
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public static final String THUMB_DPAD_UP ="/input/thumbstick/dpad_up";
+
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public static final String THUMB_DPAD_DOWN ="/input/thumbstick/dpad_down";
+
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public static final String THUMB_DPAD_LEFT ="/input/thumbstick/dpad_left";
+
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public static final String THUMB_DPAD_RIGHT ="/input/thumbstick/dpad_right";
 
         public static final String TRACKPAD = "/input/trackpad";
 
@@ -173,42 +172,41 @@ public class ValveIndexController {
             return handPart + ComponentPaths.THUMB_STICK_TOUCH;
         }
 
-        //these  can be used once JME upgrades to LWJGL 3.3.3 or higher
-//        public String thumbDpadUp(){
-//            return handPart + ComponentPaths.THUMB_DPAD_UP;
-//        }
-//
-//        public String thumbDpadDown(){
-//            return handPart + ComponentPaths.THUMB_DPAD_DOWN;
-//        }
-//
-//        public String thumbDpadLeft(){
-//            return handPart + ComponentPaths.THUMB_DPAD_LEFT;
-//        }
-//
-//        public String thumbDpadRight(){
-//            return handPart + ComponentPaths.THUMB_DPAD_RIGHT;
-//        }
-//
-//        public String trackpadDpadUp(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
-//        }
-//
-//        public String trackpadDpadDown(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
-//        }
-//
-//        public String trackpadDpadLeft(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
-//        }
-//
-//        public String trackpadDpadRight(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
-//        }
-//
-//        public String trackpadDpadCenter(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;
-//        }
+        public String thumbStickDpadUp(){
+            return handPart + ComponentPaths.THUMB_DPAD_UP;
+        }
+
+        public String thumbStickDpadDown(){
+            return handPart + ComponentPaths.THUMB_DPAD_DOWN;
+        }
+
+        public String thumbStickDpadLeft(){
+            return handPart + ComponentPaths.THUMB_DPAD_LEFT;
+        }
+
+        public String thumbStickDpadRight(){
+            return handPart + ComponentPaths.THUMB_DPAD_RIGHT;
+        }
+
+        public String trackpadStickDpadUp(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
+        }
+
+        public String trackpadDpadDown(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
+        }
+
+        public String trackpadDpadLeft(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
+        }
+
+        public String trackpadDpadRight(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
+        }
+
+        public String trackpadDpadCenter(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;
+        }
 
         public String trackpad(){
             return handPart + ComponentPaths.TRACKPAD;

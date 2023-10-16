@@ -165,31 +165,30 @@ public class OculusTouchController{
             return handPart + ComponentPathsEitherHand.THUMB_STICK_TOUCH;
         }
 
-//these  can be used once JME upgrades to LWJGL 3.3.3 or higher
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String thumbDpadUp(){
-//            return handPart + ComponentPathsEitherHand.THUMB_DPAD_UP;
-//        }
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String thumbDpadDown(){
-//            return handPart + ComponentPathsEitherHand.THUMB_DPAD_DOWN;
-//        }
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String thumbDpadLeft(){
-//            return handPart + ComponentPathsEitherHand.THUMB_DPAD_LEFT;
-//        }
-//        /**
-//         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String thumbDpadRight(){
-//            return handPart + ComponentPathsEitherHand.THUMB_DPAD_RIGHT;
-//        }
+       /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String thumbStickDpadUp(){
+            return handPart + ComponentPathsEitherHand.THUMB_DPAD_UP;
+        }
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String thumbStickDpadDown(){
+            return handPart + ComponentPathsEitherHand.THUMB_DPAD_DOWN;
+        }
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String thumbStickDpadLeft(){
+            return handPart + ComponentPathsEitherHand.THUMB_DPAD_LEFT;
+        }
+        /**
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String thumbStickDpadRight(){
+            return handPart + ComponentPathsEitherHand.THUMB_DPAD_RIGHT;
+        }
 
         public String thumbBrestTouch(){
             return handPart + ComponentPathsEitherHand.THUMB_BREST_TOUCH;

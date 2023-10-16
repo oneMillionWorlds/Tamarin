@@ -102,38 +102,38 @@ public class MixedRealityMotionController{
             return handPart + ComponentPaths.TRACKPAD_TOUCH;
         }
 
-        //these  can be used once JME upgrades to LWJGL 3.3.3 or higher
-//        /**
-//         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String trackpadDpadUp(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
-//        }
-//
-//        /**
-//         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String trackpadDpadDown(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
-//        }
-//        /**
-//         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String trackpadDpadLeft(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
-//        }
-//        /**
-//         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String trackpadDpadRight(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
-//        }
-//        /**
-//         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
-//         */
-//        public String trackpadDpadCenter(){
-//            return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;
-//        }
+
+        /**
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String trackpadDpadUp(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
+        }
+
+        /**
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String trackpadDpadDown(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
+        }
+        /**
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String trackpadDpadLeft(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
+        }
+        /**
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String trackpadDpadRight(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
+        }
+        /**
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         */
+        public String trackpadDpadCenter(){
+            return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;
+        }
 
         public String gripPose(){
             return handPart + ComponentPaths.GRIP_POSE;
