@@ -7,12 +7,9 @@ import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import java.util.Optional;
 
 /**
- * JMonkeyEngine uses LWJGL 3.3.1 but to use real DPad functionality we need 3.3.3.
- * This instead allows a DPad to be emulated using a {@link Vector2fActionState}.
- * <p>
- * Instantiate a SyntheticDPad then keep reusing it to correctly get hasChanged values
+ * Deprecated, use actual dpad action paths instead (e.g. `OculusTouchController.pathBuilder().leftHand().thumbDpadUp()`)
  */
-@SuppressWarnings("unused")
+@Deprecated
 public class SyntheticDPad{
     Optional<Direction> lastUpdateDirection = Optional.empty();
     Optional<Direction> thisUpdateDirection = Optional.empty();

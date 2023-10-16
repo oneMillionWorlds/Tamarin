@@ -56,8 +56,8 @@ public class XrSettings{
         requiredXrExtensions.add(MNDXEGLEnable.XR_MNDX_EGL_ENABLE_EXTENSION_NAME); //cross platform openGL support (not well supported yet but a good idea)
         requiredXrExtensions.add(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME); //bones
         requiredXrExtensions.add(KHRBindingModification.XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME); //required by XR_EXT_DPAD_BINDING_EXTENSION_NAME
-        // below can be used once JME upgrades to LWJGL 3.3.3 or higher
-        //requiredXrExtensions.add(EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME); //treating joysticks as dpads
+        // below can be replaced with EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME once JME upgrades to LWJGL 3.3.3 or higher
+        requiredXrExtensions.add("XR_EXT_dpad_binding"); //treating joysticks as dpads
     }
 
     /**
