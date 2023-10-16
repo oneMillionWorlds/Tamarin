@@ -12,9 +12,6 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.system.lwjgl.LwjglWindow;
-import com.jme3.texture.Image;
-import com.jme3.texture.Texture;
-import com.jme3.texture.Texture2D;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import lombok.Getter;
@@ -84,6 +81,7 @@ public class XrAppState extends BaseAppState{
         }
 
         xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings);
+
         int width = xrSession.getSwapchainWidth();
         int height = xrSession.getSwapchainHeight();
 
@@ -98,24 +96,16 @@ public class XrAppState extends BaseAppState{
         leftCamera.setRotation(rotation);
         rightCamera.setRotation(rotation);
 
-
-        Texture2D leftOffTex = new Texture2D(width, height, Image.Format.RGBA8);
-        leftOffTex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
-        leftOffTex.setMagFilter(Texture.MagFilter.Bilinear);
-
-        Texture2D rightOffTex = new Texture2D(width, height, Image.Format.RGBA8);
-        rightOffTex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
-        rightOffTex.setMagFilter(Texture.MagFilter.Bilinear);
-
         leftViewPort = app.getRenderManager().createPreView("Left Eye", leftCamera);
         leftViewPort.setClearFlags(true, true, true);
 
         rightViewPort = app.getRenderManager().createPreView("Right Eye", rightCamera);
         rightViewPort.setClearFlags(true, true, true);
-        leftViewPort.attachScene(((SimpleApplication)app).getRootNode());
-        rightViewPort.attachScene(((SimpleApplication)app).getRootNode());
+        leftViewPort.attachScene(((SimpleApplication) app).getRootNode());
+        rightViewPort.attachScene(((SimpleApplication) app).getRootNode());
 
         ((SimpleApplication) getApplication()).getRootNode().attachChild(observer);
+
 
         if (xrSettings.isMainCameraFollowsVrCamera()){
             FlyCamAppState flyCam = getStateManager().getState(FlyCamAppState.class);
@@ -129,7 +119,9 @@ public class XrAppState extends BaseAppState{
             if (audioListenerState!=null){
                 getStateManager().detach(audioListenerState);
             }
-            getStateManager().attach(new VrAudioListenerState());
+            if (getStateManager().getState(VrAudioListenerState.class) == null){
+                getStateManager().attach(new VrAudioListenerState());
+            }
         }
     }
 
