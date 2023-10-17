@@ -11,6 +11,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.jme3.system.AppSettings;
 import com.jme3.system.lwjgl.LwjglWindow;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
@@ -20,8 +21,11 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 public class XrAppState extends BaseAppState{
+    private static final Logger LOGGER = Logger.getLogger(XrAppState.class.getName());
+
     public static String ID = "XrAppState";
 
     @Getter
@@ -75,9 +79,13 @@ public class XrAppState extends BaseAppState{
             //EGL14.eglGetCurrentContext()
             throw new RuntimeException("Only LwjglWindow is supported (need to get the window handle)");
         }
-
+        AppSettings settings = app.getContext().getSettings();
         if (xrSettings.getApplicationName().isEmpty()){
-            xrSettings.setApplicationName(app.getContext().getSettings().getTitle());
+            xrSettings.setApplicationName(settings.getTitle());
+        }
+
+        if (settings.isVSync()){
+            LOGGER.warning("VSync is enabled. This will cause stuttering in VR. Please disable it. Frame rate should be controlled by the headset, not the monitor");
         }
 
         xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings);
