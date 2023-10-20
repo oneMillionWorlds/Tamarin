@@ -100,8 +100,8 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
             url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
             //url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
             credentials {
-                username ossrhUsername
-                password ossrhPassword
+                username findProperty('ossrhUsername') ?: ''
+                password findProperty('ossrhPassword') ?: ''
             }
         }
     }
