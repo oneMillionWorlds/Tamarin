@@ -7,7 +7,7 @@ on:
     branches: [ main ]
     types: [submitted]
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -26,6 +26,7 @@ jobs:
       run: ./gradlew build
 
   publish:
+    needs: build_and_test
     if: "contains(github.event.head_commit.message, '[release]') || github.event_name == 'workflow_dispatch'"
     runs-on: ubuntu-latest
     steps:
