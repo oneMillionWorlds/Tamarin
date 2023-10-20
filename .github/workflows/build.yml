@@ -30,8 +30,44 @@ jobs:
     if: "contains(github.event.head_commit.message, '[release]') || github.event_name == 'workflow_dispatch'"
     runs-on: ubuntu-latest
     steps:
-    - name: Run tests
-      run: ./gradlew test
+    - name: Setup and fetch all tags
+      run: |
+        git fetch --prune --unshallow --tags
+    - name: Check and update version
+      run: |
+        # Extract current version from build.gradle
+        VERSION=$(grep "version = " build.gradle | awk -F\' '{print $2}')
+        echo "Current version: $VERSION"
+        
+        # Check if tag already exists
+        if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          echo "Tag v$VERSION already exists, incrementing version"
+        
+          # Increment version
+          NEW_VERSION=$(echo $VERSION | awk -F. '{$NF = $NF + 1;} 1' OFS=.)
+          echo "New version: $NEW_VERSION"
+        
+          # Update build.gradle with the new version
+          sed -i "s/version = '$VERSION'/version = '$NEW_VERSION'/" build.gradle
+        
+          # Commit the change
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add build.gradle
+          git commit -m "Increment version to $NEW_VERSION [skip ci]"
+        
+          # Push the commit
+          git push origin HEAD:${{ github.ref }}
+        
+          # Set VERSION to the new version for tagging
+          VERSION=$NEW_VERSION
+        fi
+        
+        # Create and push the tag
+        git tag "v$VERSION"
+        git push origin "v$VERSION"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Decode GPG key
       run: echo "${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" | base64 --decode > ./secring.gpg
