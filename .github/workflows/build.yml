@@ -3,9 +3,9 @@ name: Java CI with Gradle
 on:
   push:
     branches: [ main ]
-  pull_request:
+  pull_request_review:
     branches: [ main ]
-
+    types: [submitted]
 jobs:
   build:
 
@@ -29,3 +29,17 @@ jobs:
 
     - name: Run tests
       run: ./gradlew test
+
+    - name: Decode GPG key
+      run: echo "${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" | base64 --decode > ./secring.gpg
+
+    - name: Create gradle.properties
+      run: |
+        echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties
+        echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties
+        echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
+        echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
+        echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
+
+    - name: Publish package
+      run: ./gradlew publishMavenJavaPublicationToSonaTypeRepository
