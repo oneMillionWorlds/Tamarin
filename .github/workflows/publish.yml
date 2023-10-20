@@ -3,7 +3,7 @@ name: Java release with Gradle
 on:
   workflow_dispatch:
 jobs:
-  build_and_test:
+  release:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
