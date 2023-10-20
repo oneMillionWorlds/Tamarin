@@ -8,9 +8,7 @@ on:
     types: [submitted]
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -27,6 +25,10 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
+  publish:
+    if: "contains(github.event.head_commit.message, '[release]') || github.event_name == 'workflow_dispatch'"
+    runs-on: ubuntu-latest
+    steps:
     - name: Run tests
       run: ./gradlew test
 
