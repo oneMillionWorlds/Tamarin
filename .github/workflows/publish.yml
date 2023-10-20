@@ -21,6 +21,20 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
+    - name: Decode GPG key
+      run: echo "${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" | base64 --decode > ./secring.gpg
+
+    - name: Create gradle.properties
+      run: |
+        echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties
+        echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties
+        echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
+        echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
+        echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
+
+    - name: Publish package
+      run: ./gradlew publishMavenJavaPublicationToSonaTypeRepository
+
     - name: Tag and update version
       run: |
         # Extract current version from build.gradle
@@ -48,17 +62,3 @@ jobs:
         git push origin HEAD:${{ github.ref }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Decode GPG key
-      run: echo "${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" | base64 --decode > ./secring.gpg
-
-    - name: Create gradle.properties
-      run: |
-        echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties
-        echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties
-        echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
-        echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
-        echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
-
-    - name: Publish package
-      run: ./gradlew publishMavenJavaPublicationToSonaTypeRepository
