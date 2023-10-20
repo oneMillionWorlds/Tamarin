@@ -35,7 +35,9 @@ public class XrAppState extends BaseAppState{
     @Getter
     Camera rightCamera;
 
+    @Getter
     ViewPort leftViewPort;
+    @Getter
     ViewPort rightViewPort;
 
     /**
