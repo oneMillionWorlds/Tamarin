@@ -3,7 +3,9 @@ package com.onemillionworlds.tamarin.actions.actionprofile;
 import lombok.Getter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Getter
 public class ActionSet{
@@ -36,6 +38,17 @@ public class ActionSet{
         return new ActionSetBuilder();
     }
 
+    public Collection<ActionManifest.ValidationProblem> validate(){
+
+        return Stream.concat(
+                ActionManifest.findDuplicates(actions.stream().map(Action::getActionName))
+                        .map(name -> "Duplicate action name (in"+name+"): " + name),
+                ActionManifest.findDuplicates(actions.stream().map(Action::getTranslatedName))
+                        .map(name -> "Duplicate action translated name (in"+name+"): " + name)
+        ).map(ActionManifest.ValidationProblem::new)
+                .toList();
+    }
+
     @SuppressWarnings("unused")
     public static class ActionSetBuilder{
         private String name;
@@ -47,6 +60,9 @@ public class ActionSet{
          * This is the action sets programmatic name.
          */
         public ActionSetBuilder name(String name){
+            if (!ActionHandle.VALID_ACTION_NAMES.matcher(name).matches()){
+                throw new IllegalArgumentException("Action set name must be lower case and only contain letters and underscores but was "+name);
+            }
             this.name = name;
             return this;
         }
@@ -77,6 +93,10 @@ public class ActionSet{
             }
             actions.add(action);
             return this;
+        }
+
+        public ActionSetBuilder withAction(Action.ActionBuilder action){
+            return withAction(action.build());
         }
 
         public ActionSet build(){
