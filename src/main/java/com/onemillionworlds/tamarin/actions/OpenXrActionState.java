@@ -38,6 +38,7 @@ import org.lwjgl.openxr.XrActionStateVector2f;
 import org.lwjgl.openxr.XrActionSuggestedBinding;
 import org.lwjgl.openxr.XrActionsSyncInfo;
 import org.lwjgl.openxr.XrActiveActionSet;
+import org.lwjgl.openxr.XrBoundSourcesForActionEnumerateInfo;
 import org.lwjgl.openxr.XrHandJointLocationEXT;
 import org.lwjgl.openxr.XrHandJointLocationsEXT;
 import org.lwjgl.openxr.XrHandJointsLocateInfoEXT;
@@ -57,11 +58,14 @@ import org.lwjgl.openxr.XrSpace;
 import org.lwjgl.openxr.XrSpaceLocation;
 import org.lwjgl.openxr.XrSpaceVelocity;
 import org.lwjgl.openxr.XrVector3f;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -139,6 +143,10 @@ public class OpenXrActionState extends BaseAppState{
     private XrActionsSyncInfo xrActionsSyncInfo;
 
     private PendingActions pendingActions;
+
+    List<Runnable> runAfterActionsRegistered = new ArrayList<>(0);
+
+    List<Runnable> runAfterActionsSync = new ArrayList<>(0);
 
     XrAppState xrAppState;
 
@@ -219,6 +227,62 @@ public class OpenXrActionState extends BaseAppState{
     @Override
     protected void onDisable(){
 
+    }
+
+    /**
+     * Gets the details of the physical button that is bound to the action. If multiple buttons are bound then multiple
+     * results will be returned.
+     * <p>
+     *  This is useful for things like tutorial messages like "press the ... to fire" where ... can be infered
+     *  based on the result of this call. This means your tutorial messages can work for all devices, even ones that
+     *  did not exist when your application was released.
+     * </p
+     *
+     * <p>Example raw value outputs:</p>
+     * <ul>
+     *     <li>/user/hand/right/input/joystick/click</li>
+     *     <li>/user/hand/left/input/joystick/y</li>
+     *     <li>/user/hand/right/input/a/touch</li>
+     *     <li>/user/hand/right/input/a/click</li>
+     * </ul>
+     *
+     * <p>
+     *     Be slightly careful as joysticks used as dPads may give surprising results like "/user/hand/left/input/joystick/y".
+     *     For traditional button presses it should be fine, giving results like
+     * </p>
+     *
+     * <p>
+     *     Note this method will return an empty list until the actions are synced (which happens once the session is fully running
+     *     and this action state updates. Basically be careful calling this method at application start up).
+     * </p>
+     * @param actionHandle the action that represents an action in the application (e.g. "fire")
+     * @return the list of physical buttons that are bound to the action
+     */
+    public List<PhysicalBindingInterpretation> getPhysicalBindingForAction(ActionHandle actionHandle){
+        List<PhysicalBindingInterpretation> results = new ArrayList<>(1);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            XrBoundSourcesForActionEnumerateInfo enumerateInfo = XrBoundSourcesForActionEnumerateInfo.malloc(stack)
+                    .type(XR10.XR_TYPE_BOUND_SOURCES_FOR_ACTION_ENUMERATE_INFO)
+                    .next(0)
+                    .action(obtainActionHandle(actionHandle));
+
+            XrSession xrSession = xrAppState.getXrSession().getXrSession();
+
+            IntBuffer countOutput = stack.mallocInt(1);
+            checkResponseCode(XR10.xrEnumerateBoundSourcesForAction(xrSession, enumerateInfo, countOutput, null));
+
+            int sourceCount = countOutput.get(0);
+
+            System.out.println(sourceCount);
+            LongBuffer sources = stack.mallocLong(sourceCount);
+            checkResponseCode(XR10.xrEnumerateBoundSourcesForAction(xrSession, enumerateInfo, countOutput, sources));
+
+            for (int i = 0; i < sourceCount; i++) {
+                long sourcePath = sources.get(i);
+                results.add(PhysicalBindingInterpretation.interpretRawValue(longToPath(sourcePath)));
+            }
+        }
+        return results;
     }
 
     private boolean sessionIsRunning(){
@@ -411,7 +475,12 @@ public class OpenXrActionState extends BaseAppState{
         return buffer;
     }
 
-    private void withResponseCodeLogging(String eventText, int errorCode){
+    /**
+     * @param eventText A context string
+     * @param errorCode the error code returned by openXR
+     * @return if it's a success
+     */
+    private boolean withResponseCodeLogging(String eventText, int errorCode){
         //error code 0 is ultra common and means all is well. Don't flood the logs with it
         if (errorCode != XR10.XR_SUCCESS){
             ByteBuffer buffer = BufferUtils.createByteBuffer(XR10.XR_MAX_RESULT_STRING_SIZE);
@@ -440,7 +509,13 @@ public class OpenXrActionState extends BaseAppState{
                     LOGGER.info(message+CallResponseCode.getResponseCode(errorCode).map(CallResponseCode::getErrorMessage).orElse(""));
                 }
             }
+            return false;
         }
+        return true;
+    }
+
+    private void checkResponseCode(int errorCode){
+        openXRGL.checkResponseCode(errorCode);
     }
 
     @SuppressWarnings("unused")
@@ -791,11 +866,40 @@ public class OpenXrActionState extends BaseAppState{
         if (pendingActions !=null && sessionIsRunning()){
             registerActions(pendingActions.pendingActionSets(), pendingActions.pendingActiveActionSetNames());
             pendingActions = null;
+            runAfterActionsRegistered.forEach(Runnable::run);
+            runAfterActionsRegistered=List.of();
         }
 
         if (xrActionsSyncInfo !=null && sessionIsRunning()){
-            withResponseCodeLogging("xrSyncActions", XR10.xrSyncActions(xrSessionHandle, this.xrActionsSyncInfo));
+            boolean success = withResponseCodeLogging("xrSyncActions", XR10.xrSyncActions(xrSessionHandle, this.xrActionsSyncInfo));
+
+            if (success && !runAfterActionsSync.isEmpty()){
+                runAfterActionsSync.forEach(Runnable::run);
+                runAfterActionsSync.clear();
+            }
         }
+    }
+
+    /**
+     * If actions are already registered (which happens after the XR session is running) then runs the runnable immediately.
+     * Otherwise, runs it after the actions are registered
+     */
+    @SuppressWarnings("unused")
+    public void runAfterActionsRegistered(Runnable runnable){
+        if (pendingActions != null){
+            runAfterActionsRegistered.add(runnable);
+        }else{
+            runnable.run();
+        }
+    }
+
+    /**
+     * When the XR session is running actions are synced every update. Runnables added here will be run after the next
+     * such sync.
+     */
+    @SuppressWarnings("unused")
+    public void runAfterNextActionsSync(Runnable runnable){
+         runAfterActionsSync.add(runnable);
     }
 
     /**
@@ -833,6 +937,20 @@ public class OpenXrActionState extends BaseAppState{
             pathCache.put(path, pathHandle);
         }
         return pathHandle;
+    }
+
+    private String longToPath(long pathHandle){
+        try (MemoryStack stack = MemoryStack.stackPush()){
+            IntBuffer stringLengthUsed = stack.mallocInt(1);
+
+            checkResponseCode(XR10.xrPathToString(xrInstance, pathHandle, stringLengthUsed, null));
+
+            ByteBuffer pathStringBuffer = stack.malloc(stringLengthUsed.get(0));
+
+            checkResponseCode(XR10.xrPathToString(xrInstance, pathHandle, stringLengthUsed, pathStringBuffer));
+
+            return MemoryUtil.memUTF8(pathStringBuffer, stringLengthUsed.get(0) - 1);
+        }
     }
 
     private Vector3f xrVector3fToJME(XrVector3f in){
