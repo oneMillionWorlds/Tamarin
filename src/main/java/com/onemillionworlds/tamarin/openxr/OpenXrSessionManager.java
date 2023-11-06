@@ -705,8 +705,7 @@ public class OpenXrSessionManager{
             Texture2D texture = new Texture2D(new SwapchainImage(id, format, swapchainWidth, swapchainHeight));
             FrameBuffer frameBuffer = new FrameBuffer(swapchainWidth, swapchainHeight, 1);
             frameBuffer.addColorTarget(FrameBuffer.FrameBufferTarget.newTarget(texture));
-            frameBuffer.setDepthBuffer(Image.Format.Depth);
-
+            frameBuffer.setDepthTarget(FrameBuffer.FrameBufferTarget.newTarget(Image.Format.Depth));
             return frameBuffer;
         });
     }
