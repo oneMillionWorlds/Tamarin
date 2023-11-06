@@ -74,3 +74,14 @@ Deploy to sonatype manually by:
 - If all looks well "close" the repository and then Release it
 - Tag the release
 
+### Testing staging builds
+
+To test a staging build the repository must be in "closed" state, then add the following to the consuming build.gradle
+
+    maven {
+        url "https://s01.oss.sonatype.org/content/repositories/comonemillionworlds-XXXX"
+    }
+
+Where XXXX is replaced by the specific repository number being used for this version (see https://s01.oss.sonatype.org/#stagingRepositories
+when logged in).
+
