@@ -13,10 +13,19 @@ repositories {
 
 java {
     withJavadocJar()
-    withSourcesJar()
+    //withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
+
+tasks.register('sourcesJar', Jar) {
+    // Replace the source set with the delomboked files
+    from sourceSets.main.delombokTask
+    archiveClassifier.set('sources')
+
+}
+
+tasks.sourcesJar.dependsOn delombok
 
 group = 'com.onemillionworlds'
 version = '2.0.2'
@@ -92,6 +101,7 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
                 }
             }
 
+            artifact sourcesJar
         }
     }
     repositories {

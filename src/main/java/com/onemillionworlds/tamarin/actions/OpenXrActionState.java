@@ -414,6 +414,7 @@ public class OpenXrActionState extends BaseAppState{
      * @param action The action. E.g. openInventory
      * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
      */
+    @SuppressWarnings("unused")
     public BooleanActionState getBooleanActionState(ActionHandle action){
         return getBooleanActionState(action, null);
     }
@@ -448,12 +449,17 @@ public class OpenXrActionState extends BaseAppState{
      * This handle can be used instead of quoting the name and set every time (it's also marginally faster
      * to hold onto these XrAction and use them directly rather than having {@link OpenXrActionState} look them up)
      */
+    @SuppressWarnings("unused")
     public XrAction obtainActionHandle(String actionSet, String actionName){
         return actions.get(actionSet).get(actionName);
     }
 
     public XrAction obtainActionHandle(ActionHandle actionHandle){
-        return actions.get(actionHandle.actionSetName()).get(actionHandle.actionName());
+        try{
+            return actions.get(actionHandle.actionSetName()).get(actionHandle.actionName());
+        }catch(NullPointerException nullPointerException){
+            throw new RuntimeException("No action found for " + actionHandle + ". Have you registered it in the manifest?", nullPointerException);
+        }
     }
 
 
@@ -522,7 +528,12 @@ public class OpenXrActionState extends BaseAppState{
                 .type(XR10.XR_TYPE_SPACE_LOCATION)
                 .next(spaceVelocity);
 
-        long spaceHandle = poseActionInputSpaceHandles.get(action).get(handSide.restrictToInputString);
+        long spaceHandle;
+        try{
+            spaceHandle = poseActionInputSpaceHandles.get(action).get(handSide.restrictToInputString);
+        } catch(NullPointerException nullPointerException){
+            throw new RuntimeException("No pose action found for " + action + " and handSide " + handSide + ". Have you registered in it the manifest?", nullPointerException);
+        }
 
         XrSpace poseSpace = new XrSpace(spaceHandle, xrSessionHandle);
         long handleForReferenceSpace = getOrCreateReferenceSpaceHandle(stageRelative?XR10.XR_REFERENCE_SPACE_TYPE_STAGE:XR10.XR_REFERENCE_SPACE_TYPE_LOCAL);
@@ -569,7 +580,13 @@ public class OpenXrActionState extends BaseAppState{
             return Optional.empty();
         }
 
-        long spaceHandle = poseActionInputSpaceHandles.get(poseAction).get(handSide.restrictToInputString);
+        long spaceHandle;
+        try{
+            spaceHandle =  poseActionInputSpaceHandles.get(poseAction).get(handSide.restrictToInputString);
+        } catch(NullPointerException nullPointerException){
+            throw new RuntimeException("No pose action found for " + poseAction + " and handSide " + handSide + ". Have you registered it in the manifest?", nullPointerException);
+        }
+
 
         XrSpace poseSpace = new XrSpace(spaceHandle, xrSessionHandle);
 
@@ -598,7 +615,7 @@ public class OpenXrActionState extends BaseAppState{
             }
             return Optional.of(results);
         }else {
-            LOGGER.warning("No hand tracker for handSide " + handSide+ ". Have you registered the manifest?");
+            LOGGER.warning("No hand tracker for handSide " + handSide);
             return Optional.empty();
         }
     }
@@ -639,6 +656,7 @@ public class OpenXrActionState extends BaseAppState{
      * @param action The action.
      * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
      */
+    @SuppressWarnings("unused")
     public Vector2fActionState getVector2fActionState(ActionHandle action){
         return getVector2fActionState(action, null);
     }

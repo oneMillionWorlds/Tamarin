@@ -13,7 +13,7 @@ public class RotationalVelocity{
     final Vector3f rotationAsSingleVector;
 
     /**
-     * The axis about which teh rotation is occuring
+     * The axis about which the rotation is occurring
      */
     final Vector3f axis;
 
