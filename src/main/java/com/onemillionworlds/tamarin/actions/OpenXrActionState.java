@@ -65,6 +65,7 @@ import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -143,17 +144,51 @@ public class OpenXrActionState extends BaseAppState{
 
     /**
      * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make.
-     * (An action is an abstract version of a button press). The action manifest may then also include references to
-     * further files that define default mappings between those actions and physical buttons on the VR controllers.
+     * (An action is an abstract version of a button press etc.).
      * <p>
-     * Note that this method should only be called after the state is initialised. But alternatively the manifest could
-     * be provided in the constructor which can be done at construction (obviously).
+     * Deprecated because it was too easy to forget the starting action sets and then wonder why nothing worked.
+     * </p>
      *
      * @param manifest a class describing all the actions (abstract versions of buttons, hand poses etc) available to the application
      * @param startingActionSets the names of the action sets that should be activated at the start of the application (aka the ones that will work)
      */
+    @Deprecated
     public OpenXrActionState(ActionManifest manifest, String... startingActionSets){
+        this(manifest, Arrays.asList(startingActionSets));
+    }
+
+    /**
+     * Creates an OpenXrActionState with a single active action set (but with potentially more than one registered, ready to use later).
+     * <p>
+     * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make. This will also contain suggestions at to what physical
+     * buttons should be bound to the actions on directly supported controllers (other controllers may be configured by
+     * the end user).
+     * </p>
+     * @param manifest a class describing all the actions (abstract versions of buttons, hand poses etc) available to the application
+     * @param startingActionSet the name of the action set that should be activated at the start of the application (aka the one that will work)
+     */
+    public OpenXrActionState(ActionManifest manifest, String startingActionSet){
+        this(manifest, List.of(startingActionSet));
+    }
+
+
+    /**
+     * Creates an OpenXrActionState with a single active action set (but with potentially more than one registered, ready to use later).
+     * <p>
+     * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make.
+     * (An action is an abstract version of a button press). This will also contain suggestions at to what physical
+     * buttons should be bound to the actions on directly supported controllers (other controllers may be configured by
+     * the end user).
+     * </p>
+     *
+     * @param manifest a class describing all the actions (abstract versions of buttons, hand poses etc) available to the application
+     * @param startingActionSets the names of the action sets that should be activated at the start of the application (aka the ones that will work)
+     */
+    public OpenXrActionState(ActionManifest manifest, List<String> startingActionSets){
         super(ID);
+        if (startingActionSets.isEmpty()){
+            throw new RuntimeException("No starting action sets specified, that means no actions will be usable. Probably not what you want. If you really really want that then set anything here then call setActiveActionSets() with no arguments later");
+        }
         this.pendingActions = new PendingActions(manifest, startingActionSets);
     }
 
@@ -193,20 +228,19 @@ public class OpenXrActionState extends BaseAppState{
 
     /**
      * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make.
-     * (An action is an abstract version of a button press). The action manifest may then also include references to
-     * further files that define default mappings between those actions and physical buttons on the VR controllers.
+     * (An action is an abstract version of a button press).
      * <p>
      * Note that this method should only be called after the state is initialised.
-     *
+     * </p>
      * @param manifest a class describing all the actions (abstract versions of buttons, hand poses etc) available to the application
      * @param startingActionSets the names of the action sets that should be activated at the start of the application (aka the ones that will work)
      */
-    private void registerActions(ActionManifest manifest, String... startingActionSets){
+    private void registerActions(ActionManifest manifest, List<String> startingActionSets){
         //see https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#_action_overview for examples of these calls
 
         assert actionSets == null: "Actions have already been registered, consider using action sets and activating and deactivating them as required";
 
-        if (startingActionSets.length == 0){
+        if (startingActionSets.isEmpty()){
             LOGGER.log(Level.WARNING, "No starting action sets specified, that means no actions will be usable. Probably not what you want.");
         }
 
@@ -331,9 +365,18 @@ public class OpenXrActionState extends BaseAppState{
      * This sets the action sets that will be active. I.e. the actions in this action set will work, others will be ignored
      * @param actionSets the names of the action sets
      */
+    @SuppressWarnings("unused")
     public void setActiveActionSets(String... actionSets){
+        setActiveActionSets(Arrays.asList(actionSets));
+    }
 
-        List<XrActionSet> activeActionSets = new ArrayList<>(actionSets.length);
+    /**
+     * This sets the action sets that will be active. I.e. the actions in this action set will work, others will be ignored
+     * @param actionSets the names of the action sets
+     */
+    public void setActiveActionSets(List<String> actionSets){
+
+        List<XrActionSet> activeActionSets = new ArrayList<>(actionSets.size());
 
         for(String actionSet : actionSets){
             XrActionSet actionSetXr = this.actionSets.get(actionSet);
@@ -827,7 +870,7 @@ public class OpenXrActionState extends BaseAppState{
 
     private record PendingActions(
         ActionManifest pendingActionSets,
-        String[] pendingActiveActionSetNames
+        List<String> pendingActiveActionSetNames
     ){}
 
 }
