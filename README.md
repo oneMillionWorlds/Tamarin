@@ -58,10 +58,18 @@ Note that the keyId is just the last 8 characters of the long id, and the secret
 
 Project is provisioned on https://s01.oss.sonatype.org/
 
-Deploy to sonatype by:
+Deploy to sonatype via pipeline by:
+- Running in gitlab teh publish job
+- Go to https://s01.oss.sonatype.org/ and log in
+- Go to the staging repository and select the repository
+- If all looks well "close" the repository and then Release it
+- Tag the release
+
+
+Deploy to sonatype manually by:
 - Editing the build.gradle file to have a non snapshot version
 - Running `./gradlew publishMavenJavaPublicationToSonaTypeRepository` (see https://docs.gradle.org/current/userguide/publishing_maven.html)
-- Go to https://s01.oss.sonatype.org/ and log in
+- Go to https://s01.oss.sonatype.org/ and log in as user oneMillionWorlds
 - Go to the staging repository and select the repository
 - If all looks well "close" the repository and then Release it
 - Tag the release
