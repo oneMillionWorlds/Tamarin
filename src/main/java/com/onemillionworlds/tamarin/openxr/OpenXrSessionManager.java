@@ -240,6 +240,15 @@ public class OpenXrSessionManager{
         }
     }
 
+    public String getSystemName(){
+        try (MemoryStack stack = MemoryStack.stackPush()){
+            XrSystemProperties systemProperties = XrSystemProperties.malloc(stack)
+                    .type(XR10.XR_TYPE_SYSTEM_PROPERTIES);
+            checkResponseCode(XR10.xrGetSystemProperties(xrInstance, systemID, systemProperties));
+            return systemProperties.systemNameString();
+        }
+    }
+
 
     public void initializeAndBindOpenGL() {
         try (MemoryStack stack = stackPush()) {
@@ -868,6 +877,8 @@ public class OpenXrSessionManager{
             }
             throw new OpenXrException("Open XR returned an error code " + result, result);
         }
+        throw new RuntimeException("Open XR returned an error code " + result); //I don't think it should ever actually get here
+
     }
 
     public void destroy(){

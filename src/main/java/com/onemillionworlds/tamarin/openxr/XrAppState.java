@@ -16,6 +16,10 @@ import com.jme3.system.lwjgl.LwjglWindow;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import lombok.Getter;
+import org.lwjgl.openxr.XR10;
+import org.lwjgl.openxr.XrSystemGetInfo;
+import org.lwjgl.openxr.XrSystemProperties;
+import org.lwjgl.system.MemoryStack;
 
 import java.util.LinkedList;
 import java.util.Map;
@@ -150,6 +154,30 @@ public class XrAppState extends BaseAppState{
             configureViewport.accept(leftViewPort);
             configureViewport.accept(rightViewPort);
         }
+    }
+
+    /**
+     * If the state has not yet been initialised will run when the eye cameras are positioned for the first time
+     * (Otherwise will run the next time they are positioned. i.e. the next update)
+     * <p>
+     * This is useful for things you'd like to run once the XR environment is set up
+     * </p>
+     * @param runnable
+     */
+    public void runAfterInitialisation(Runnable runnable){
+        runOnceHaveCameraPositions.add(runnable);
+    }
+
+    /**
+     * Will return a string that describes the system (e.g. "SteamVR/OpenXR : oculus"). This is useful for debugging.
+     * <p>
+     *     In general an application should not change it's behaviour by sniffing the device type, actions should be
+     *     used instead to abstract away the specific device
+     * </p>
+     * @return
+     */
+    public String getSystemName(){
+        return xrSession.getSystemName();
     }
 
     @Override
