@@ -28,7 +28,7 @@ tasks.register('sourcesJar', Jar) {
 tasks.sourcesJar.dependsOn delombok
 
 group = 'com.onemillionworlds'
-version = '2.0.3'
+version = '2.1.0'
 
 ext{
     lwjgl3Version = '3.3.1' //it is important that this is the same as JME which provides the rest of LWJGL
