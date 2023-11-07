@@ -61,6 +61,7 @@ import java.nio.IntBuffer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import static org.lwjgl.openxr.EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
@@ -103,6 +104,8 @@ public class OpenXrSessionManager{
 
     XrInstance xrInstance;
     boolean missingXrDebug;
+
+    boolean missingHandTracking;
     /**
      * the EGL bindings are cross-platform but not well-supported, use if available
      */
@@ -156,7 +159,7 @@ public class OpenXrSessionManager{
      * Because of buffering the OpenXR swapchains ask for a series of images to be used to write to, these are
      * the buffers that are used to write to those images.
      */
-    private Map<Integer, FrameBuffer> frameBuffers = new HashMap<>();
+    private final Map<Integer, FrameBuffer> frameBuffers = new HashMap<>();
 
     public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings){
         OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings);
@@ -195,9 +198,7 @@ public class OpenXrSessionManager{
             if(extensionsCheckResult.missingOpenGL()) {
                 throw new IllegalStateException("OpenXR library does not provide required extension: " + XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
             }
-            if(extensionsCheckResult.missingHandTracking()){
-                throw new IllegalStateException("OpenXR library does not provide required extension: " + EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME);
-            }
+            missingHandTracking = extensionsCheckResult.missingHandTracking();
 
             XrInstanceCreateInfo createInfo = XrInstanceCreateInfo.malloc(stack)
                     .type$Default()
@@ -916,7 +917,7 @@ public class OpenXrSessionManager{
             return !extensionsLoaded.get(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
         public boolean missingHandTracking(){
-            return !extensionsLoaded.get(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+            return !Optional.ofNullable(extensionsLoaded.get(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)).orElse(false);
         }
 
         /**

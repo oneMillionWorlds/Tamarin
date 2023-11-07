@@ -229,7 +229,8 @@ public class XrAppState extends BaseAppState{
      */
     @SuppressWarnings("unused")
     public boolean checkExtensionLoaded(String extensionName){
-        return getExtensionsLoaded().get(extensionName);
+        //the below converts nulls to false
+        return getExtensionsLoaded().get(extensionName) == Boolean.TRUE;
     }
 
     private void updateEyePositions(InProgressXrRender inProgressXrRender){

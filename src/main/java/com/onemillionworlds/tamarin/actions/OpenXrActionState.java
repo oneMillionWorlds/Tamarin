@@ -273,7 +273,6 @@ public class OpenXrActionState extends BaseAppState{
 
             int sourceCount = countOutput.get(0);
 
-            System.out.println(sourceCount);
             LongBuffer sources = stack.mallocLong(sourceCount);
             checkResponseCode(XR10.xrEnumerateBoundSourcesForAction(xrSession, enumerateInfo, countOutput, sources));
 
@@ -410,19 +409,20 @@ public class OpenXrActionState extends BaseAppState{
 
         setActiveActionSets(startingActionSets);
 
-        for(HandSide handSide : HandSide.values()){
-            XrHandTrackerCreateInfoEXT createHandTracking = XrHandTrackerCreateInfoEXT.create()
-                    .type(EXTHandTracking.XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT)
-                    .hand(handSide.skeletonIndex) // Indicate which hand to track
-                    .handJointSet(EXTHandTracking.XR_HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
+        if (xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+            for(HandSide handSide : HandSide.values()){
+                XrHandTrackerCreateInfoEXT createHandTracking = XrHandTrackerCreateInfoEXT.create()
+                        .type(EXTHandTracking.XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT)
+                        .hand(handSide.skeletonIndex) // Indicate which hand to track
+                        .handJointSet(EXTHandTracking.XR_HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
 
-            PointerBuffer handTrackingPointerBuffer = BufferUtils.createPointerBuffer(1);
+                PointerBuffer handTrackingPointerBuffer = BufferUtils.createPointerBuffer(1);
 
-            withResponseCodeLogging("Setup hand tracking", EXTHandTracking.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
-            XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(), xrSessionHandle);
-            handTrackers.put(handSide, handTrackerEXT);
+                withResponseCodeLogging("Setup hand tracking", EXTHandTracking.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
+                XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(), xrSessionHandle);
+                handTrackers.put(handSide, handTrackerEXT);
+            }
         }
-
     }
 
     /**

@@ -19,7 +19,7 @@ public class XrSettings{
     private String applicationName = "";
 
     /**
-     * Extenstions that will be attempted to be bound to the session.
+     * Extensions that will be attempted to be bound to the session.
      */
     private final Set<String> requiredXrExtensions = new HashSet<>();
 
@@ -68,6 +68,15 @@ public class XrSettings{
     @SuppressWarnings("unused")
     public void addRequiredXrExtension(String extensionName){
         requiredXrExtensions.add(extensionName);
+    }
+
+    /**
+     * Primarily for testing purposes, this allows you to remove an extension that would otherwise be requested to be used.
+     * @param extensionName the extension to not use
+     */
+    @SuppressWarnings("unused")
+    public void removeRequiredExtension(String extensionName){
+        requiredXrExtensions.remove(extensionName);
     }
 
     public Set<String> getRequiredXrExtensions(){
