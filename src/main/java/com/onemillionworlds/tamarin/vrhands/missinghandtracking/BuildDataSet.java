@@ -9,6 +9,7 @@ import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,8 +19,11 @@ import java.util.Optional;
  */
 public class BuildDataSet{
 
-    static int noOfHandPoints = 4;
-    static Map<HandSide, Map<Float, Map<HandJoint, BonePose>>> skeletonData = new HashMap<>();
+    /**
+     * this non-linear set of points is to get more data at the start of the grab where the curl is more subtle
+     */
+    static float[] pointsToRecord = new float[]{0, 0.05f, 0.1f, 0.15f, 0.25f, 0.35f, 0.45f, 0.55f, 0.7f,1};
+    static Map<HandSide, Map<Float, Map<HandJoint, BonePose>>> skeletonData = new LinkedHashMap<>();
 
     static boolean complete = false;
 
@@ -27,7 +31,7 @@ public class BuildDataSet{
 
 
     public static void fillInData(HandSide handSide, BoundHand hand, OpenXrActionState actionState, Map<HandJoint, BonePose> bonePoses){
-        Map<Float, Map<HandJoint, BonePose>> handSideData = skeletonData.computeIfAbsent(handSide, hs -> new HashMap<>());
+        Map<Float, Map<HandJoint, BonePose>> handSideData = skeletonData.computeIfAbsent(handSide, hs -> new LinkedHashMap<>());
         Optional<GrabPickingFunction> grabPickingFunction = hand.getFunctionOpt(GrabPickingFunction.class);
         if (grabPickingFunction.isEmpty() || complete){
             return;
@@ -41,11 +45,8 @@ public class BuildDataSet{
         ActionHandle grabHandle = grabPickingFunction.get().getGrabAction();
         float grabStrength = actionState.getFloatActionState(grabHandle, handSide.restrictToInputString).getState();
 
-        // Calculate the interval for the grabStrengths we're interested in
-        float interval = 1.0f / (noOfHandPoints - 1);
-
         // Round the grabStrength to the nearest interval value
-        float roundedGrabStrength = Math.round(grabStrength / interval) * interval;
+        float roundedGrabStrength = findClosest(grabStrength);
 
         // Check if the roundedGrabStrength is within the acceptable range
         if (Math.abs(roundedGrabStrength - grabStrength) <= 0.05) {
@@ -62,16 +63,27 @@ public class BuildDataSet{
         }
     }
 
+    public static float findClosest(float target) {
+        float closest = pointsToRecord[0];
+        float minDifference = Math.abs(target - closest);
+
+        for (float point : pointsToRecord) {
+            float difference = Math.abs(target - point);
+
+            if (difference < minDifference) {
+                minDifference = difference;
+                closest = point;
+            }
+        }
+
+        return closest;
+    }
+
     private static boolean isDataSetComplete() {
         for (HandSide handSide : HandSide.values()) {
             Map<Float, Map<HandJoint, BonePose>> handData = skeletonData.get(handSide);
-            if (handData == null || handData.size() != noOfHandPoints) {
+            if (handData == null || handData.size() != pointsToRecord.length) {
                 return false;
-            }
-            for (float i = 0; i <= 1; i += 1.0f / (noOfHandPoints - 1)) {
-                if (!handData.containsKey(i)) {
-                    return false;
-                }
             }
         }
         return true;
@@ -80,8 +92,8 @@ public class BuildDataSet{
     private static void printJavaMapCode() {
         StringBuilder sb = new StringBuilder();
         for (HandSide handSide : HandSide.values()) {
-            for (float i = 0; i <= 1; i += 1.0f / (noOfHandPoints - 1)) {
-                Map<HandJoint, BonePose> bonePoses = skeletonData.get(handSide).get(i);
+
+            skeletonData.get(handSide).forEach((i, bonePoses) -> {
                 for (Map.Entry<HandJoint, BonePose> entry : bonePoses.entrySet()) {
                     BonePose bonePose = entry.getValue();
 
@@ -91,7 +103,8 @@ public class BuildDataSet{
                             bonePose.orientation().getX(), bonePose.orientation().getY(), bonePose.orientation().getZ(), bonePose.orientation().getW(),
                             bonePose.radius()));
                 }
-            }
+            });
+
         }
         System.out.println(sb);
         complete = true;
