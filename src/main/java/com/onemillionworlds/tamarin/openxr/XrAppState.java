@@ -110,10 +110,10 @@ public class XrAppState extends BaseAppState{
         leftCamera.setRotation(rotation);
         rightCamera.setRotation(rotation);
 
-        leftViewPort = app.getRenderManager().createPreView("Left Eye", leftCamera);
+        leftViewPort = app.getRenderManager().createMainView("Left Eye", leftCamera);
         leftViewPort.setClearFlags(true, true, true);
 
-        rightViewPort = app.getRenderManager().createPreView("Right Eye", rightCamera);
+        rightViewPort = app.getRenderManager().createMainView("Right Eye", rightCamera);
         rightViewPort.setClearFlags(true, true, true);
         leftViewPort.attachScene(((SimpleApplication) app).getRootNode());
         rightViewPort.attachScene(((SimpleApplication) app).getRootNode());
