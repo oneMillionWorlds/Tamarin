@@ -236,7 +236,7 @@ public class OpenXrActionState extends BaseAppState{
      *  This is useful for things like tutorial messages like "press the ... to fire" where ... can be infered
      *  based on the result of this call. This means your tutorial messages can work for all devices, even ones that
      *  did not exist when your application was released.
-     * </p
+     * </p>
      *
      * <p>Example raw value outputs:</p>
      * <ul>
@@ -688,6 +688,7 @@ public class OpenXrActionState extends BaseAppState{
      * pose it's relative to the grip, if it's the aim pose its relative to the aim).
      * <p>
      * It's only really a good idea to call this if the pose fetch has already succeeded
+     * </p>
      * @param poseAction the pose (just for the coordinate system)
      * @param handSide the handside to get the joint positions for
      */
