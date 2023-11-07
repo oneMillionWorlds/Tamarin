@@ -6,7 +6,6 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
-import com.jme3.export.binary.BinaryExporter;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -14,17 +13,20 @@ import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
+import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.openxr.XrAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
+import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
+import com.onemillionworlds.tamarin.vrhands.missinghandtracking.BuildDataSet;
+import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SyntheticBonePositions;
 import com.simsilica.lemur.event.BasePickState;
 import lombok.Getter;
+import org.lwjgl.openxr.EXTHandTracking;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -133,7 +135,7 @@ public class VRHandsAppState extends BaseAppState{
                     boundHand.updateVelocityData(pose.velocity(), new RotationalVelocity(pose.angularVelocity()));
                 });
 
-                Optional<Map<HandJoint, BonePose>> boneStancesOpt = actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
+                Optional<Map<HandJoint, BonePose>> boneStancesOpt = getOrSynthesisBonePositions(boundHand);
 
                 boneStancesOpt.ifPresent(boneStances -> {
                     boundHand.update(tpf, boneStances);
@@ -142,7 +144,6 @@ public class VRHandsAppState extends BaseAppState{
                         handControlsWithActiveClimbs.add(boundHand);
                     }
                 });
-
             }
 
             if (!handControlsWithActiveClimbs.isEmpty()){
@@ -152,6 +153,21 @@ public class VRHandsAppState extends BaseAppState{
                 currentlyClimbing = false;
             }
 
+        }
+    }
+
+    public Optional<Map<HandJoint, BonePose>> getOrSynthesisBonePositions(BoundHand boundHand){
+        if (xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+            return actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
+        }else{
+            //real hand tracking is not available, so we need to synthesise it
+            float grabStrength = boundHand.getFunctionOpt(GrabPickingFunction.class)
+                    .map(GrabPickingFunction::getGrabAction)
+                    .map(a -> actionState.getFloatActionState(a, boundHand.getHandSide().restrictToInputString))
+                    .map(FloatActionState::getState)
+                    .orElse(0f);
+
+            return Optional.of(SyntheticBonePositions.synthesizeBonePositions(boundHand.getHandSide(), grabStrength));
         }
     }
 

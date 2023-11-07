@@ -10,13 +10,14 @@ import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
+import lombok.Getter;
 import lombok.Setter;
-import org.lwjgl.openxr.XrAction;
 
 import java.util.Optional;
 
 public class GrabPickingFunction implements BoundHandFunction{
 
+    @Getter
     private final ActionHandle grabAction;
 
     private final Node nodeToGrabPickAgainst;
