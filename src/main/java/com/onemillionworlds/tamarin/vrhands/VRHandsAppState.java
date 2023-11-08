@@ -21,7 +21,6 @@ import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.openxr.XrAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
-import com.onemillionworlds.tamarin.vrhands.missinghandtracking.BuildDataSet;
 import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SyntheticBonePositions;
 import com.simsilica.lemur.event.BasePickState;
 import lombok.Getter;

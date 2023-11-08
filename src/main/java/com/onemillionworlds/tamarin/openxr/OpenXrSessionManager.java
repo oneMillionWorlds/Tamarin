@@ -5,6 +5,7 @@ import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
 import lombok.Getter;
 import org.lwjgl.PointerBuffer;
+import org.lwjgl.opengl.GL31;
 import org.lwjgl.openxr.EXTDebugUtils;
 import org.lwjgl.openxr.EXTHandTracking;
 import org.lwjgl.openxr.KHROpenGLEnable;
@@ -58,8 +59,11 @@ import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -116,7 +120,7 @@ public class OpenXrSessionManager{
     */
     long systemID;
     long window;
-    long glColorFormat;
+    int glColorFormat;
 
     @Getter
     XrSession xrSession;
@@ -160,6 +164,20 @@ public class OpenXrSessionManager{
      * the buffers that are used to write to those images.
      */
     private final Map<Integer, FrameBuffer> frameBuffers = new HashMap<>();
+
+    private static Map<Integer, Image.Format> DESIRED_SWAPCHAIN_FORMATS = new LinkedHashMap<>();
+
+    static {
+        DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB10_A2, Image.Format.RGB10A2);
+
+        //fall backs with not enough bits for color; expect banding
+        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGBA8, Image.Format.RGBA8);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGBA8_SNORM, Image.Format.RGBA8I); //not sure if this is right
+        //other formats that were not mentioned in the helloOpenXRGL example
+        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB8, Image.Format.RGB8);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB5_A1, Image.Format.RGB5A1);
+    }
 
     public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings){
         OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings);
@@ -409,23 +427,22 @@ public class OpenXrSessionManager{
             LongBuffer swapchainFormats = stack.mallocLong(formatCountPointer.get(0));
             checkResponseCode(XR10.xrEnumerateSwapchainFormats(xrSession, formatCountPointer, swapchainFormats));
 
-            long[] desiredSwapchainFormats = {
-                    GL11.GL_RGB10_A2,
-                    GL30.GL_RGBA16F,
-            };
+            List<Integer> availableFormats = new ArrayList<>();
+            for (int i = 0; i < swapchainFormats.limit(); i++) {
+                availableFormats.add((int) swapchainFormats.get(i));
+            }
 
-            out:
-            for (long glFormatIter : desiredSwapchainFormats) {
-                for (int i = 0; i < swapchainFormats.limit(); i++) {
-                    if (glFormatIter == swapchainFormats.get(i)) {
-                        glColorFormat = glFormatIter;
-                        break out;
-                    }
+            for (int glFormatIter : DESIRED_SWAPCHAIN_FORMATS.keySet()) {
+                if (availableFormats.contains(glFormatIter)){
+                    glColorFormat = glFormatIter;
+                    break;
                 }
             }
 
             if (glColorFormat == 0) {
-                throw new IllegalStateException("No compatable swapchain / framebuffer format availible");
+                throw new IllegalStateException("No compatable swapchain / framebuffer format available, available formats: " + availableFormats);
+            }else{
+                LOGGER.info("Selected colour format " + glColorFormat + " from options " + availableFormats);
             }
 
             swapchains = new Swapchain[viewCountNumber];
@@ -518,7 +535,6 @@ public class OpenXrSessionManager{
             if (eventDataBuffer.type() == XR10.XR_TYPE_EVENT_DATA_EVENTS_LOST) {
                 XrEventDataEventsLost dataEventsLost = XrEventDataEventsLost.create(eventDataBuffer.address());
                 LOGGER.info(dataEventsLost.lostEventCount() + " events lost");
-
             }
             return XrEventDataBaseHeader.create(eventDataBuffer.address());
         }
@@ -694,15 +710,7 @@ public class OpenXrSessionManager{
 
     private FrameBuffer getOrCreateFrameBuffer(int swapchainImageId){
         return frameBuffers.computeIfAbsent(swapchainImageId, id -> {
-            Image.Format format;
-            if(glColorFormat == GL11.GL_RGB10_A2){
-                format = Image.Format.RGB10A2;
-            } else if (glColorFormat == GL30.GL_RGBA16F){
-                format = Image.Format.RGBA16F;
-            }else {
-                throw new IllegalStateException("Unknown color format: " + glColorFormat);
-            }
-
+            Image.Format format = DESIRED_SWAPCHAIN_FORMATS.get(glColorFormat);
             Texture2D texture = new Texture2D(new SwapchainImage(id, format, swapchainWidth, swapchainHeight));
             FrameBuffer frameBuffer = new FrameBuffer(swapchainWidth, swapchainHeight, 1);
             frameBuffer.addColorTarget(FrameBuffer.FrameBufferTarget.newTarget(texture));
