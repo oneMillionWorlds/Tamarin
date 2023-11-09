@@ -320,7 +320,9 @@ public class OpenXrActionState extends BaseAppState{
             actionSetCreate.priority(actionSet.getPriority());
 
             PointerBuffer actionSetPointer = BufferUtils.createPointerBuffer(1);
-            checkResponseCode("Creating action set " + actionSet.getName() + " (" + actionSet.getTranslatedName() + ") p:" + actionSet.getPriority(), XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
+            checkResponseCode(
+                    "Creating action set " + actionSet.getName() + " (" + actionSet.getTranslatedName() + ") p:" + actionSet.getPriority(),
+                    XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
 
             XrActionSet xrActionSet = new XrActionSet(actionSetPointer.get(), xrInstance);
             actionSets.put(actionSet.getName(), xrActionSet);
