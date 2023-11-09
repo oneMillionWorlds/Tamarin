@@ -141,6 +141,9 @@ public class OpenXrSessionManager{
     boolean sessionRunning;
 
     @Getter
+    boolean sessionFocused;
+
+    @Getter
     SessionState sessionState;
 
     XrEventDataBuffer eventDataBuffer = XrEventDataBuffer.calloc()
@@ -570,9 +573,14 @@ public class OpenXrSessionManager{
                     return false;
                 }
             }
+            case FOCUSED: {
+                sessionFocused = true;
+                return false;
+            }
             case STOPPING: {
                 assert (xrSession != null);
                 sessionRunning = false;
+                sessionFocused = false;
                 checkResponseCode(XR10.xrEndSession(xrSession));
                 return false;
             }

@@ -283,8 +283,8 @@ public class OpenXrActionState extends BaseAppState{
         return results;
     }
 
-    private boolean sessionIsRunning(){
-        return openXRGL.isSessionRunning();
+    private boolean sessionFocussed(){
+        return openXRGL.isSessionFocused();
     }
 
 
@@ -305,6 +305,8 @@ public class OpenXrActionState extends BaseAppState{
         if (startingActionSets.isEmpty()){
             LOGGER.log(Level.WARNING, "No starting action sets specified, that means no actions will be usable. Probably not what you want.");
         }
+
+        LOGGER.log(Level.INFO, "Registering manifest");
 
         actionSets = new HashMap<>();
         actions = new HashMap<>();
@@ -885,14 +887,18 @@ public class OpenXrActionState extends BaseAppState{
     @Override
     public void update(float tpf){
         super.update(tpf);
-        if (pendingActions !=null && sessionIsRunning()){
+        if (!sessionFocussed()){
+            return;
+        }
+
+        if (pendingActions !=null){
             registerActions(pendingActions.pendingActionSets(), pendingActions.pendingActiveActionSetNames());
             pendingActions = null;
             runAfterActionsRegistered.forEach(Runnable::run);
             runAfterActionsRegistered=List.of();
         }
 
-        if (xrActionsSyncInfo !=null && sessionIsRunning()){
+        if (xrActionsSyncInfo !=null){
             boolean success = withResponseCodeLogging("xrSyncActions", XR10.xrSyncActions(xrSessionHandle, this.xrActionsSyncInfo));
 
             if (success && !runAfterActionsSync.isEmpty()){
