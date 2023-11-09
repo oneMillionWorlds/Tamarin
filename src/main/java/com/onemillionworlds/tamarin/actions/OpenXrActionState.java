@@ -207,11 +207,6 @@ public class OpenXrActionState extends BaseAppState{
         this.openXRGL = xrAppState.getXrSession();
         this.xrSessionHandle = openXRGL.getXrSession();
         this.xrInstance = xrSessionHandle.getInstance();
-
-        if (sessionIsRunning()){
-            registerActions(pendingActions.pendingActionSets(), pendingActions.pendingActiveActionSetNames());
-            pendingActions = null;
-        }
     }
 
     @Override
