@@ -874,25 +874,29 @@ public class OpenXrSessionManager{
     }
 
     public void checkResponseCode(int result) throws IllegalStateException {
+        checkResponseCode(null, result);
+    }
+
+    public void checkResponseCode(String context, int result) throws IllegalStateException {
         if (XR_SUCCEEDED(result)) {
             return;
         }
-
+        String contextString = context == null ? "" : " Context: " + context;
         if (xrInstance != null) {
             ByteBuffer str = stackMalloc(XR_MAX_RESULT_STRING_SIZE);
             if (XR10.xrResultToString(xrInstance, result, str) >= 0) {
                 if (result == XR10.XR_ERROR_FORM_FACTOR_UNAVAILABLE){
                     throw new OpenXrDeviceNotAvailableException(MemoryUtil.memUTF8(str, memLengthNT1(str)), result);
                 }
-                throw new OpenXrException(MemoryUtil.memUTF8(str, memLengthNT1(str)),result);
+                throw new OpenXrException(MemoryUtil.memUTF8(str, memLengthNT1(str)) + contextString,result);
             }
         }else{
             if (result == XR10.XR_ERROR_FORM_FACTOR_UNAVAILABLE){
-                throw new OpenXrDeviceNotAvailableException("Open XR returned an error code "+result, result);
+                throw new OpenXrDeviceNotAvailableException("Open XR returned an error code " + result + contextString, result);
             }
-            throw new OpenXrException("Open XR returned an error code " + result, result);
+            throw new OpenXrException("Open XR returned an error code " + result + contextString, result);
         }
-        throw new RuntimeException("Open XR returned an error code " + result); //I don't think it should ever actually get here
+        throw new RuntimeException("Open XR returned an error code " + result + contextString); //I don't think it should ever actually get here
 
     }
 

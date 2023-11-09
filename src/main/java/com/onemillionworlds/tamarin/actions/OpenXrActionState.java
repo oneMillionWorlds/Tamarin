@@ -320,7 +320,7 @@ public class OpenXrActionState extends BaseAppState{
             actionSetCreate.priority(actionSet.getPriority());
 
             PointerBuffer actionSetPointer = BufferUtils.createPointerBuffer(1);
-            checkResponseCode(XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
+            checkResponseCode("Creating action set " + actionSet.getName() + " (" + actionSet.getTranslatedName() + ") p:" + actionSet.getPriority(), XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
 
             XrActionSet xrActionSet = new XrActionSet(actionSetPointer.get(), xrInstance);
             actionSets.put(actionSet.getName(), xrActionSet);
@@ -513,6 +513,10 @@ public class OpenXrActionState extends BaseAppState{
             return false;
         }
         return true;
+    }
+
+    private void checkResponseCode(String context, int errorCode){
+        openXRGL.checkResponseCode(context, errorCode);
     }
 
     private void checkResponseCode(int errorCode){
