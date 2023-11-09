@@ -767,7 +767,6 @@ public class OpenXrSessionManager{
                     ));
 
                 }
-                GL11.glFlush();
 
                 layerProjection.space(xrAppSpace);
                 layerProjection.views(projectionLayerViews);
