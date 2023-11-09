@@ -259,6 +259,10 @@ public class OpenXrActionState extends BaseAppState{
      * @return the list of physical buttons that are bound to the action
      */
     public List<PhysicalBindingInterpretation> getPhysicalBindingForAction(ActionHandle actionHandle){
+        if (!isReady()){
+            return List.of();
+        }
+
         List<PhysicalBindingInterpretation> results = new ArrayList<>(1);
         try (MemoryStack stack = MemoryStack.stackPush()) {
             XrBoundSourcesForActionEnumerateInfo enumerateInfo = XrBoundSourcesForActionEnumerateInfo.malloc(stack)
@@ -319,7 +323,7 @@ public class OpenXrActionState extends BaseAppState{
             actionSetCreate.priority(actionSet.getPriority());
 
             PointerBuffer actionSetPointer = BufferUtils.createPointerBuffer(1);
-            withResponseCodeLogging("Create action set", XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
+            checkResponseCode(XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
 
             XrActionSet xrActionSet = new XrActionSet(actionSetPointer.get(), xrInstance);
             actionSets.put(actionSet.getName(), xrActionSet);
@@ -550,6 +554,10 @@ public class OpenXrActionState extends BaseAppState{
      * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
      */
     public BooleanActionState getBooleanActionState(ActionHandle action, String restrictToInput){
+        if (!isReady()){
+            return new BooleanActionState(false, false);
+        }
+
         XrActionStateBoolean actionState = XrActionStateBoolean.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
         actionInfo.action(obtainActionHandle(action));
@@ -633,6 +641,10 @@ public class OpenXrActionState extends BaseAppState{
      *                      - excluding pitch/roll).
      */
     public Optional<PoseActionState> getPose(ActionHandle action, HandSide handSide, boolean stageRelative){
+        if (!isReady()){
+            return Optional.empty();
+        }
+
         long predictedTime = openXRGL.getPredictedFrameTime();
         if (predictedTime==0){
             //not set up yet
@@ -693,6 +705,10 @@ public class OpenXrActionState extends BaseAppState{
      * @param handSide the handside to get the joint positions for
      */
     public Optional<Map<HandJoint, BonePose>> getSkeleton(ActionHandle poseAction, HandSide handSide){
+        if (!isReady()){
+            return Optional.empty();
+        }
+
         long predictedTime = openXRGL.getPredictedFrameTime();
         if (predictedTime==0){
             //not set up yet
@@ -756,6 +772,9 @@ public class OpenXrActionState extends BaseAppState{
      * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
      */
     public FloatActionState getFloatActionState(ActionHandle action, String restrictToInput ){
+        if (!isReady()){
+            return new FloatActionState(0, false);
+        }
 
         XrActionStateFloat actionState = XrActionStateFloat.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
@@ -795,6 +814,10 @@ public class OpenXrActionState extends BaseAppState{
      * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
      */
     public Vector2fActionState getVector2fActionState(ActionHandle action, String restrictToInput ){
+
+        if (!isReady()){
+            return new Vector2fActionState(0, 0, false);
+        }
 
         XrActionStateVector2f actionState = XrActionStateVector2f.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
@@ -842,6 +865,10 @@ public class OpenXrActionState extends BaseAppState{
      * @param restrictToInput the input to restrict the action to. E.g. /user/hand/right, /user/hand/left. Or null, which means "both hands"
      */
     public void triggerHapticAction(ActionHandle action, float duration, float frequency, float amplitude, String restrictToInput ){
+        if (!isReady()){
+            return;
+        }
+
         XrHapticVibration vibration = XrHapticVibration.create()
                 .type(XR10.XR_TYPE_HAPTIC_VIBRATION)
                 .duration((long)(duration * 1_000_000_000))  // Duration in nanoseconds
@@ -863,7 +890,6 @@ public class OpenXrActionState extends BaseAppState{
     @Override
     public void update(float tpf){
         super.update(tpf);
-
         if (pendingActions !=null && sessionIsRunning()){
             registerActions(pendingActions.pendingActionSets(), pendingActions.pendingActiveActionSetNames());
             pendingActions = null;
@@ -879,6 +905,15 @@ public class OpenXrActionState extends BaseAppState{
                 runAfterActionsSync.clear();
             }
         }
+    }
+
+    /**
+     * The OpenXR session may take some time to start, after that time the acion manifest is registered. Until that time
+     * the actions are not available. This method allows you to see if the application is ready
+     * @return if the state is ready to be queried about action states
+     */
+    public boolean isReady(){
+        return actions!=null;
     }
 
     /**
