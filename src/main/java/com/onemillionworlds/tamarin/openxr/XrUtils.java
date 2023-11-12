@@ -113,13 +113,17 @@ public class XrUtils{
      */
     static Struct createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
         if (useEGL) {
-            return XrGraphicsBindingEGLMNDX.malloc(stack)
-                    .type$Default()
-                    .next(NULL)
-                    .getProcAddress(EGL.getCapabilities().eglGetProcAddress)
-                    .display(glfwGetEGLDisplay())
-                    .config(glfwGetEGLConfig(window))
-                    .context(glfwGetEGLContext(window));
+            long eglDisplay = glfwGetEGLDisplay();
+
+            if (eglDisplay != NULL){ //check that the egl display is actually available (even if the extension is)
+                return XrGraphicsBindingEGLMNDX.malloc(stack)
+                        .type$Default()
+                        .next(NULL)
+                        .getProcAddress(EGL.getCapabilities().eglGetProcAddress)
+                        .display(eglDisplay)
+                        .config(glfwGetEGLConfig(window))
+                        .context(glfwGetEGLContext(window));
+            }
         }
         switch (Platform.get()) {
             case LINUX:
