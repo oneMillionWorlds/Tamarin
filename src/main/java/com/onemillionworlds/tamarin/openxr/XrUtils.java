@@ -153,7 +153,7 @@ public class XrUtils{
                     );
                 }
             case WINDOWS:
-                System.out.println("Using XrGraphicsBindingOpenGLWin32KHR to create the session");
+                LOGGER.info("Using XrGraphicsBindingOpenGLWin32KHR to create the session");
                 return XrGraphicsBindingOpenGLWin32KHR.malloc(stack)
                                 .type$Default()
                                 .next(NULL)

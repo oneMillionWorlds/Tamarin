@@ -336,7 +336,7 @@ public class OpenXrSessionManager{
                         )
                         .userCallback((messageSeverity, messageTypes, pCallbackData, userData) -> {
                             XrDebugUtilsMessengerCallbackDataEXT callbackData = XrDebugUtilsMessengerCallbackDataEXT.create(pCallbackData);
-                            System.out.println("XR Debug Utils: " + callbackData.messageString());
+                            LOGGER.warning("XR Debug Utils: " + callbackData.messageString());
                             return 0;
                         });
 
@@ -387,20 +387,17 @@ public class OpenXrSessionManager{
             MemoryUtil.memPutInt(systemProperties.address(), XR10.XR_TYPE_SYSTEM_PROPERTIES);
             checkResponseCode(XR10.xrGetSystemProperties(xrInstance, systemID, systemProperties));
 
-            System.out.printf("Headset name:%s vendor:%d \n",
-                    MemoryUtil.memUTF8(MemoryUtil.memAddress(systemProperties.systemName())),
-                    systemProperties.vendorId());
+            String headsetName = MemoryUtil.memUTF8(MemoryUtil.memAddress(systemProperties.systemName()));
+            int vendor = systemProperties.vendorId();
+            LOGGER.info("Headset name:"+ headsetName + " vendor: " + vendor);
 
             XrSystemTrackingProperties trackingProperties = systemProperties.trackingProperties();
-            System.out.printf("Headset orientationTracking:%b positionTracking:%b \n",
-                    trackingProperties.orientationTracking(),
-                    trackingProperties.positionTracking());
+            LOGGER.info("Headset orientationTracking:" + trackingProperties.orientationTracking() + "positionTracking: " + trackingProperties.positionTracking());
 
             XrSystemGraphicsProperties graphicsProperties = systemProperties.graphicsProperties();
-            System.out.printf("Headset MaxWidth:%d MaxHeight:%d MaxLayerCount:%d \n",
-                    graphicsProperties.maxSwapchainImageWidth(),
-                    graphicsProperties.maxSwapchainImageHeight(),
-                    graphicsProperties.maxLayerCount());
+            LOGGER.info("Headset MaxWidth: " + graphicsProperties.maxSwapchainImageWidth()
+                    + " MaxHeight: " + graphicsProperties.maxSwapchainImageHeight()
+                    + "MaxLayerCount: " + graphicsProperties.maxLayerCount());
 
             IntBuffer viewCountPointer = stack.mallocInt(1);
 
@@ -551,8 +548,7 @@ public class OpenXrSessionManager{
         SessionState oldState = sessionState;
         sessionState = SessionState.fromXRValue(stateChangedEvent.state());
 
-        System.out.printf("XrEventDataSessionStateChanged: state %s->%s session=%d time=%d\n", oldState, sessionState, stateChangedEvent.session(), stateChangedEvent.time());
-
+        LOGGER.info("XrEventDataSessionStateChanged: state " + oldState + "->" + sessionState + " session=" + stateChangedEvent.session() + " time=" + stateChangedEvent.time());
         if ((stateChangedEvent.session() != NULL) && (stateChangedEvent.session() != xrSession.address())) {
             System.err.println("XrEventDataSessionStateChanged for unknown session");
             return false;
@@ -781,7 +777,7 @@ public class OpenXrSessionManager{
                 layers.put(0, layerProjection.address());
                 didRender = true;
             } else {
-                System.out.println("Shouldn't render");
+                LOGGER.fine("Shouldn't render");
             }
 
             checkResponseCode(XR10.xrEndFrame(
@@ -818,7 +814,7 @@ public class OpenXrSessionManager{
             XrApiLayerProperties layer = pLayers.get(index);
 
             String layerName = layer.layerNameString();
-            System.out.println(layerName);
+            LOGGER.info("Layer: " + layerName);
             if (layerName.equals("XR_APILAYER_LUNARG_core_validation")) {
                 hasCoreValidationLayer = true;
             }
