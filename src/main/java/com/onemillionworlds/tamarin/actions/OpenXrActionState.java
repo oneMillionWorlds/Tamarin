@@ -368,8 +368,13 @@ public class OpenXrActionState extends BaseAppState{
                         for(String input : action.getSupportedSubActionPaths()){
 
                             XrActionSpaceCreateInfo actionSpaceCreateInfo = XrActionSpaceCreateInfo.create()
-                                    .type(XR10.XR_TYPE_ACTION_SPACE_CREATE_INFO)
+                                    .type$Default()
                                     .action(xrAction)
+                                    .poseInActionSpace(XrPosef.malloc(stack)
+                                            .position$(XrVector3f.calloc(stack)
+                                                    .set(0, 0, 0))
+                                            .orientation(XrQuaternionf.malloc(stack)
+                                                    .x(0).y(0).z(0).w(1)))
                                     .subactionPath(pathToLong(input, true));
                             PointerBuffer spacePointer = stack.mallocPointer(1);
 
