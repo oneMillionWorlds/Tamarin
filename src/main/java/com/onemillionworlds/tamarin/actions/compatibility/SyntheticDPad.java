@@ -7,9 +7,17 @@ import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import java.util.Optional;
 
 /**
- * Deprecated, use actual dpad action paths instead (e.g. `OculusTouchController.pathBuilder().leftHand().thumbDpadUp()`)
+ * <p>
+ * It is possible to use real DPad functionality but that requires the XR_EXT_dpad_binding extension which
+ * may not be available on older runtimes (including at least the rift and early HTC vive).
+ * </p>
+ * <p>
+ * Real DPad functionality is certainly better than this synthetic version allowing users to redefine action by action
+ * but the synthetic dpad is a good fallback for older runtimes (but only the joystick as a whole can be redefined).
+ * </p>
+ * <p>
+ * Instantiate a SyntheticDPad once then keep reusing it to correctly get hasChanged values
  */
-@Deprecated
 public class SyntheticDPad{
     Optional<Direction> lastUpdateDirection = Optional.empty();
     Optional<Direction> thisUpdateDirection = Optional.empty();
