@@ -138,12 +138,6 @@ public class OpenXrSessionManager{
     Swapchain[] swapchains;  //One swapchain per view
 
     @Getter
-    boolean sessionRunning;
-
-    @Getter
-    boolean sessionFocused;
-
-    @Getter
     SessionState sessionState;
 
     XrEventDataBuffer eventDataBuffer = XrEventDataBuffer.calloc()
@@ -193,6 +187,14 @@ public class OpenXrSessionManager{
 
         openXrSessionManager.pollEvents();
         return openXrSessionManager;
+    }
+
+    public boolean isSessionRunning(){
+        return sessionState.isAtLeastReady();
+    }
+
+    public boolean isSessionFocused(){
+        return sessionState == SessionState.FOCUSED;
     }
 
     private OpenXrSessionManager(XrSettings xrSettings){
@@ -565,18 +567,14 @@ public class OpenXrSessionManager{
                                     .next(NULL)
                                     .primaryViewConfigurationType(viewConfigType)
                     ));
-                    sessionRunning = true;
                     return false;
                 }
             }
             case FOCUSED: {
-                sessionFocused = true;
                 return false;
             }
             case STOPPING: {
                 assert (xrSession != null);
-                sessionRunning = false;
-                sessionFocused = false;
                 checkResponseCode(XR10.xrEndSession(xrSession));
                 return false;
             }
@@ -599,10 +597,9 @@ public class OpenXrSessionManager{
      */
     public InProgressXrRender startXrFrame(){
         pollEvents();
-        if (!sessionRunning){
+        if (!isSessionRunning()){
             return InProgressXrRender.NO_XR_FRAME;
         }
-
 
         try (MemoryStack stack = stackPush()) {
             XrFrameState frameState = XrFrameState.calloc(stack)
