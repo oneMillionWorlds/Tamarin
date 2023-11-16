@@ -83,6 +83,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.lwjgl.openxr.EXTHandTracking;
 
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
+
 /**
  * This app state provides action based OpenXR calls (aka modern VR and AR).
  * <p>
@@ -313,117 +316,126 @@ public class OpenXrActionState extends BaseAppState{
 
         Map<List<String>, LongBuffer> subActionPaths = new HashMap<>();
 
-        for(ActionSet actionSet : manifest.getActionSets()){
-            XrActionSetCreateInfo actionSetCreate = XrActionSetCreateInfo.create();
-            actionSetCreate.actionSetName(stringToByte(actionSet.getName()));
-            actionSetCreate.localizedActionSetName(stringToByte(actionSet.getTranslatedName()));
-            actionSetCreate.priority(actionSet.getPriority());
+        try (MemoryStack stack = stackPush()){
 
-            PointerBuffer actionSetPointer = BufferUtils.createPointerBuffer(1);
-            checkResponseCode(
-                    "Creating action set " + actionSet.getName() + " (" + actionSet.getTranslatedName() + ") p:" + actionSet.getPriority(),
-                    XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
+            for(ActionSet actionSet : manifest.getActionSets()){
+                XrActionSetCreateInfo actionSetCreate = XrActionSetCreateInfo.calloc(stack);
+                actionSetCreate.type$Default();
+                actionSetCreate.actionSetName(stack.UTF8(actionSet.getName()));
+                actionSetCreate.localizedActionSetName(stack.UTF8(actionSet.getTranslatedName()));
+                actionSetCreate.priority(actionSet.getPriority());
 
-            XrActionSet xrActionSet = new XrActionSet(actionSetPointer.get(), xrInstance);
-            actionSets.put(actionSet.getName(), xrActionSet);
+                PointerBuffer actionSetPointer = stack.mallocPointer(1);
+                checkResponseCode(
+                        "Creating action set " + actionSet.getName() + " (" + actionSet.getTranslatedName() + ") p:" + actionSet.getPriority(),
+                        XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
 
-            for(Action action : actionSet.getActions()){
-                XrActionCreateInfo xrActionCreateInfo = XrActionCreateInfo.create();
-                xrActionCreateInfo.actionName(stringToByte(action.getActionName()));
-                xrActionCreateInfo.actionType(action.getActionType().getOpenXrOption());
-                xrActionCreateInfo.localizedActionName(stringToByte(action.getTranslatedName()));
-                List<String> supportedSubActionPaths = action.getSupportedSubActionPaths();
-                if (!action.getSupportedSubActionPaths().isEmpty()){
-                    LongBuffer subActionsLongBuffer = subActionPaths.computeIfAbsent(supportedSubActionPaths, paths -> {
-                        LongBuffer standardSubActionPaths = BufferUtils.createLongBuffer(paths.size());
-                        for(String path : paths){
-                            standardSubActionPaths.put(pathToLong(path,true));
+                XrActionSet xrActionSet = new XrActionSet(actionSetPointer.get(), xrInstance);
+                actionSets.put(actionSet.getName(), xrActionSet);
+
+                for(Action action : actionSet.getActions()){
+                    XrActionCreateInfo xrActionCreateInfo = XrActionCreateInfo.calloc(stack);
+                    xrActionCreateInfo.type$Default();
+                    xrActionCreateInfo.next(NULL);
+                    xrActionCreateInfo.actionName(stack.UTF8(action.getActionName()));
+                    xrActionCreateInfo.actionType(action.getActionType().getOpenXrOption());
+                    xrActionCreateInfo.localizedActionName(stack.UTF8(action.getTranslatedName()));
+
+
+                    List<String> supportedSubActionPaths = action.getSupportedSubActionPaths();
+                    if(!action.getSupportedSubActionPaths().isEmpty()){
+                        LongBuffer subActionsLongBuffer = subActionPaths.computeIfAbsent(supportedSubActionPaths, paths -> {
+                            LongBuffer standardSubActionPaths = BufferUtils.createLongBuffer(paths.size());
+                            for(String path : paths){
+                                standardSubActionPaths.put(pathToLong(path, true));
+                            }
+                            return standardSubActionPaths;
+                        });
+                        subActionsLongBuffer.rewind();
+                        xrActionCreateInfo.subactionPaths(subActionsLongBuffer);
+                    }
+                    xrActionCreateInfo.countSubactionPaths(supportedSubActionPaths.size());
+
+                    PointerBuffer actionPointer = stack.mallocPointer(1);
+                    withResponseCodeLogging("xrStringToPath", XR10.xrCreateAction(xrActionSet, xrActionCreateInfo, actionPointer));
+                    XrAction xrAction = new XrAction(actionPointer.get(), xrActionSet);
+                    actions.computeIfAbsent(actionSet.getName(), name -> new HashMap<>()).put(action.getActionName(), xrAction);
+
+                    if(action.getActionType() == ActionType.POSE){
+                        if(action.getSupportedSubActionPaths().isEmpty()){
+                            LOGGER.warning(actionSet.getName() + ":" + action.getActionName() + " is a pose action but does not have any sub action paths");
                         }
-                        return standardSubActionPaths;
-                    });
-                    subActionsLongBuffer.rewind();
-                    xrActionCreateInfo.subactionPaths(subActionsLongBuffer);
-                }
+                        for(String input : action.getSupportedSubActionPaths()){
 
-                PointerBuffer actionPointer = BufferUtils.createPointerBuffer(1);
-                withResponseCodeLogging("xrStringToPath", XR10.xrCreateAction(xrActionSet, xrActionCreateInfo, actionPointer));
-                XrAction xrAction = new XrAction(actionPointer.get(), xrActionSet);
-                actions.computeIfAbsent(actionSet.getName(), name -> new HashMap<>()).put(action.getActionName(), xrAction);
+                            XrActionSpaceCreateInfo actionSpaceCreateInfo = XrActionSpaceCreateInfo.create()
+                                    .type(XR10.XR_TYPE_ACTION_SPACE_CREATE_INFO)
+                                    .action(xrAction)
+                                    .subactionPath(pathToLong(input, true));
+                            PointerBuffer spacePointer = stack.mallocPointer(1);
 
-                if (action.getActionType() == ActionType.POSE){
-                    if (action.getSupportedSubActionPaths().isEmpty()){
-                        LOGGER.warning(actionSet.getName() +":" + action.getActionName() + " is a pose action but does not have any sub action paths");
+                            withResponseCodeLogging("Create pose space", XR10.xrCreateActionSpace(xrSessionHandle, actionSpaceCreateInfo, spacePointer));
+
+                            poseActionInputSpaceHandles.computeIfAbsent(new ActionHandle(action.getActionSetName(), action.getActionName()), key -> new HashMap<>()).put(input, spacePointer.get(0));
+                        }
+
                     }
-                    for(String input : action.getSupportedSubActionPaths()){
-
-                        XrActionSpaceCreateInfo actionSpaceCreateInfo = XrActionSpaceCreateInfo.create()
-                                .type(XR10.XR_TYPE_ACTION_SPACE_CREATE_INFO)
-                                .action(xrAction)
-                                .subactionPath(pathToLong(input, true));
-                        PointerBuffer spacePointer = BufferUtils.createPointerBuffer(1);
-
-                        withResponseCodeLogging("Create pose space", XR10.xrCreateActionSpace(xrSessionHandle, actionSpaceCreateInfo, spacePointer));
-
-                        poseActionInputSpaceHandles.computeIfAbsent(new ActionHandle(action.getActionSetName(),action.getActionName()), key -> new HashMap<>()).put(input, spacePointer.get(0));
-                    }
-
                 }
             }
-        }
 
-        Collection<SuggestedBindingsProfileView> suggestedBindingsGroupedByProfile = manifest.getSuggestedBindingsGroupedByProfile();
+            Collection<SuggestedBindingsProfileView> suggestedBindingsGroupedByProfile = manifest.getSuggestedBindingsGroupedByProfile();
 
-        for(SuggestedBindingsProfileView profile : suggestedBindingsGroupedByProfile){
-            long deviceProfileHandle = pathToLong(profile.getProfileName(), false);
+            for(SuggestedBindingsProfileView profile : suggestedBindingsGroupedByProfile){
+                long deviceProfileHandle = pathToLong(profile.getProfileName(), false);
 
-            Set<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindings = profile.getSetToActionToBindingMap().entrySet();
-            XrActionSuggestedBinding.Buffer suggestedBindingsBuffer = XrActionSuggestedBinding.create(suggestedBindings.size());
+                Set<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindings = profile.getSetToActionToBindingMap().entrySet();
+                XrActionSuggestedBinding.Buffer suggestedBindingsBuffer = XrActionSuggestedBinding.create(suggestedBindings.size());
 
-            Iterator<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindingIterator = suggestedBindings.iterator();
-            for(int i=0; i<suggestedBindings.size(); i++){
-                Map.Entry<SuggestedBindingsProfileView.ActionData, String> actionAndBinding = suggestedBindingIterator.next();
-                LongBuffer bindingHandleBuffer = BufferUtils.createLongBuffer(1);
-                withResponseCodeLogging("xrStringToPath:" + actionAndBinding.getValue(),XR10.xrStringToPath(xrInstance, actionAndBinding.getValue(), bindingHandleBuffer));
+                Iterator<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindingIterator = suggestedBindings.iterator();
+                for(int i = 0; i < suggestedBindings.size(); i++){
+                    Map.Entry<SuggestedBindingsProfileView.ActionData, String> actionAndBinding = suggestedBindingIterator.next();
+                    LongBuffer bindingHandleBuffer = BufferUtils.createLongBuffer(1);
+                    withResponseCodeLogging("xrStringToPath:" + actionAndBinding.getValue(), XR10.xrStringToPath(xrInstance, actionAndBinding.getValue(), bindingHandleBuffer));
 
-                XrAction action = actions.get(actionAndBinding.getKey().getActionSet()).get(actionAndBinding.getKey().getActionName());
-                suggestedBindingsBuffer.position(i);
-                suggestedBindingsBuffer.action(action);
-                suggestedBindingsBuffer.binding(bindingHandleBuffer.get());
+                    XrAction action = actions.get(actionAndBinding.getKey().getActionSet()).get(actionAndBinding.getKey().getActionName());
+                    suggestedBindingsBuffer.position(i);
+                    suggestedBindingsBuffer.action(action);
+                    suggestedBindingsBuffer.binding(bindingHandleBuffer.get());
+                }
+                suggestedBindingsBuffer.position(0); //reset ready for reading
+
+                XrInteractionProfileSuggestedBinding xrInteractionProfileSuggestedBinding = XrInteractionProfileSuggestedBinding.calloc(stack)
+                        .type(XR10.XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING)
+                        .interactionProfile(deviceProfileHandle)
+                        .suggestedBindings(suggestedBindingsBuffer);
+
+                withResponseCodeLogging("xrSuggestInteractionProfileBindings", XR10.xrSuggestInteractionProfileBindings(xrInstance, xrInteractionProfileSuggestedBinding));
             }
-            suggestedBindingsBuffer.position(0); //reset ready for reading
 
-            XrInteractionProfileSuggestedBinding xrInteractionProfileSuggestedBinding = XrInteractionProfileSuggestedBinding.create()
-                    .type(XR10.XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING)
-                    .interactionProfile(deviceProfileHandle)
-                    .suggestedBindings(suggestedBindingsBuffer);
+            PointerBuffer actionSetsBuffer = stack.callocPointer(actionSets.size());
 
-            withResponseCodeLogging("xrSuggestInteractionProfileBindings", XR10.xrSuggestInteractionProfileBindings(xrInstance, xrInteractionProfileSuggestedBinding));
-        }
+            actionSets.values().forEach(actionSet -> actionSetsBuffer.put(actionSet.address()));
+            actionSetsBuffer.flip();  // Reset the position back to the start of the buffer
 
-        PointerBuffer actionSetsBuffer = BufferUtils.createPointerBuffer(actionSets.size());
+            XrSessionActionSetsAttachInfo actionSetsAttachInfo = XrSessionActionSetsAttachInfo.create();
+            actionSetsAttachInfo.type(XR10.XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO);
+            actionSetsAttachInfo.actionSets(actionSetsBuffer);
+            withResponseCodeLogging("xrAttachSessionActionSets", XR10.xrAttachSessionActionSets(xrSessionHandle, actionSetsAttachInfo));
 
-        actionSets.values().forEach(actionSet -> actionSetsBuffer.put(actionSet.address()));
-        actionSetsBuffer.flip();  // Reset the position back to the start of the buffer
+            setActiveActionSets(startingActionSets);
 
-        XrSessionActionSetsAttachInfo actionSetsAttachInfo = XrSessionActionSetsAttachInfo.create();
-        actionSetsAttachInfo.type(XR10.XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO);
-        actionSetsAttachInfo.actionSets(actionSetsBuffer);
-        withResponseCodeLogging("xrAttachSessionActionSets", XR10.xrAttachSessionActionSets(xrSessionHandle, actionSetsAttachInfo));
+            if(xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+                for(HandSide handSide : HandSide.values()){
+                    XrHandTrackerCreateInfoEXT createHandTracking = XrHandTrackerCreateInfoEXT.calloc(stack)
+                            .type(EXTHandTracking.XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT)
+                            .hand(handSide.skeletonIndex) // Indicate which hand to track
+                            .handJointSet(EXTHandTracking.XR_HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
 
-        setActiveActionSets(startingActionSets);
+                    PointerBuffer handTrackingPointerBuffer = BufferUtils.createPointerBuffer(1);
 
-        if (xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
-            for(HandSide handSide : HandSide.values()){
-                XrHandTrackerCreateInfoEXT createHandTracking = XrHandTrackerCreateInfoEXT.create()
-                        .type(EXTHandTracking.XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT)
-                        .hand(handSide.skeletonIndex) // Indicate which hand to track
-                        .handJointSet(EXTHandTracking.XR_HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
-
-                PointerBuffer handTrackingPointerBuffer = BufferUtils.createPointerBuffer(1);
-
-                withResponseCodeLogging("Setup hand tracking", EXTHandTracking.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
-                XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(), xrSessionHandle);
-                handTrackers.put(handSide, handTrackerEXT);
+                    withResponseCodeLogging("Setup hand tracking", EXTHandTracking.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
+                    XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(), xrSessionHandle);
+                    handTrackers.put(handSide, handTrackerEXT);
+                }
             }
         }
     }
@@ -825,7 +837,6 @@ public class OpenXrActionState extends BaseAppState{
         XrActionStateVector2f actionState = XrActionStateVector2f.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
         actionInfo.action(obtainActionHandle(action));
-
         if (restrictToInput != null){
             actionInfo.subactionPath(pathToLong(restrictToInput, true));
         }
