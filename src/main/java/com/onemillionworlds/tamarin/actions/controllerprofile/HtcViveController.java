@@ -92,31 +92,31 @@ public class HtcViveController {
 
 
         /**
-         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public String trackpadDpadUp(){
             return handPart + ComponentPaths.TRACKPAD_DPAD_UP;
         }
         /**
-         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public String trackpadDpadDown(){
             return handPart + ComponentPaths.TRACKPAD_DPAD_DOWN;
         }
         /**
-         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public String trackpadDpadLeft(){
             return handPart + ComponentPaths.TRACKPAD_DPAD_LEFT;
         }
         /**
-         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public String trackpadDpadRight(){
             return handPart + ComponentPaths.TRACKPAD_DPAD_RIGHT;
         }
         /**
-         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the trackpad as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public String trackpadDpadCenter(){
             return handPart + ComponentPaths.TRACKPAD_DPAD_CENTER;

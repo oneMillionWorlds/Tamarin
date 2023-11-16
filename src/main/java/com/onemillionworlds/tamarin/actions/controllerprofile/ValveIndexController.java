@@ -42,22 +42,22 @@ public class ValveIndexController {
 
 
         /**
-         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public static final String THUMB_DPAD_UP ="/input/thumbstick/dpad_up";
 
         /**
-         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public static final String THUMB_DPAD_DOWN ="/input/thumbstick/dpad_down";
 
         /**
-         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public static final String THUMB_DPAD_LEFT ="/input/thumbstick/dpad_left";
 
         /**
-         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding
+         * Treats the thumbstick as a dpad. This is provided by the extension XR_EXT_dpad_binding (which may or may not be available)
          */
         public static final String THUMB_DPAD_RIGHT ="/input/thumbstick/dpad_right";
 
