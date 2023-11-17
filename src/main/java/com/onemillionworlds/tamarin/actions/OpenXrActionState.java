@@ -264,7 +264,7 @@ public class OpenXrActionState extends BaseAppState{
         List<PhysicalBindingInterpretation> results = new ArrayList<>(1);
         try (MemoryStack stack = MemoryStack.stackPush()) {
             XrBoundSourcesForActionEnumerateInfo enumerateInfo = XrBoundSourcesForActionEnumerateInfo.malloc(stack)
-                    .type(XR10.XR_TYPE_BOUND_SOURCES_FOR_ACTION_ENUMERATE_INFO)
+                    .type$Default()
                     .next(0)
                     .action(obtainActionHandle(actionHandle));
 
@@ -409,7 +409,7 @@ public class OpenXrActionState extends BaseAppState{
                 suggestedBindingsBuffer.position(0); //reset ready for reading
 
                 XrInteractionProfileSuggestedBinding xrInteractionProfileSuggestedBinding = XrInteractionProfileSuggestedBinding.calloc(stack)
-                        .type(XR10.XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING)
+                        .type$Default()
                         .interactionProfile(deviceProfileHandle)
                         .suggestedBindings(suggestedBindingsBuffer);
 
@@ -422,7 +422,7 @@ public class OpenXrActionState extends BaseAppState{
             actionSetsBuffer.flip();  // Reset the position back to the start of the buffer
 
             XrSessionActionSetsAttachInfo actionSetsAttachInfo = XrSessionActionSetsAttachInfo.create();
-            actionSetsAttachInfo.type(XR10.XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO);
+            actionSetsAttachInfo.type$Default();
             actionSetsAttachInfo.actionSets(actionSetsBuffer);
             withResponseCodeLogging("xrAttachSessionActionSets", XR10.xrAttachSessionActionSets(xrSessionHandle, actionSetsAttachInfo));
 
@@ -471,6 +471,7 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         this.xrActionsSyncInfo = XrActionsSyncInfo.create();
+        this.xrActionsSyncInfo.type$Default();
         this.xrActionsSyncInfo.countActiveActionSets(activeActionSets.size());
         XrActiveActionSet.Buffer activeActionSetsBuffer = XrActiveActionSet.calloc(activeActionSets.size());
         for(XrActionSet activeActionSet : activeActionSets){
@@ -580,6 +581,7 @@ public class OpenXrActionState extends BaseAppState{
 
         XrActionStateBoolean actionState = XrActionStateBoolean.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
+        actionInfo.type$Default();
         actionInfo.action(obtainActionHandle(action));
 
         if (restrictToInput != null){
@@ -672,10 +674,10 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         XrSpaceVelocity spaceVelocity = XrSpaceVelocity.create()
-                .type(XR10.XR_TYPE_SPACE_VELOCITY);
+                .type$Default();
 
         XrSpaceLocation spaceLocation = XrSpaceLocation.create()
-                .type(XR10.XR_TYPE_SPACE_LOCATION)
+                .type$Default()
                 .next(spaceVelocity);
 
         long spaceHandle;
@@ -746,11 +748,11 @@ public class OpenXrActionState extends BaseAppState{
         XrSpace poseSpace = new XrSpace(spaceHandle, xrSessionHandle);
 
         XrHandJointLocationsEXT handJointLocations = XrHandJointLocationsEXT.create()
-                .type(EXTHandTracking.XR_TYPE_HAND_JOINT_LOCATIONS_EXT)
+                .type$Default()
                 .jointLocations(XrHandJointLocationEXT.create(EXTHandTracking.XR_HAND_JOINT_COUNT_EXT));
 
         XrHandJointsLocateInfoEXT locateInfo = XrHandJointsLocateInfoEXT.create()
-                .type(EXTHandTracking.XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT)
+                .type$Default()
                 .baseSpace(poseSpace)
                 .time(predictedTime);
         if (handTrackers.containsKey(handSide)){
@@ -798,6 +800,7 @@ public class OpenXrActionState extends BaseAppState{
 
         XrActionStateFloat actionState = XrActionStateFloat.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
+        actionInfo.type$Default();
         actionInfo.action(obtainActionHandle(action));
 
         if (restrictToInput != null){
@@ -841,6 +844,7 @@ public class OpenXrActionState extends BaseAppState{
 
         XrActionStateVector2f actionState = XrActionStateVector2f.create();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
+        actionInfo.type$Default();
         actionInfo.action(obtainActionHandle(action));
         if (restrictToInput != null){
             actionInfo.subactionPath(pathToLong(restrictToInput, true));
@@ -889,13 +893,13 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         XrHapticVibration vibration = XrHapticVibration.create()
-                .type(XR10.XR_TYPE_HAPTIC_VIBRATION)
+                .type$Default()
                 .duration((long)(duration * 1_000_000_000))  // Duration in nanoseconds
                 .frequency(frequency)
                 .amplitude(amplitude);  // Amplitude in normalized units
 
         XrHapticActionInfo hapticActionInfo = XrHapticActionInfo.malloc()
-                .type(XR10.XR_TYPE_HAPTIC_ACTION_INFO)
+                .type$Default()
                 .action(obtainActionHandle(action));
 
         if (restrictToInput!=null){
@@ -970,7 +974,7 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         XrReferenceSpaceCreateInfo spaceInfo = XrReferenceSpaceCreateInfo.create()
-                .type(XR10.XR_TYPE_REFERENCE_SPACE_CREATE_INFO)
+                .type$Default()
                 .referenceSpaceType(XR10.XR_REFERENCE_SPACE_TYPE_STAGE)
                 .poseInReferenceSpace(identityPose);
         PointerBuffer space = BufferUtils.createPointerBuffer(1);
