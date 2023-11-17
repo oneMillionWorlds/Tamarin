@@ -580,6 +580,7 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         XrActionStateBoolean actionState = XrActionStateBoolean.create();
+        actionState.type$Default();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
         actionInfo.type$Default();
         actionInfo.action(obtainActionHandle(action));
@@ -799,6 +800,7 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         XrActionStateFloat actionState = XrActionStateFloat.create();
+        actionState.type$Default();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
         actionInfo.type$Default();
         actionInfo.action(obtainActionHandle(action));
@@ -843,6 +845,7 @@ public class OpenXrActionState extends BaseAppState{
         }
 
         XrActionStateVector2f actionState = XrActionStateVector2f.create();
+        actionState.type$Default();
         XrActionStateGetInfo actionInfo = XrActionStateGetInfo.create();
         actionInfo.type$Default();
         actionInfo.action(obtainActionHandle(action));
@@ -898,7 +901,7 @@ public class OpenXrActionState extends BaseAppState{
                 .frequency(frequency)
                 .amplitude(amplitude);  // Amplitude in normalized units
 
-        XrHapticActionInfo hapticActionInfo = XrHapticActionInfo.malloc()
+        XrHapticActionInfo hapticActionInfo = XrHapticActionInfo.create()
                 .type$Default()
                 .action(obtainActionHandle(action));
 
