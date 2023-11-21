@@ -437,9 +437,17 @@ public class OpenXrActionState extends BaseAppState{
 
                     PointerBuffer handTrackingPointerBuffer = BufferUtils.createPointerBuffer(1);
 
-                    withResponseCodeLogging("Setup hand tracking", EXTHandTracking.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
-                    XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(), xrSessionHandle);
-                    handTrackers.put(handSide, handTrackerEXT);
+                    // some runtimes (e.g. Monado with HTV Vive) report that they have the EXT_HAND_TRACKING_EXTENSION but
+                    // then report unsupported when you try to use it. Gracefully accept that and don't crash
+                    boolean success = withResponseCodeLogging("Setup hand tracking", EXTHandTracking.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
+                    if (success){
+                        XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(), xrSessionHandle);
+                        handTrackers.put(handSide, handTrackerEXT);
+                    }else{
+                        LOGGER.warning("XR_EXT_hand_tracking not *actually* available, correcting" );
+                        xrAppState.getExtensionsLoaded().put(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME, false);
+                        break;
+                    }
                 }
             }
         }
