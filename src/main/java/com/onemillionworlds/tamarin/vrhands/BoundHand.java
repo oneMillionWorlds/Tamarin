@@ -50,6 +50,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @SuppressWarnings("unused")
 public abstract class BoundHand{
 
+    public static final String DEFAULT_HAND_TEXTURE = "Tamarin/Textures/basicHands_pinStripe.png";
+    public static final String DEFAULT_HAND_MODEL_LEFT = "Tamarin/Models/basicHands_left.j3o";
+    public static final String DEFAULT_HAND_MODEL_RIGHT = "Tamarin/Models/basicHands_right.j3o";
+
+
     private static final float FINGER_PICK_SPHERE_RADIUS = 0.0075f;
 
     private static boolean lemurCheckedAvailable = false ;

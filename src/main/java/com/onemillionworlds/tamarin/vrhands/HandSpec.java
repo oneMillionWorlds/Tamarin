@@ -27,13 +27,13 @@ public class HandSpec{
      * An asset location for the left hand model. Ideally should be a j3o
      */
     @Builder.Default
-    String leftHandModel = "Tamarin/Models/basicHands_left.j3o";
+    String leftHandModel = BoundHand.DEFAULT_HAND_MODEL_LEFT;
 
     /**
      * An asset location for the right hand model. Ideally should be a j3o
      */
     @Builder.Default
-    String rightHandModel = "Tamarin/Models/basicHands_right.j3o";
+    String rightHandModel = BoundHand.DEFAULT_HAND_MODEL_RIGHT;
 
     /**
      * After the left hand has been created and bound this is run to set a material to it
@@ -41,7 +41,7 @@ public class HandSpec{
     @Builder.Default
     BiConsumer<BoundHand, AssetManager> applyMaterialToLeftHand = (hand, assetManager) -> {
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat.setTexture("ColorMap", assetManager.loadTexture("Tamarin/Textures/basicHands_pinStripe.png"));
+        mat.setTexture("ColorMap", assetManager.loadTexture(BoundHand.DEFAULT_HAND_TEXTURE));
         hand.setMaterial(mat);
     };
 
@@ -51,7 +51,7 @@ public class HandSpec{
     @Builder.Default
     BiConsumer<BoundHand, AssetManager> applyMaterialToRightHand = (hand, assetManager) -> {
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat.setTexture("ColorMap", assetManager.loadTexture("Tamarin/Textures/basicHands_pinStripe.png"));
+        mat.setTexture("ColorMap", assetManager.loadTexture(BoundHand.DEFAULT_HAND_TEXTURE));
         hand.setMaterial(mat);
     };
 
