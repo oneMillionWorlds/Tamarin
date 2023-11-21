@@ -272,7 +272,7 @@ public class VRHandsAppState extends BaseAppState{
         return boundHand;
     }
 
-    private static Spatial searchForArmatured(Spatial spatial){
+    public static Spatial searchForArmatured(Spatial spatial){
         if (spatial.getControl(SkinningControl.class) !=null){
             spatial.removeFromParent();
             return spatial;

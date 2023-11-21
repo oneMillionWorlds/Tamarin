@@ -2,6 +2,7 @@ package com.onemillionworlds.tamarin.vrhands;
 
 import com.jme3.anim.Armature;
 import com.jme3.anim.Joint;
+import com.jme3.anim.SkinningControl;
 import com.jme3.asset.AssetManager;
 import com.jme3.bounding.BoundingSphere;
 import com.jme3.collision.CollisionResult;
@@ -143,7 +144,7 @@ public abstract class BoundHand{
     private final ActionHandle skeletonActionName;
 
     @Getter
-    private final Armature armature;
+    private Armature armature;
 
     @Getter
     private final AssetManager assetManager;
@@ -250,6 +251,24 @@ public abstract class BoundHand{
         handNode_xPointing.attachChild(pickLineNode);
 
         addFunction(new ClimbSupport());
+    }
+
+    /**
+     *
+     * @param handGeometry A spatial that will be updated with the hand geometry, it must have a SkinningControl
+     *                     at its top level
+     */
+    public void updateHandGeometryAndControlledArmature(Spatial handGeometry){
+        geometryNode.detachAllChildren();
+        geometryNode.attachChild(handGeometry);
+        searchForGeometry(handGeometry).forEach(g -> g.setUserData(NO_PICK, true));
+
+        SkinningControl skinningControl = handGeometry.getControl(SkinningControl.class);
+
+        if (skinningControl == null){
+            throw new IllegalArgumentException("Hand geometry must have a SkinningControl");
+        }
+        this.armature = skinningControl.getArmature();
     }
 
     /**
