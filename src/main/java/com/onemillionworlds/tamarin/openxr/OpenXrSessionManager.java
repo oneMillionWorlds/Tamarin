@@ -162,7 +162,7 @@ public class OpenXrSessionManager{
      */
     private final Map<Integer, FrameBuffer> frameBuffers = new HashMap<>();
 
-    private static Map<Integer, Image.Format> DESIRED_SWAPCHAIN_FORMATS = new LinkedHashMap<>();
+    private final static Map<Integer, Image.Format> DESIRED_SWAPCHAIN_FORMATS = new LinkedHashMap<>();
 
     static {
         DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
@@ -476,7 +476,7 @@ public class OpenXrSessionManager{
                 int imageCount = viewCountPointer.get(0);
 
                 XrSwapchainImageOpenGLKHR.Buffer swapchainImageBuffer = XrUtils.fill(
-                        XrSwapchainImageOpenGLKHR.create(imageCount),
+                        XrSwapchainImageOpenGLKHR.calloc(imageCount),
                         XrSwapchainImageOpenGLKHR.TYPE,
                         KHROpenGLEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR
                 );
