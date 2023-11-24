@@ -178,6 +178,7 @@ public class XrAppState extends BaseAppState{
 
     @Override
     protected void cleanup(Application app){
+        LOGGER.info("Cleaning up OpenXR for shutdown");
         xrSession.destroy();
         app.getRenderManager().removePreView(leftViewPort);
         app.getRenderManager().removePreView(rightViewPort);
