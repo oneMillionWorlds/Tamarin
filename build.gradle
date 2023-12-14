@@ -3,7 +3,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-    id "io.freefair.lombok" version "6.4.0"
+    id "io.freefair.lombok" version "8.4"
 }
 
 repositories {
@@ -62,7 +62,7 @@ dependencies {
     /*
      * Lombok is only required during compile (it's an annotation processor)
      */
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.30'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
     testImplementation "${jme3.g}:jme3-core:${jme3.v}"
