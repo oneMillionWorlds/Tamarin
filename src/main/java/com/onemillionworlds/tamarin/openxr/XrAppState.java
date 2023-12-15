@@ -40,6 +40,10 @@ public class XrAppState extends BaseAppState{
     @Getter
     ViewPort rightViewPort;
 
+    DelegatingFrameBuffer leftFrameBuffer = new DelegatingFrameBuffer();
+
+    DelegatingFrameBuffer rightFrameBuffer = new DelegatingFrameBuffer();
+
     /**
      * The observer's position in the virtual world maps to the VR origin in the real world.
      */
@@ -108,9 +112,14 @@ public class XrAppState extends BaseAppState{
 
         leftViewPort = app.getRenderManager().createMainView("Left Eye", leftCamera);
         leftViewPort.setClearFlags(true, true, true);
+        leftFrameBuffer.setDelegatedFrameBuffer(leftViewPort.getOutputFrameBuffer());
+        leftViewPort.setOutputFrameBuffer(leftFrameBuffer);
 
         rightViewPort = app.getRenderManager().createMainView("Right Eye", rightCamera);
         rightViewPort.setClearFlags(true, true, true);
+        rightFrameBuffer.setDelegatedFrameBuffer(rightViewPort.getOutputFrameBuffer());
+        rightViewPort.setOutputFrameBuffer(rightFrameBuffer);
+
         leftViewPort.attachScene(((SimpleApplication) app).getRootNode());
         rightViewPort.attachScene(((SimpleApplication) app).getRootNode());
 
@@ -202,8 +211,9 @@ public class XrAppState extends BaseAppState{
                 updateEyePositions(inProgressXrRender);
             }
             //must set every frame due to OpenXR buffering to multiple images
-            leftViewPort.setOutputFrameBuffer(inProgressXrRender.getLeftBufferToRenderTo());
-            rightViewPort.setOutputFrameBuffer(inProgressXrRender.getRightBufferToRenderTo());
+
+            leftFrameBuffer.setDelegatedFrameBuffer(inProgressXrRender.getLeftBufferToRenderTo());
+            rightFrameBuffer.setDelegatedFrameBuffer(inProgressXrRender.getRightBufferToRenderTo());
 
             if (refreshProjectionMatrix || !inProgressXrRender.leftEye.fieldOfView().equals(leftFovLastRendered) || !inProgressXrRender.rightEye.fieldOfView().equals(rightFovLastRendered)){
                 leftCamera.setProjectionMatrix(inProgressXrRender.leftEye.calculateProjectionMatrix(nearClip, farClip));
