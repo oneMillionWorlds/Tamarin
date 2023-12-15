@@ -74,7 +74,7 @@ public class GrabPickingFunction implements BoundHandFunction{
             if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
                 CollisionResults results = boundHand.pickGrab(nodeToGrabPickAgainst);
                 Optional<AbstractGrabControl> grabControl = TamarinUtilities.findAllControlsInResults(AbstractGrabControl.class, results).stream().findFirst();
-                if(grabControl.isPresent()){
+                if(grabControl.isPresent() && grabControl.get().isCurrentlyGrabbable(boundHand)){
                     currentlyGrabbed = grabControl;
                     grabControl.get().onGrab(boundHand);
                 }

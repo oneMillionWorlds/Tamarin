@@ -41,8 +41,13 @@ public abstract class AbstractGrabControl extends AbstractControl{
 
     /**
      * If this control is currently accepting grabs from that hand
-     *
-     * Gives subclasses the opportunity to filter grabs
+     * <p>
+     *  Gives subclasses the opportunity to filter grabs
+     * </p>
+     * <p>
+     *     An example of when you might use this is if different hands are used for different purposes and only one
+     *     hand should be able to grab this.
+     * </p>
      */
     public boolean isCurrentlyGrabbable(BoundHand grabbedByHand){
         return true;
