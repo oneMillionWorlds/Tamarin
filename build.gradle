@@ -43,9 +43,12 @@ def jme3 = [v:'3.6.1-stable', g:'org.jmonkeyengine']
 dependencies {
 
     api "org.lwjgl:lwjgl-openxr:${lwjgl3Version}"
+
     runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-windows"
     runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-linux"
     api "org.lwjgl:lwjgl-egl:${lwjgl3Version}" // Necessary for the cross platform XrGraphicsBindingEGLMNDX binding
+
+    implementation 'com.google.code.findbugs:jsr305:3.0.2' //for the OverridingMethodsMustInvokeSuper annotation
 
     /*
      * It is presumed any user of Tamarin will already be using JMonkey but we don't want to force a version on them.
