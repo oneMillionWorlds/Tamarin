@@ -13,10 +13,12 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.system.AppSettings;
 import com.jme3.system.lwjgl.LwjglWindow;
+import com.jme3.texture.FrameBuffer;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import lombok.Getter;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
@@ -35,10 +37,15 @@ public class XrAppState extends BaseAppState{
     @Getter
     Camera rightCamera;
 
-    @Getter
-    ViewPort leftViewPort;
-    @Getter
-    ViewPort rightViewPort;
+    /**
+     * Will contain 6 viewports, 3 for each eye (left and right) because it is triple buffered. The reason we use multiple
+     * viewports per eye (rather than changing the output frame buffer for a single viewport) is that the viewport may have
+     * had scene processors added to it that want to insert themselves into the rendering pipeline; they do this
+     * by setting the viewports output framebuffer to their own input framebuffer and use the viewports current output framebuffer
+     * as the processors output. In other words the scene processors mess with the output frame buffer and expect no one
+     * else to mess with it. If we were to change the output framebuffer we get flickering if a scene processor is added.
+     */
+    Map<FrameBuffer, ViewPort> viewPorts = new HashMap<>();
 
     /**
      * The observer's position in the virtual world maps to the VR origin in the real world.
@@ -61,6 +68,8 @@ public class XrAppState extends BaseAppState{
     private final XrSettings xrSettings;
 
     private final Queue<Runnable> runOnceHaveCameraPositions = new LinkedList<>();
+
+    private Consumer<ViewPort> newViewportConfiguration = viewPort -> {};
 
     @SuppressWarnings("unused")
     public XrAppState(){
@@ -106,16 +115,7 @@ public class XrAppState extends BaseAppState{
         leftCamera.setRotation(rotation);
         rightCamera.setRotation(rotation);
 
-        leftViewPort = app.getRenderManager().createMainView("Left Eye", leftCamera);
-        leftViewPort.setClearFlags(true, true, true);
-
-        rightViewPort = app.getRenderManager().createMainView("Right Eye", rightCamera);
-        rightViewPort.setClearFlags(true, true, true);
-        leftViewPort.attachScene(((SimpleApplication) app).getRootNode());
-        rightViewPort.attachScene(((SimpleApplication) app).getRootNode());
-
         ((SimpleApplication) getApplication()).getRootNode().attachChild(observer);
-
 
         if (xrSettings.isMainCameraFollowsVrCamera()){
             FlyCamAppState flyCam = getStateManager().getState(FlyCamAppState.class);
@@ -135,21 +135,36 @@ public class XrAppState extends BaseAppState{
         }
     }
 
+    private ViewPort newViewPort(EyeSide eyeSide){
+        ViewPort newViewport = getApplication().getRenderManager().createMainView(  eyeSide + " Eye", eyeSide == EyeSide.LEFT ? leftCamera : rightCamera);
+        newViewport.setClearFlags(true, true, true);
+        newViewport.attachScene(((SimpleApplication) getApplication()).getRootNode());
+        this.newViewportConfiguration.accept(newViewport);
+        return newViewport;
+    }
+
     /**
      * Allows initialisation of both eyes viewports (e.g. adding scene processors or changing the background colour).
-     * Note that it is safe to call this before the state is initialised (the code will wait till it is and then run it)
+     * Note that it is safe to call this before the state is initialised (the code will wait till it is and then run it).
+     * <p>
+     * Deprecated, use setViewportConfiguration instead
+     * </p>
      */
     @SuppressWarnings("unused")
+    @Deprecated
     public void configureBothViewports(Consumer<ViewPort> configureViewport){
-        if (leftViewPort == null){
-            runOnceHaveCameraPositions.add(() -> {
-                configureViewport.accept(leftViewPort);
-                configureViewport.accept(rightViewPort);
-            });
-        }else{
-            configureViewport.accept(leftViewPort);
-            configureViewport.accept(rightViewPort);
-        }
+        setViewportConfiguration(configureViewport);
+    }
+
+    /**
+     * Allows initialisation of both eyes viewports (e.g. adding scene processors or changing the background colour).
+     * Note that Tamarin forms MORE THAN TWO viewports (because it is triple buffered).  This method may be called
+     * now (for existing viewports) or when a new viewport is created (if they haven't yet been intialised). You
+     * should anticipate that this method may be called 6 times.
+     */
+    public void setViewportConfiguration(Consumer<ViewPort> configureViewport){
+        viewPorts.values().forEach(configureViewport);
+        this.newViewportConfiguration = configureViewport;
     }
 
     /**
@@ -180,8 +195,7 @@ public class XrAppState extends BaseAppState{
     protected void cleanup(Application app){
         LOGGER.info("Cleaning up OpenXR for shutdown");
         xrSession.destroy();
-        app.getRenderManager().removePreView(leftViewPort);
-        app.getRenderManager().removePreView(rightViewPort);
+        viewPorts.values().forEach(app.getRenderManager()::removePreView);
     }
 
     @Override
@@ -201,9 +215,22 @@ public class XrAppState extends BaseAppState{
                 runOnceHaveCameraPositions.poll().run();
                 updateEyePositions(inProgressXrRender);
             }
+            viewPorts.values().forEach(vp -> vp.setEnabled(false));
+
             //must set every frame due to OpenXR buffering to multiple images
-            leftViewPort.setOutputFrameBuffer(inProgressXrRender.getLeftBufferToRenderTo());
-            rightViewPort.setOutputFrameBuffer(inProgressXrRender.getRightBufferToRenderTo());
+            ViewPort leftViewPort = viewPorts.computeIfAbsent(inProgressXrRender.getLeftBufferToRenderTo(), (fb) -> {
+                ViewPort viewPort = newViewPort(EyeSide.LEFT);
+                viewPort.setOutputFrameBuffer(fb);
+                return viewPort;
+            });
+            leftViewPort.setEnabled(true);
+
+            ViewPort rightViewPort = viewPorts.computeIfAbsent(inProgressXrRender.getRightBufferToRenderTo(), (fb) -> {
+                ViewPort viewPort = newViewPort(EyeSide.RIGHT);
+                viewPort.setOutputFrameBuffer(fb);
+                return viewPort;
+            });
+            rightViewPort.setEnabled(true);
 
             if (refreshProjectionMatrix || !inProgressXrRender.leftEye.fieldOfView().equals(leftFovLastRendered) || !inProgressXrRender.rightEye.fieldOfView().equals(rightFovLastRendered)){
                 leftCamera.setProjectionMatrix(inProgressXrRender.leftEye.calculateProjectionMatrix(nearClip, farClip));
