@@ -16,10 +16,15 @@ import com.jme3.system.lwjgl.LwjglWindow;
 import com.jme3.texture.FrameBuffer;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
+import com.onemillionworlds.tamarin.viewports.AdditionalViewportData;
+import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
+import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 import lombok.Getter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.function.Consumer;
@@ -48,6 +53,12 @@ public class XrAppState extends BaseAppState{
     Map<FrameBuffer, ViewPort> viewPorts = new HashMap<>();
 
     /**
+     * These are extra viewports that are used to render overlays (e.g. debug shapes).
+     */
+    List<AdditionalViewportData> additionalViewports = new ArrayList<>();
+
+    /**
+     *
      * The observer's position in the virtual world maps to the VR origin in the real world.
      */
     @Getter
@@ -153,7 +164,7 @@ public class XrAppState extends BaseAppState{
     @SuppressWarnings("unused")
     @Deprecated
     public void configureBothViewports(Consumer<ViewPort> configureViewport){
-        setViewportConfiguration(configureViewport);
+        setMainViewportConfiguration(configureViewport);
     }
 
     /**
@@ -162,9 +173,39 @@ public class XrAppState extends BaseAppState{
      * now (for existing viewports) or when a new viewport is created (if they haven't yet been intialised). You
      * should anticipate that this method may be called 6 times.
      */
-    public void setViewportConfiguration(Consumer<ViewPort> configureViewport){
+    public void setMainViewportConfiguration(Consumer<ViewPort> configureViewport){
         viewPorts.values().forEach(configureViewport);
         this.newViewportConfiguration = configureViewport;
+    }
+
+    /**
+     * Adds an additional scene (with associated viewports for both eyes and triple buffering) that will be
+     * an overlay to the main scene. This is useful for things like debug shapes or a menu screen that shouldn't be clipped by the
+     * main game scene.
+     *
+     * <p>
+     *     Tamarin will take charge of calling updateLogicalState and updateGeometricState on the additional viewport's
+     *     root node, so you don't need to do that (if you'd rather it didn't set updateNode to false).
+     * </p>
+     *
+     * @return a ViewportConfigurator that can be used to remove the additional viewports or update their configuration
+     */
+    public ViewportConfigurator addAdditionalViewport(AdditionalViewportRequest additionalViewportRequest){
+        AdditionalViewportData additionalViewportData = new AdditionalViewportData(additionalViewportRequest, getApplication().getRenderManager(), leftCamera, rightCamera);
+        this.additionalViewports.add(additionalViewportData);
+
+        return new ViewportConfigurator(){
+            @Override
+            public void updateViewportConfiguration(Consumer<ViewPort> configureViewport){
+                additionalViewportData.updateConfigureViewport(configureViewport);
+            }
+
+            @Override
+            public void removeViewports(){
+                additionalViewportData.cleanup();
+                additionalViewports.remove(additionalViewportData);
+            }
+        };
     }
 
     /**
@@ -196,6 +237,7 @@ public class XrAppState extends BaseAppState{
         LOGGER.info("Cleaning up OpenXR for shutdown");
         xrSession.destroy();
         viewPorts.values().forEach(app.getRenderManager()::removePreView);
+        this.additionalViewports.forEach(AdditionalViewportData::cleanup);
     }
 
     @Override
@@ -231,6 +273,11 @@ public class XrAppState extends BaseAppState{
                 return viewPort;
             });
             rightViewPort.setEnabled(true);
+
+            for(AdditionalViewportData additionalViewportData : additionalViewports){
+                additionalViewportData.update(tpf);
+                additionalViewportData.setActiveViewports(inProgressXrRender.getLeftBufferToRenderTo(), inProgressXrRender.getRightBufferToRenderTo());
+            }
 
             if (refreshProjectionMatrix || !inProgressXrRender.leftEye.fieldOfView().equals(leftFovLastRendered) || !inProgressXrRender.rightEye.fieldOfView().equals(rightFovLastRendered)){
                 leftCamera.setProjectionMatrix(inProgressXrRender.leftEye.calculateProjectionMatrix(nearClip, farClip));
