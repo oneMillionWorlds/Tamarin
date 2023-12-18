@@ -50,12 +50,12 @@ public class XrAppState extends BaseAppState{
      * as the processors output. In other words the scene processors mess with the output frame buffer and expect no one
      * else to mess with it. If we were to change the output framebuffer we get flickering if a scene processor is added.
      */
-    Map<FrameBuffer, ViewPort> viewPorts = new HashMap<>();
+    Map<FrameBuffer, ViewPort> viewPorts = new HashMap<>(6);
 
     /**
      * These are extra viewports that are used to render overlays (e.g. debug shapes).
      */
-    List<AdditionalViewportData> additionalViewports = new ArrayList<>();
+    List<AdditionalViewportData> additionalViewports = new ArrayList<>(1);
 
     /**
      *
@@ -184,8 +184,9 @@ public class XrAppState extends BaseAppState{
      * main game scene.
      *
      * <p>
-     *     Tamarin will take charge of calling updateLogicalState and updateGeometricState on the additional viewport's
-     *     root node, so you don't need to do that (if you'd rather it didn't set updateNode to false).
+     *     Note that Tamarin will not take charge of calling `node.updateLogicalState()` and `node.updateGeometricState(tpf)`
+     *     on the additional viewport's root node, so you need to do that within your update method after all other node
+     *     mutations are done.
      * </p>
      *
      * @return a ViewportConfigurator that can be used to remove the additional viewports or update their configuration
@@ -245,6 +246,8 @@ public class XrAppState extends BaseAppState{
 
     @Override
     protected void onDisable(){}
+
+
 
     @Override
     public void update(float tpf){

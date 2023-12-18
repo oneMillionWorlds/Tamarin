@@ -16,16 +16,14 @@ public class AdditionalViewportRequest{
 
     private final boolean clearFlags_color, clearFlags_depth, clearFlags_stencil;
 
-    private boolean updateNode;
 
-    private AdditionalViewportRequest(ViewportType type, Node additionalRootNode, Consumer<ViewPort> configureViewport, boolean clearFlags_color, boolean clearFlags_depth, boolean clearFlags_stencil, boolean updateNode){
+    private AdditionalViewportRequest(ViewportType type, Node additionalRootNode, Consumer<ViewPort> configureViewport, boolean clearFlags_color, boolean clearFlags_depth, boolean clearFlags_stencil){
         this.type = type;
         this.additionalRootNode = additionalRootNode;
         this.configureViewport = configureViewport;
         this.clearFlags_color = clearFlags_color;
         this.clearFlags_depth = clearFlags_depth;
         this.clearFlags_stencil = clearFlags_stencil;
-        this.updateNode = updateNode;
     }
 
     /**
@@ -40,6 +38,7 @@ public class AdditionalViewportRequest{
         return builder;
     }
 
+    @SuppressWarnings({"UnusedReturnValue", "unused"})
     public static class Builder{
         private ViewportType type = ViewportType.MAINVIEW;
         private Node additionalRootNode;
@@ -47,8 +46,6 @@ public class AdditionalViewportRequest{
         private boolean clearFlags_color = false;
         private boolean  clearFlags_depth = true;
         private boolean  clearFlags_stencil = false;
-
-        private boolean updateNode = true;
 
         public Builder setType(ViewportType type){
             this.type = type;
@@ -80,19 +77,8 @@ public class AdditionalViewportRequest{
             return this;
         }
 
-        /**
-         * By default, tamarin will call updateLogicalState and updateGeometricState on the root node of the viewport.
-         * If you don't want this to happen, set this to false.
-         * @param updateNode update the node?
-         * @return the builder
-         */
-        public Builder setUpdateNode(boolean updateNode){
-            this.updateNode = updateNode;
-            return this;
-        }
-
         public AdditionalViewportRequest build(){
-            return new AdditionalViewportRequest(type, additionalRootNode, configureViewport, clearFlags_color, clearFlags_depth, clearFlags_stencil, updateNode);
+            return new AdditionalViewportRequest(type, additionalRootNode, configureViewport, clearFlags_color, clearFlags_depth, clearFlags_stencil);
         }
     }
 

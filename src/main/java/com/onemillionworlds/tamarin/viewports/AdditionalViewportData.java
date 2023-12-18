@@ -90,8 +90,8 @@ public class AdditionalViewportData{
 
     public void update(float tpf){
         if (additionalViewportRequest.isUpdateNode()){
-            rootNode.updateLogicalState(tpf);
-            rootNode.updateGeometricState();
+            //rootNode.updateLogicalState(tpf);
+            //rootNode.updateGeometricState();
         }
     }
 }
