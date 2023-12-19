@@ -278,7 +278,6 @@ public class XrAppState extends BaseAppState{
             rightViewPort.setEnabled(true);
 
             for(AdditionalViewportData additionalViewportData : additionalViewports){
-                additionalViewportData.update(tpf);
                 additionalViewportData.setActiveViewports(inProgressXrRender.getLeftBufferToRenderTo(), inProgressXrRender.getRightBufferToRenderTo());
             }
 

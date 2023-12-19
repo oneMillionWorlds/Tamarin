@@ -25,13 +25,20 @@ import org.lwjgl.openxr.EXTHandTracking;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class TamarinDebugOverlayState extends BaseAppState{
 
     public static final String ID = "TamarinDebugOverlayState";
 
+    Set<HandDebugItems> turnedOnDebugItems;
+
     public TamarinDebugOverlayState(){
+        this(HandDebugItems.values());
+    }
+    public TamarinDebugOverlayState(HandDebugItems... itemsToRender){
         super(ID);
+        turnedOnDebugItems = Set.of(itemsToRender);
     }
 
     Node overlayRootNode = new Node("TamarinDebugOverlayStateRootNode");
@@ -67,7 +74,19 @@ public class TamarinDebugOverlayState extends BaseAppState{
                 handData.debugPointsNode.setLocalRotation(p.orientation());
             });
 
-            if (skeletonAvailable){
+            //do the non special case debug items
+            for(HandDebugItems debugItem : HandDebugItems.values()){
+                if (debugItem.isSpecialCase()){
+                    continue;
+                }
+                if (turnedOnDebugItems.contains(debugItem)){
+                    Node debugNode = handData.getOrBuildNodeForDebugPoint(debugItem);
+                    debugNode.setLocalTranslation(debugItem.getDebugItemCreator().apply(boundHand).getWorldTranslation());
+                    debugNode.setLocalRotation(debugItem.getDebugItemCreator().apply(boundHand).getWorldRotation());
+                }
+            }
+
+            if (skeletonAvailable && turnedOnDebugItems.contains(HandDebugItems.SKELETON)){
                 Optional<Map<HandJoint, BonePose>> skeletonOpt = openXrActionState.getSkeleton(handPoseAction, boundHand.getHandSide());
                 if (skeletonOpt.isPresent()){
                     Map<HandJoint, BonePose> skeleton = skeletonOpt.get();
@@ -100,6 +119,8 @@ public class TamarinDebugOverlayState extends BaseAppState{
         private final Node debugPointsNode = new Node();
         private final Map<HandJoint, Node> jointPositions = new HashMap<>(HandJoint.values().length);
 
+        private final Map<HandDebugItems, Node> otherDebugPoints = new HashMap<>();
+
         public PerHandData(){
             overlayRootNode.attachChild(debugPointsNode);
         }
@@ -112,6 +133,16 @@ public class TamarinDebugOverlayState extends BaseAppState{
                 return jointNode;
             });
         }
+
+        public Node getOrBuildNodeForDebugPoint(HandDebugItems debugItem){
+            return otherDebugPoints.computeIfAbsent(debugItem, j -> {
+                ColorRGBA colour = debugItem.getColorRGBA();
+                Node jointNode = boxWithAxisLines(j.name(), colour, 0.004f);
+                overlayRootNode.attachChild(jointNode);
+                return jointNode;
+            });
+        }
+
     }
 
     private Node boxWithAxisLines(String name, ColorRGBA boxColor, float boxSize){
