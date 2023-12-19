@@ -77,21 +77,12 @@ public class AdditionalViewportData{
     public void cleanup(){
         overlayViewPorts.values().forEach((vp) -> {
             switch(additionalViewportRequest.getType()){
-                case MAINVIEW ->
-                    renderManager.removeMainView(vp);
-                case POSTVIEW->
-                    renderManager.removePostView(vp);
-                case PREVIEW->
-                    renderManager.removePreView(vp);
-            };
+                case MAINVIEW -> renderManager.removeMainView(vp);
+                case POSTVIEW -> renderManager.removePostView(vp);
+                case PREVIEW -> renderManager.removePreView(vp);
+            }
+            ;
         });
 
-    }
-
-    public void update(float tpf){
-        if (additionalViewportRequest.isUpdateNode()){
-            //rootNode.updateLogicalState(tpf);
-            //rootNode.updateGeometricState();
-        }
     }
 }
