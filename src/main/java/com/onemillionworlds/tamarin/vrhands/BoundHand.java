@@ -25,6 +25,7 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
+import com.onemillionworlds.tamarin.debug.TamarinDebugOverlayState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
@@ -554,14 +555,18 @@ public abstract class BoundHand{
     /**
      * Will start rendering the positions of the bones (note if all is well they will be inside the hands, so not really
      * visible (doing this is not performant, debug only)
+     * Deprecated. Use {@link TamarinDebugOverlayState} instead
      */
+    @Deprecated
     public void debugArmature(){
         this.debugPoints = true;
     }
 
     /**
      * Adds a debug line in the direction the hand would use for picking or clicking
+     * Deprecated. Use {@link TamarinDebugOverlayState} instead
      */
+    @Deprecated
     public void debugPointingPickLine(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
         indexFingerTip_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0) ));
@@ -570,7 +575,9 @@ public abstract class BoundHand{
     /**
      * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
      * {@link BoundHand#getHandNode_xPointing()}
+     * Deprecated. Use {@link TamarinDebugOverlayState} instead
      */
+    @Deprecated
     public void debugHandNodeXPointingCoordinateSystem(){
         handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
         handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
@@ -580,7 +587,11 @@ public abstract class BoundHand{
     /**
      * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
      * {@link BoundHand#getHandNode_xPointing()}
+     *
+     * Deprecated. Use {@link TamarinDebugOverlayState} instead (Although it doesn't actually support this particular point
+     * it does support the getHandNode_xPointing one)
      */
+    @Deprecated
     public void debugHandNodeZPointingCoordinateSystem(){
         handNode_zPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.15f,0,0)));
         handNode_zPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
@@ -590,7 +601,10 @@ public abstract class BoundHand{
     /**
      * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
      * {@link BoundHand#getPalmNode()}
+     * Deprecated. Sort of replaced by {@link TamarinDebugOverlayState} but really the palmNode_xPointing coordinate system
+     * is niche
      */
+    @Deprecated
     public void debugPalmCoordinateSystem(){
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
         palmNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
@@ -602,7 +616,9 @@ public abstract class BoundHand{
      * <p>
      * The first (index zero) points are bright, the last points (high index) are dark
      * {@link BoundHand#getPalmNode()}
+     * Deprecated. Use {@link TamarinDebugOverlayState} instead
      */
+    @Deprecated
     public FunctionRegistration debugPalmGrabPoints(){
         List<Geometry> addedPoints = new ArrayList<>();
 
