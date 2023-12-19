@@ -184,13 +184,16 @@ public abstract class BoundHand{
     /**
      * When doing a palm pick spheres of this radius are created above the palm
      */
+    @Getter
     @Setter
     private float palmPickSphereRadius = 0.02f;
 
     /**
-     * When doing a palm pick these are the points where spheres are formed to detect if the palm is against anything
+     * When doing a palm pick these are the points where spheres are formed to detect if the palm is against anything.
+     * They are relative to the palm node (in the {@link BoundHand#getPalmNode}'s coordinate system)
      */
     @Setter
+    @Getter
     private List<Vector3f> palmPickPoints;
 
     private final List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();

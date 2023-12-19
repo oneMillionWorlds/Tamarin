@@ -7,8 +7,10 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
+import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -23,6 +25,7 @@ import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import org.lwjgl.openxr.EXTHandTracking;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -98,6 +101,15 @@ public class TamarinDebugOverlayState extends BaseAppState{
                     }
                 }
             }
+
+            if (turnedOnDebugItems.contains(HandDebugItems.PALM_PICK_POINTS)){
+                Node palmNode = boundHand.getPalmNode();
+                List<Vector3f> palmPickPoints = boundHand.getPalmPickPoints();
+                for(int i = 0; i<palmPickPoints.size(); i++ ){
+                    Vector3f worldPosition = palmNode.localToWorld(palmPickPoints.get(i), null);
+                    handData.setPalmPickSphere(i, worldPosition, boundHand.getPalmPickSphereRadius());
+                }
+            }
         }
         overlayRootNode.updateLogicalState(tpf);
         overlayRootNode.updateGeometricState();
@@ -118,6 +130,9 @@ public class TamarinDebugOverlayState extends BaseAppState{
     private class PerHandData{
         private final Node debugPointsNode = new Node();
         private final Map<HandJoint, Node> jointPositions = new HashMap<>(HandJoint.values().length);
+
+        private final Map<Integer, Spatial> palmPickSpheres = new HashMap<>();
+        private final Map<Integer, Float> palmPickRadiuses = new HashMap<>();
 
         private final Map<HandDebugItems, Node> otherDebugPoints = new HashMap<>();
 
@@ -141,6 +156,25 @@ public class TamarinDebugOverlayState extends BaseAppState{
                 overlayRootNode.attachChild(jointNode);
                 return jointNode;
             });
+        }
+
+        public void setPalmPickSphere(int index, Vector3f worldPosition, float radius){
+            // this rebuilds each time in case the radius has changed (a bit ineffient, but
+            // it's just for debug
+
+            Float oldSize = palmPickRadiuses.get(index);
+            Spatial sphere = palmPickSpheres.get(index);
+            if (oldSize ==null || oldSize !=radius){
+                if (sphere!=null){
+                    sphere.removeFromParent();
+                }
+                ColorRGBA colour = HandDebugItems.PALM_PICK_POINTS.getColorRGBA();
+                sphere = microSphere(colour, radius);
+                overlayRootNode.attachChild(sphere);
+                palmPickSpheres.put(index,sphere);
+                palmPickRadiuses.put(index, radius);
+            }
+            sphere.setLocalTranslation(worldPosition);
         }
 
     }
@@ -172,6 +206,18 @@ public class TamarinDebugOverlayState extends BaseAppState{
         Material material = new Material(getApplication().getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         material.getAdditionalRenderState().setLineWidth(5);
         material.setColor("Color", colorRGBA);
+        geometry.setMaterial(material);
+        geometry.setUserData(BoundHand.NO_PICK, true);
+        return geometry;
+    }
+
+    private Geometry microSphere(ColorRGBA colorRGBA, float radius){
+        Sphere line = new Sphere(10,10, radius);
+        Geometry geometry = new Geometry("debugHandSphere", line);
+        Material material = new Material(getApplication().getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        material.getAdditionalRenderState().setLineWidth(5);
+        material.setColor("Color", colorRGBA);
+        material.getAdditionalRenderState().setWireframe(true);
         geometry.setMaterial(material);
         geometry.setUserData(BoundHand.NO_PICK, true);
         return geometry;

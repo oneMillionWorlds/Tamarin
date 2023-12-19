@@ -1,6 +1,5 @@
 package com.onemillionworlds.tamarin.viewports;
 
-import com.jme3.app.SimpleApplication;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
@@ -81,7 +80,6 @@ public class AdditionalViewportData{
                 case POSTVIEW -> renderManager.removePostView(vp);
                 case PREVIEW -> renderManager.removePreView(vp);
             }
-            ;
         });
 
     }
