@@ -133,7 +133,7 @@ public abstract class BoundHand{
     /**
      * A node at the wrist.
      * <p>
-     * <b>With hands held with thumbs upwards</b> +x going to the left, +y goes upwards and +z goes towards the fingers
+     * <b>With hands held flat with thumbs facing each other</b> +x going to the right, +y goes upwards and +z goes towards the player
      */
     @Getter
     private final Node wristNode = new Node();

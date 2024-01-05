@@ -52,14 +52,14 @@ To sign jars for maven central appropriate details will need to be in C:\Users\{
     ossrhUsername=your-jira-id
     ossrhPassword=your-jira-password
 
-Note that the keyId is just the last 8 characters of the long id, and the secretRing must be explicitly `exported gpg --export-secret-keys -o secring.gpg`
+Note that the keyId is just the last 8 characters of the long id, and the secretRing must be explicitly exported `gpg --export-secret-keys -o secring.gpg`
 
 ## Nexus
 
 Project is provisioned on https://s01.oss.sonatype.org/
 
 Deploy to sonatype via pipeline by:
-- Running in gitlab teh publish job
+- Running in gitlab the publish job
 - Go to https://s01.oss.sonatype.org/ and log in
 - Go to the staging repository and select the repository
 - If all looks well "close" the repository and then Release it
