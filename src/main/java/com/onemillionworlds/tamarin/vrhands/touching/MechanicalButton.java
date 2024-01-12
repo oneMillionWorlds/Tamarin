@@ -120,6 +120,7 @@ public class MechanicalButton extends Node{
         for(Runnable listener : pressListeners){
             listener.run();
         }
+        availableForPress = false;
     }
 
     /**
