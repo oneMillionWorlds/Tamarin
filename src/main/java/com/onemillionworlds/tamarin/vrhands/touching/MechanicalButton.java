@@ -9,10 +9,12 @@ import com.onemillionworlds.tamarin.observable.ObservableEvent;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.observable.TerminateListener;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
+import com.onemillionworlds.tamarin.vrhands.Haptic;
 import com.simsilica.lemur.event.MouseEventControl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class MechanicalButton extends Node{
 
@@ -32,6 +34,8 @@ public class MechanicalButton extends Node{
     ButtonMovementAxis movementAxis;
 
     private final float geometrySurfaceDistanceFromOrigin;
+
+    private Optional<Haptic> hapticOnFullDepress = Optional.empty();
 
     public MechanicalButton(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravel, float resetTime){
 
@@ -79,6 +83,7 @@ public class MechanicalButton extends Node{
                                 setTravel(pressDistance);
                                 if (pressDistance>=maximumButtonTravel && availableForPress){
                                     recordPressed();
+                                    hapticOnFullDepress.ifPresent(hand::triggerHapticAction);
                                 }
                             }
                         });
@@ -96,6 +101,10 @@ public class MechanicalButton extends Node{
                 }
 
         );
+    }
+
+    public void setHapticOnFullDepress(Haptic hapticOnFullDepress){
+        this.hapticOnFullDepress = Optional.ofNullable(hapticOnFullDepress);
     }
 
     private void setTravel(float buttonTravel){

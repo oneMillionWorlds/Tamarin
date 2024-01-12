@@ -913,6 +913,16 @@ public abstract class BoundHand{
      * <p>
      * This method is typically used to bind the haptic to both hands then decide at run time which hand to sent to     *
      * <p>
+     */
+    public void triggerHapticAction(Haptic haptic){
+        vrState.triggerHapticAction(haptic.actionHandle(), haptic.duration(), haptic.frequency(), haptic.amplitude(), getHandSide().restrictToInputString);
+    }
+
+    /**
+     * Triggers a haptic action (aka a vibration) restricted to just one input (e.g. left or right hand).
+     * <p>
+     * This method is typically used to bind the haptic to both hands then decide at run time which hand to sent to     *
+     * <p>
      * @param actionHandle the handle for the action (just an object with the set name and action name)
      * @param duration how long in seconds the
      * @param frequency in cycles per second
