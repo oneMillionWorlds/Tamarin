@@ -1,8 +1,13 @@
 package com.onemillionworlds.tamarin.vrhands.touching;
 
 import com.jme3.bounding.BoundingBox;
+import com.jme3.bounding.BoundingSphere;
+import com.jme3.collision.Collidable;
+import com.jme3.collision.CollisionResult;
+import com.jme3.collision.CollisionResults;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.observable.ObservableEvent;
@@ -11,6 +16,7 @@ import com.onemillionworlds.tamarin.observable.TerminateListener;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.Haptic;
 import com.simsilica.lemur.event.MouseEventControl;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +35,7 @@ public class MechanicalButton extends Node{
 
     private final List<Runnable> pressListeners = new ArrayList<>();
 
-    private final Node movingNode = new Node("MechanicalButton_MovingNode");
+    private final Node movingNode;
 
     ButtonMovementAxis movementAxis;
 
@@ -37,9 +43,22 @@ public class MechanicalButton extends Node{
 
     private Optional<Haptic> hapticOnFullDepress = Optional.empty();
 
-    public MechanicalButton(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravel, float resetTime){
+    @Setter
+    private boolean useFullBoundingBoxBasedCollisions = true;
 
-        BoundingBox overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
+    /**
+     * this isn't a performance optimisation (although it may also be that) it is to give more stable
+     * collisions with the button if the player plunges their hand into it. The whole volume is collidable
+     * rather than just the surface.
+     */
+    private final BoundingBox overallBoundsLocalisedToSpatialOrigin;
+
+    private final Geometry representativeGeometry;
+
+    public MechanicalButton(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravel, float resetTime){
+        representativeGeometry = findGeometry(buttonGeometry);
+        assert  representativeGeometry != null : "Couldn't find a geometry in the spatial";
+        overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
 
         geometrySurfaceDistanceFromOrigin = Math.min(
                 movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMin(null)),
@@ -49,6 +68,28 @@ public class MechanicalButton extends Node{
         //we want the top surface of the bounding box
 
         this.movementAxis = movementAxis;
+        movingNode= new Node("MechanicalButton_MovingNode"){
+            @Override
+            public int collideWith(Collidable other, CollisionResults results){
+                if(useFullBoundingBoxBasedCollisions){
+                    //this isn't a performance optimisation (although it may also be that) it is to give more stable
+                    //collisions with the button if the player plunges their hand into it
+                    if (other instanceof BoundingSphere boundingSphere){
+                        BoundingSphere localSphere = new BoundingSphere(boundingSphere.getRadius(), this.worldToLocal(boundingSphere.getCenter(), null));
+                        CollisionResults newResults = new CollisionResults();
+                        overallBoundsLocalisedToSpatialOrigin.collideWith(localSphere, newResults);
+                        for(int i=0;i<newResults.size();i++){
+                            CollisionResult collisionResult = newResults.getCollisionDirect(i);
+                            collisionResult.setGeometry(representativeGeometry);
+                            results.addCollision(collisionResult);
+                        }
+                        return newResults.size();
+                    }
+                }
+                return super.collideWith(other, results);
+            }
+        };
+
         attachChild(movingNode);
         movingNode.attachChild(buttonGeometry);
 
@@ -103,6 +144,23 @@ public class MechanicalButton extends Node{
         );
     }
 
+    /**
+     * Returns the first geometry it can recursively find in the spatial
+     */
+    private Geometry findGeometry(Spatial buttonGeometry){
+        if (buttonGeometry instanceof Geometry){
+            return (Geometry) buttonGeometry;
+        }else if (buttonGeometry instanceof Node node){
+            for(Spatial child : node.getChildren()){
+                Geometry found = findGeometry(child);
+                if (found != null){
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     public void setHapticOnFullDepress(Haptic hapticOnFullDepress){
         this.hapticOnFullDepress = Optional.ofNullable(hapticOnFullDepress);
     }
@@ -150,16 +208,6 @@ public class MechanicalButton extends Node{
     public TerminateListener addPressListener(Runnable listener){
         pressListeners.add(listener);
         return () -> pressListeners.remove(listener);
-    }
-
-
-    private static boolean isPrimarySix(Vector3f vector){
-        return vector.isSimilar(Vector3f.UNIT_X, 0.001f) ||
-                vector.isSimilar(Vector3f.UNIT_Y, 0.001f) ||
-                vector.isSimilar(Vector3f.UNIT_Z, 0.001f) ||
-                vector.isSimilar(Vector3f.UNIT_X.negate(), 0.001f) ||
-                vector.isSimilar(Vector3f.UNIT_Y.negate(), 0.001f) ||
-                vector.isSimilar(Vector3f.UNIT_Z.negate(), 0.001f);
     }
 
 }
