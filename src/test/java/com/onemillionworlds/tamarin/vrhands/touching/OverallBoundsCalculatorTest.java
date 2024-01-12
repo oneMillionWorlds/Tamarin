@@ -8,12 +8,11 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
 import com.onemillionworlds.tamarin.testhelpers.Vector3fAsserts;
-import com.onemillionworlds.tamarin.vrhands.touching.MechanicalButtonTouchControl;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MechanicalButtonTouchControlTest{
+class OverallBoundsCalculatorTest{
 
     @Test
     public void testSingleGeometry() {
@@ -21,7 +20,7 @@ class MechanicalButtonTouchControlTest{
         geom.setModelBound(new BoundingBox(new Vector3f(-1, -1, -1), new Vector3f(1, 1, 1)));
         geom.updateModelBound();
 
-        BoundingBox result = MechanicalButtonTouchControl.getOverallBoundsLocalisedToSpatialOrigin(geom);
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(geom);
         assertEquals(new Vector3f(0, 0, 0), result.getCenter());
         assertEquals(1, result.getXExtent(), 0.0001);
         assertEquals(1, result.getYExtent(), 0.0001);
@@ -39,7 +38,7 @@ class MechanicalButtonTouchControlTest{
         geom2.setLocalTranslation(10, 2, 0);
         node.attachChild(geom2);
 
-        BoundingBox result = MechanicalButtonTouchControl.getOverallBoundsLocalisedToSpatialOrigin(node);
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
         Vector3f minimum = result.getMin(new Vector3f());
         Vector3f maximum = result.getMax(new Vector3f());
 
@@ -59,7 +58,7 @@ class MechanicalButtonTouchControlTest{
         child.attachChild(geom);
 
 
-        BoundingBox result = MechanicalButtonTouchControl.getOverallBoundsLocalisedToSpatialOrigin(node);
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
         Vector3f minimum = result.getMin(new Vector3f());
         Vector3f maximum = result.getMax(new Vector3f());
 
@@ -75,7 +74,7 @@ class MechanicalButtonTouchControlTest{
         geom.setLocalRotation(new Quaternion().fromAngleAxis(FastMath.QUARTER_PI, Vector3f.UNIT_Y));
         node.attachChild(geom);
 
-        BoundingBox result = MechanicalButtonTouchControl.getOverallBoundsLocalisedToSpatialOrigin(node);
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
         Vector3f minimum = result.getMin(new Vector3f());
         Vector3f maximum = result.getMax(new Vector3f());
 
