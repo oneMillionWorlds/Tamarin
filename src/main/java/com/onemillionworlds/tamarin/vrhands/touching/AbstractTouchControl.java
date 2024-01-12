@@ -4,6 +4,7 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.control.AbstractControl;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
+import lombok.Getter;
 
 import java.util.Optional;
 
@@ -14,6 +15,7 @@ import java.util.Optional;
  */
 public abstract class AbstractTouchControl extends AbstractControl{
 
+    @Getter
     Optional<BoundHand> touchingHand = Optional.empty();
 
     public void onTouch(BoundHand touchingHand){

@@ -56,9 +56,10 @@ public abstract class BoundHand{
     public static final String DEFAULT_HAND_MODEL_RIGHT = "Tamarin/Models/basicHands_right.j3o";
 
 
-    private static final float FINGER_PICK_SPHERE_RADIUS = 0.0075f;
+    public static final float FINGER_PICK_SPHERE_RADIUS = 0.0075f;
 
     private static boolean lemurCheckedAvailable = false ;
+    private static boolean lemurIsAvailable = false ;
 
     /**
      * Placed on GEOMETRIES that should not be picked by the hand (either grab or point pick)
@@ -447,7 +448,7 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst the node that contains geometries to be picked from
      * @return the results
      */
-    public CollisionResults pickIndexFingerTip(Node nodeToPickAgainst){
+    public CollisionResults pickIndexFingerTip(Spatial nodeToPickAgainst){
         CollisionResults results = new CollisionResults();
         BoundingSphere sphere = new BoundingSphere(FINGER_PICK_SPHERE_RADIUS, indexFingerTip_xPointing.getWorldTranslation());
         nodeToPickAgainst.collideWith(sphere, results);
@@ -867,17 +868,16 @@ public abstract class BoundHand{
     }
 
     public static boolean isLemurAvailable(){
-        if (lemurCheckedAvailable){
-            return true;
-        }else{
-            try {
+        if(!lemurCheckedAvailable){
+            try{
                 Class.forName("com.simsilica.lemur.Button");
-                lemurCheckedAvailable = true;
-            } catch (Throwable ex) {
-                lemurCheckedAvailable = false;
+                lemurIsAvailable = true;
+            } catch(Throwable ex){
+                lemurIsAvailable = false;
             }
-            return lemurCheckedAvailable;
+            lemurCheckedAvailable = true;
         }
+        return lemurIsAvailable;
     }
 
     public static boolean notNull(Object... objects){
