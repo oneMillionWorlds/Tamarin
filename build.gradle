@@ -31,7 +31,7 @@ group = 'com.onemillionworlds'
 version = '2.4'
 
 ext{
-    lwjgl3Version = '3.3.3' //it is important that this is the same as JME which provides the rest of LWJGL
+    lwjgl3Version = '3.3.1' //it is important that this is the same as JME which provides the rest of LWJGL
 }
 test {
     useJUnitPlatform()
