@@ -84,7 +84,7 @@ public class XrUtils{
         );
     }
 
-    static <S extends Struct, T extends StructBuffer<S, T>> T fill(T buffer, int offset, int value) {
+    static <S extends Struct<S>, T extends StructBuffer<S, T>> T fill(T buffer, int offset, int value) {
         long ptr    = buffer.address() + offset;
         int  stride = buffer.sizeof();
         for (long i = 0; i < buffer.limit(); i++) {
