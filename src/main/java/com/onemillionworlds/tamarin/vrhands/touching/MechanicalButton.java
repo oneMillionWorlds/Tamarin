@@ -16,6 +16,7 @@ import com.onemillionworlds.tamarin.observable.TerminateListener;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.Haptic;
 import com.simsilica.lemur.event.MouseEventControl;
+import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.Optional;
 
 public class MechanicalButton extends Node{
 
+    @Getter
     private float currentTravel = 0;
 
     /**

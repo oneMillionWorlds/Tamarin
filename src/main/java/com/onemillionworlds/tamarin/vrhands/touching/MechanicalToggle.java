@@ -16,6 +16,7 @@ import com.onemillionworlds.tamarin.observable.TerminateListener;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.Haptic;
 import com.simsilica.lemur.event.MouseEventControl;
+import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import java.util.function.Consumer;
 
 public class MechanicalToggle extends Node{
 
+    @Getter
     private float currentTravel = 0;
 
     private final ObservableValue<ToggleState> pressEvents = new ObservableValue<>(ToggleState.TOGGLED_ON);
@@ -53,6 +55,7 @@ public class MechanicalToggle extends Node{
 
     private final float toggleInTravel;
 
+    @Getter
     private ToggleState currentState = ToggleState.FULLY_OFF;
 
     public MechanicalToggle(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravelPoint, float toggleInTravel, float resetTime){

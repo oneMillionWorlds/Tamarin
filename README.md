@@ -5,6 +5,8 @@ A VR utilities library for JMonkeyEngine using OpenXR.
 
 To successfully use Tamarin you should typically have at least the following dependencies
 
+    implementation "com.onemillionworlds:tamarin:$tamarin_version"
+
     implementation "org.jmonkeyengine:jme3-core:$jmonkeyengine_version"
     implementation "org.jmonkeyengine:jme3-lwjgl3:$jmonkeyengine_version"
     implementation "org.jmonkeyengine:jme3-desktop:$jmonkeyengine_version"
