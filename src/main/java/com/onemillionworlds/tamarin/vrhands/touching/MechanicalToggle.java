@@ -29,7 +29,7 @@ public class MechanicalToggle extends Node{
     @Getter
     private float currentTravel = 0;
 
-    private final ObservableValue<ToggleState> pressEvents = new ObservableValue<>(ToggleState.TOGGLED_ON);
+    private final ObservableValue<ToggleState> pressEvents = new ObservableValue<>(ToggleState.FULLY_OFF);
 
     private final List<Consumer<ToggleState>> pressListeners = new ArrayList<>();
 
@@ -57,6 +57,13 @@ public class MechanicalToggle extends Node{
 
     @Getter
     private ToggleState currentState = ToggleState.FULLY_OFF;
+
+    /**
+     * If true then the button can be untoggled by pressing it again. If false then the button can only be untoggled
+     * programmatically
+     */
+    @Setter
+    private boolean allowedToBeUntoggled = true;
 
     public MechanicalToggle(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravelPoint, float toggleInTravel, float resetTime){
         assert toggleInTravel<maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
@@ -143,7 +150,7 @@ public class MechanicalToggle extends Node{
                             if (currentTravel>toggleInTravel){
                                 if (currentState == ToggleState.FULLY_OFF){
                                     updateAndNotifyState(ToggleState.TRANSITIONING_ON);
-                                } else if (currentState == ToggleState.TOGGLED_ON){
+                                } else if (currentState == ToggleState.TOGGLED_ON && allowedToBeUntoggled){
                                     updateAndNotifyState(ToggleState.TRANSITIONING_OFF);
                                 }
                             }

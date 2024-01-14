@@ -4,10 +4,11 @@ package com.onemillionworlds.tamarin.observable;
 public class ObservableValueSubscription<T>{
     ObservableValue<T> underlyingValue;
 
-    long lastObservedGeneration = -1;
+    long lastObservedGeneration;
 
     protected ObservableValueSubscription(ObservableValue<T> underlyingValue){
         this.underlyingValue = underlyingValue;
+        this.lastObservedGeneration= underlyingValue.generation;
     }
 
     protected ObservableValueSubscription(ObservableValueSubscription<T> other){
