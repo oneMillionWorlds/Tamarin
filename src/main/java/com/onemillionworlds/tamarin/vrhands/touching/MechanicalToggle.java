@@ -112,7 +112,7 @@ public class MechanicalToggle extends Node{
                     if(event.isReleased()){
                         if (currentState == ToggleState.FULLY_OFF){
                             setState(ToggleState.TOGGLED_ON);
-                        }else{
+                        }else if(allowedToBeUntoggled){
                             setState(ToggleState.FULLY_OFF);
                         }
                     }
