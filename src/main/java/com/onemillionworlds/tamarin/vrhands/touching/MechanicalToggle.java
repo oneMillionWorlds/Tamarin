@@ -31,6 +31,8 @@ public class MechanicalToggle extends Node{
 
     private final ObservableValue<ToggleState> pressEvents = new ObservableValue<>(ToggleState.FULLY_OFF);
 
+    private final ObservableValue<Boolean> majorPressEvents = new ObservableValue<>(false);
+
     private final List<Consumer<ToggleState>> pressListeners = new ArrayList<>();
 
     private final Node movingNode;
@@ -228,6 +230,26 @@ public class MechanicalToggle extends Node{
     }
 
     /**
+     * Obtains an object that can be queried to determine if the button has been pressed since the last queried.
+     * Note that multiple events could be consolidated together if not checked regularly.
+     *
+     * <p>
+     *     Unlike {@link MechanicalToggle#subscribeToPressEvents()} this only subscribes to the major change from on to
+     *     off, not the minor {@link ToggleState#TRANSITIONING_OFF} to {@link ToggleState#FULLY_OFF} and similar
+     * </p>
+     *
+     * <p>
+     *     This is an ALTERNATIVE to adding a listener to the press event.
+     * </p>
+     * @return an object that can be queried to determine if the button has been pressed
+     */
+    @SuppressWarnings("unused")
+    public ObservableValueSubscription<Boolean> subscribeToOnOffEvents(){
+        return majorPressEvents.subscribe();
+    }
+
+    /**
+     *
      * Adds a listener to the press event. The listener will be called every time the button is pressed.
      * <p>
      *     A TerminateListener is returned, calling this de-registers the listener.
@@ -275,10 +297,14 @@ public class MechanicalToggle extends Node{
         if (currentState == state){
             return;
         }
+        ToggleState previousState = currentState;
         currentState = state;
         pressEvents.set(state);
         for(Consumer<ToggleState> listener : pressListeners){
             listener.accept(state);
+        }
+        if (previousState.isAKindOfOn() != currentState.isAKindOfOn()){
+            majorPressEvents.set(currentState.isAKindOfOn());
         }
     }
 
