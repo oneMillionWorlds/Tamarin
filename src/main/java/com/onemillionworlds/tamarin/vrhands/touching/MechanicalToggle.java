@@ -67,6 +67,10 @@ public class MechanicalToggle extends Node{
     @Setter
     private boolean allowedToBeUntoggled = true;
 
+    @Getter
+    @Setter
+    private EnablementState enablementState = EnablementState.ENABLED;
+
     public MechanicalToggle(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravelPoint, float toggleInTravel, float resetTime){
         assert toggleInTravel<maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
 
@@ -111,14 +115,15 @@ public class MechanicalToggle extends Node{
             MouseEventControl mec = new MouseEventControl(){
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){
-                    if(event.isReleased()){
-                        if (currentState == ToggleState.FULLY_OFF){
-                            setState(ToggleState.TOGGLED_ON);
-                        }else if(allowedToBeUntoggled){
-                            setState(ToggleState.FULLY_OFF);
+                    if (enablementState == EnablementState.ENABLED){
+                        if(event.isReleased()){
+                            if(currentState == ToggleState.FULLY_OFF){
+                                setState(ToggleState.TOGGLED_ON);
+                            } else if(allowedToBeUntoggled){
+                                setState(ToggleState.FULLY_OFF);
+                            }
                         }
                     }
-
                 }
             };
 
@@ -130,6 +135,10 @@ public class MechanicalToggle extends Node{
                     @Override
                     protected void controlUpdate(float tpf){
                         getTouchingHand().ifPresent(hand -> {
+                            if (enablementState == EnablementState.DISABLED_LOCKED){
+                                return;
+                            }
+
                             Vector3f handPositionSpatialRelative = worldToLocal(hand.getIndexFingerTip_xPointing().getWorldTranslation(), null);
 
                             // Calculate the distance the finger tip is pressing along the movement axis
@@ -297,6 +306,10 @@ public class MechanicalToggle extends Node{
         if (currentState == state){
             return;
         }
+        if (enablementState != EnablementState.ENABLED){
+            return;
+        }
+
         ToggleState previousState = currentState;
         currentState = state;
         pressEvents.set(state);
@@ -326,6 +339,21 @@ public class MechanicalToggle extends Node{
         public boolean isAKindOfOn(){
             return this == TOGGLED_ON || this == TRANSITIONING_ON;
         }
+    }
+
+    public enum EnablementState{
+        /**
+         * Toggle button works, changes state
+         */
+        ENABLED,
+        /**
+         * Toggle button never changes state, but still visually moves when touched with the finger
+         */
+        DISABLED_MOVABLE,
+        /**
+         * Toggle button ignores the finger entirely, becomes static part of scene
+         */
+        DISABLED_LOCKED
     }
 
 }
