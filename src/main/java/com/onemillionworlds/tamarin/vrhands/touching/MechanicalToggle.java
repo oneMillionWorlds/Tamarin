@@ -115,12 +115,14 @@ public class MechanicalToggle extends Node{
             MouseEventControl mec = new MouseEventControl(){
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){
-                    if (enablementState == EnablementState.ENABLED){
-                        if(event.isReleased()){
-                            if(currentState == ToggleState.FULLY_OFF){
-                                setState(ToggleState.TOGGLED_ON);
-                            } else if(allowedToBeUntoggled){
-                                setState(ToggleState.FULLY_OFF);
+                    if(MechanicalButton.desktopMouseMode){
+                        if(enablementState == EnablementState.ENABLED){
+                            if(event.isReleased()){
+                                if(currentState == ToggleState.FULLY_OFF){
+                                    setState(ToggleState.TOGGLED_ON);
+                                } else if(allowedToBeUntoggled){
+                                    setState(ToggleState.FULLY_OFF);
+                                }
                             }
                         }
                     }

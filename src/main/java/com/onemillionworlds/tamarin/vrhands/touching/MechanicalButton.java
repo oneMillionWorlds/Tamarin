@@ -25,6 +25,8 @@ import java.util.Optional;
 
 public class MechanicalButton extends Node{
 
+    static boolean desktopMouseMode = false;
+
     @Getter
     private float currentTravel = 0;
 
@@ -99,11 +101,12 @@ public class MechanicalButton extends Node{
             MouseEventControl mec = new MouseEventControl(){
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){
-                    if(event.isReleased()){
-                        setTravel(maximumButtonTravel);
-                        recordPressed();
+                    if(desktopMouseMode){
+                        if(event.isReleased()){
+                            setTravel(maximumButtonTravel);
+                            recordPressed();
+                        }
                     }
-
                 }
             };
 
@@ -210,6 +213,17 @@ public class MechanicalButton extends Node{
     public TerminateListener addPressListener(Runnable listener){
         pressListeners.add(listener);
         return () -> pressListeners.remove(listener);
+    }
+
+    /**
+     * DesktopMouseMode sets up lemur controls for mouse clicks on the button. This is useful for testing
+     * (or other cases where a normally VR application is being used in a desktop environment).
+     * <p>
+     * Note that setting this to true when in a VR environment may lead to double presses.
+     * </p>
+     */
+    public static void setDesktopMouseMode(boolean desktopMouseMode) {
+        MechanicalButton.desktopMouseMode = desktopMouseMode;
     }
 
 }
