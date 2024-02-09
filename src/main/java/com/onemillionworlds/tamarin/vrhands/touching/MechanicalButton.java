@@ -10,6 +10,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.lemursupport.NoPressMouseEventControl;
 import com.onemillionworlds.tamarin.observable.ObservableEvent;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.observable.TerminateListener;
@@ -24,8 +25,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class MechanicalButton extends Node{
-
-    static boolean desktopMouseMode = false;
 
     @Getter
     private float currentTravel = 0;
@@ -98,15 +97,15 @@ public class MechanicalButton extends Node{
         movingNode.attachChild(buttonGeometry);
 
         if(BoundHand.isLemurAvailable()){
-            MouseEventControl mec = new MouseEventControl(){
+            //As we are also using a AbstractTouchControl use a NoPressMouseEventControl to avoid double handling
+            MouseEventControl mec = new NoPressMouseEventControl(){
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){
-                    if(desktopMouseMode){
-                        if(event.isReleased()){
-                            setTravel(maximumButtonTravel);
-                            recordPressed();
-                        }
+                    if(event.isReleased()){
+                        setTravel(maximumButtonTravel);
+                        recordPressed();
                     }
+
                 }
             };
 
@@ -195,6 +194,7 @@ public class MechanicalButton extends Node{
      * </p>
      * @return an object that can be queried to determine if the button has been pressed
      */
+    @SuppressWarnings("unused")
     public ObservableEventSubscription subscribeToPressEvents(){
         return pressEvents.subscribe();
     }
@@ -215,15 +215,5 @@ public class MechanicalButton extends Node{
         return () -> pressListeners.remove(listener);
     }
 
-    /**
-     * DesktopMouseMode sets up lemur controls for mouse clicks on the button. This is useful for testing
-     * (or other cases where a normally VR application is being used in a desktop environment).
-     * <p>
-     * Note that setting this to true when in a VR environment may lead to double presses.
-     * </p>
-     */
-    public static void setDesktopMouseMode(boolean desktopMouseMode) {
-        MechanicalButton.desktopMouseMode = desktopMouseMode;
-    }
 
 }

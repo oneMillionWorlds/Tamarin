@@ -58,7 +58,7 @@ public class LemurSupport{
                         return new FullHandlingClickThroughResult(specialClickResult, true);
                     }
                     MouseEventControl mec = processedSpatial.getControl(MouseEventControl.class);
-                    if ( mec!=null ){
+                    if ( mec!=null && !(mec instanceof NoPressMouseEventControl)){
                         if (!dryRun){
                             mec.mouseButtonEvent(new MouseButtonEvent(0, true, 0, 0), processedSpatial, processedSpatial);
                         }

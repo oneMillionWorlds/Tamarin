@@ -10,6 +10,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.lemursupport.NoPressMouseEventControl;
 import com.onemillionworlds.tamarin.observable.ObservableValue;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import com.onemillionworlds.tamarin.observable.TerminateListener;
@@ -112,20 +113,19 @@ public class MechanicalToggle extends Node{
         movingNode.attachChild(buttonGeometry);
 
         if(BoundHand.isLemurAvailable()){
-            MouseEventControl mec = new MouseEventControl(){
+            MouseEventControl mec = new NoPressMouseEventControl(){
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){
-                    if(MechanicalButton.desktopMouseMode){
-                        if(enablementState == EnablementState.ENABLED){
-                            if(event.isReleased()){
-                                if(currentState == ToggleState.FULLY_OFF){
-                                    setState(ToggleState.TOGGLED_ON);
-                                } else if(allowedToBeUntoggled){
-                                    setState(ToggleState.FULLY_OFF);
-                                }
+                    if(enablementState == EnablementState.ENABLED){
+                        if(event.isReleased()){
+                            if(currentState == ToggleState.FULLY_OFF){
+                                setState(ToggleState.TOGGLED_ON);
+                            } else if(allowedToBeUntoggled){
+                                setState(ToggleState.FULLY_OFF);
                             }
                         }
                     }
+
                 }
             };
 
