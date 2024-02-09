@@ -10,6 +10,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.util.SafeArrayList;
 import com.onemillionworlds.tamarin.lemursupport.NoPressMouseEventControl;
 import com.onemillionworlds.tamarin.observable.ObservableEvent;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
@@ -36,7 +37,7 @@ public class MechanicalButton extends Node{
 
     private final ObservableEvent pressEvents = new ObservableEvent();
 
-    private final List<Runnable> pressListeners = new ArrayList<>();
+    private final List<Runnable> pressListeners = new SafeArrayList<>(Runnable.class);
 
     private final Node movingNode;
 

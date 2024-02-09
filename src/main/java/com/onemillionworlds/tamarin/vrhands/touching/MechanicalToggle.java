@@ -10,6 +10,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.util.SafeArrayList;
 import com.onemillionworlds.tamarin.lemursupport.NoPressMouseEventControl;
 import com.onemillionworlds.tamarin.observable.ObservableValue;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
@@ -34,7 +35,7 @@ public class MechanicalToggle extends Node{
 
     private final ObservableValue<Boolean> majorPressEvents = new ObservableValue<>(false);
 
-    private final List<Consumer<ToggleState>> pressListeners = new ArrayList<>();
+    private final List<Consumer<ToggleState>> pressListeners = new SafeArrayList<>(castClass(Consumer.class));
 
     private final Node movingNode;
 
@@ -341,6 +342,11 @@ public class MechanicalToggle extends Node{
         public boolean isAKindOfOn(){
             return this == TOGGLED_ON || this == TRANSITIONING_ON;
         }
+    }
+
+    @SuppressWarnings("unchecked") // Suppresses unchecked conversion warning
+    private static <T> Class<T> castClass(Class<?> clazz) {
+        return (Class<T>) clazz;
     }
 
     public enum EnablementState{
