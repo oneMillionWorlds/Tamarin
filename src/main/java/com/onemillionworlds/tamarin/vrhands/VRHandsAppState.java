@@ -103,6 +103,17 @@ public class VRHandsAppState extends BaseAppState{
         }
     }
 
+    /***
+     * Transfer hands (and all hand connected things) to a new root node. This is useful if you want to move the hands
+     * to a different viewport (e.g. an overlay viewport for a menu that's opened over the main world)
+     * @param rootNode This doesn't need to be "the" root node, just a node at the world origin. It could be the root of an overlay viewport
+     */
+    public void transferToNewRootNode(Node rootNode){
+        rootNodeDelegate.removeFromParent();
+        rootNode.attachChild(rootNodeDelegate);
+    }
+
+
     @Override
     protected void cleanup(Application app){
         rootNodeDelegate.removeFromParent();
