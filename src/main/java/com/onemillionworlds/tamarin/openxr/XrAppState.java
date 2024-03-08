@@ -106,10 +106,6 @@ public class XrAppState extends BaseAppState{
             xrSettings.setApplicationName(settings.getTitle());
         }
 
-        if (xrSettings.getNumberOfSamples()==-1){
-            xrSettings.setNumberOfSamples(settings.getSamples());
-        }
-
         if (settings.isVSync()){
             LOGGER.warning("VSync is enabled. This will cause stuttering in VR. Please disable it. Frame rate should be controlled by the headset, not the monitor");
         }
