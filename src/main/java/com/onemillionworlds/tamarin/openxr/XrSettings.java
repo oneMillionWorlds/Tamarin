@@ -50,6 +50,14 @@ public class XrSettings{
     @Setter
     boolean mainCameraFollowsVrCamera = true;
 
+    /**
+     * Samples affect antialiasing on the edge of the object. Set to 1, 2, 4, 8 etc. By default will inherit
+     * the main application's settings.
+     */
+    @Getter
+    @Setter
+    int numberOfSamples = -1;
+
     public XrSettings(){
         requiredXrExtensions.add(KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME); //openGL support
         requiredXrExtensions.add(EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
