@@ -5,15 +5,19 @@ import com.jme3.app.FlyCamAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.audio.AudioListenerState;
+import com.jme3.material.Material;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.shape.Box;
 import com.jme3.system.AppSettings;
 import com.jme3.system.lwjgl.LwjglWindow;
 import com.jme3.texture.FrameBuffer;
+import com.jme3.texture.Texture2D;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportData;
@@ -105,12 +109,21 @@ public class XrAppState extends BaseAppState{
         if (xrSettings.getApplicationName().isEmpty()){
             xrSettings.setApplicationName(settings.getTitle());
         }
+        if (xrSettings.getSamples() == -1){
+            xrSettings.setSamples(settings.getSamples());
+        }
+        if(xrSettings.getDrawMode() == DrawMode.AUTOSELECT){
+            xrSettings.setDrawMode(xrSettings.getSamples() > 1 ? DrawMode.BLITTED : DrawMode.DIRECT);
+        }
+        if (xrSettings.getSamples()>1 && xrSettings.getDrawMode() == DrawMode.DIRECT){
+            throw new RuntimeException("MSAA is not supported in DIRECT draw mode, change to COPIED");
+        }
 
         if (settings.isVSync()){
             LOGGER.warning("VSync is enabled. This will cause stuttering in VR. Please disable it. Frame rate should be controlled by the headset, not the monitor");
         }
 
-        xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings);
+        xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings, settings, app.getRenderer());
 
         int width = xrSession.getSwapchainWidth();
         int height = xrSession.getSwapchainHeight();

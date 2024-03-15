@@ -1,5 +1,7 @@
 package com.onemillionworlds.tamarin.openxr;
 
+import com.jme3.renderer.Renderer;
+import com.jme3.system.AppSettings;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
@@ -61,6 +63,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -145,6 +148,8 @@ public class OpenXrSessionManager{
 
     private final XrSettings xrSettings;
 
+    private final AppSettings regularSettings;
+
     @Getter
     private long predictedFrameTime;
 
@@ -160,9 +165,17 @@ public class OpenXrSessionManager{
      * Because of buffering the OpenXR swapchains ask for a series of images to be used to write to, these are
      * the buffers that are used to write to those images.
      */
-    private final Map<Integer, FrameBuffer> frameBuffers = new HashMap<>();
+    private final Map<Integer, FrameBuffer> frameBuffers_direct = new HashMap<>();
+
+    /**
+     * These bufferes are used to write to a texture, then copy the texture into the swapchain images. This is an
+     * alternative to the direct buffers, and is slower but may support features like MSAA.
+     */
+    private final EnumMap<EyeSide, FrameBuffer> frameBuffers_copied = new EnumMap<>(EyeSide.class);
 
     private final static Map<Integer, Image.Format> DESIRED_SWAPCHAIN_FORMATS = new LinkedHashMap<>();
+
+    private final Renderer renderer;
 
     static {
         DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
@@ -176,8 +189,8 @@ public class OpenXrSessionManager{
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB5_A1, Image.Format.RGB5A1);
     }
 
-    public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings){
-        OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings);
+    public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings,  Renderer renderer){
+        OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings, regularSettings, renderer);
         openXrSessionManager.window = windowHandle;
         openXrSessionManager.createOpenXRInstance();
         openXrSessionManager.determineOpenXRSystem();
@@ -197,8 +210,10 @@ public class OpenXrSessionManager{
         return sessionState == SessionState.FOCUSED;
     }
 
-    private OpenXrSessionManager(XrSettings xrSettings){
+    private OpenXrSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
         this.xrSettings = xrSettings;
+        this.regularSettings = regularSettings;
+        this.renderer = renderer;
     }
 
     private void createOpenXRInstance() {
@@ -668,6 +683,9 @@ public class OpenXrSessionManager{
 
             FrameBuffer leftFrameBuffer =null;
             FrameBuffer rightFrameBuffer =null;
+            int leftSwapchainImageIndex = -1;
+            int rightSwapchainImageIndex = -1;
+
             if (frameState.shouldRender()){
 
                 // set up to render view to the appropriate part of the swapchain image.
@@ -683,6 +701,8 @@ public class OpenXrSessionManager{
                     ));
                     int swapchainImageIndex = pi.get(0);
 
+
+
                     checkResponseCode(XR10.xrWaitSwapchainImage(
                             viewSwapchain.handle,
                             XrSwapchainImageWaitInfo.malloc(stack)
@@ -693,7 +713,20 @@ public class OpenXrSessionManager{
 
                     int image = viewSwapchain.images.get(swapchainImageIndex).image();
 
-                    FrameBuffer frameBuffer = getOrCreateFrameBuffer(image);
+                    if(viewIndex == 0){
+                        leftSwapchainImageIndex = image;
+                    }else{
+                        rightSwapchainImageIndex = image;
+                    }
+
+                    FrameBuffer frameBuffer;
+                    if(xrSettings.getDrawMode() == DrawMode.DIRECT){
+                        frameBuffer = getOrCreateDirectFrameBuffer(image);
+                    }else if(xrSettings.getDrawMode() == DrawMode.BLITTED){
+                        frameBuffer = getOrCreateCopiedFrameBuffer(viewIndex == 0 ? EyeSide.LEFT : EyeSide.RIGHT);
+                    } else {
+                        throw new IllegalStateException("Unsupported draw mode " + xrSettings.getDrawMode());
+                    }
 
                     if (viewIndex == 0){
                         leftFrameBuffer = frameBuffer;
@@ -705,19 +738,52 @@ public class OpenXrSessionManager{
 
             }
 
-            return new InProgressXrRender(true, frameState.shouldRender(), frameState.predictedDisplayTime(), leftEye, rightEye, leftFrameBuffer, rightFrameBuffer);
+            return new InProgressXrRender(true, frameState.shouldRender(), frameState.predictedDisplayTime(), leftEye, rightEye, leftFrameBuffer, rightFrameBuffer, leftSwapchainImageIndex, rightSwapchainImageIndex);
         }
     }
 
-    private FrameBuffer getOrCreateFrameBuffer(int swapchainImageId){
-        return frameBuffers.computeIfAbsent(swapchainImageId, id -> {
+    private FrameBuffer getOrCreateDirectFrameBuffer(int swapchainImageId){
+        return frameBuffers_direct.computeIfAbsent(swapchainImageId, id -> {
             Image.Format format = DESIRED_SWAPCHAIN_FORMATS.get(glColorFormat);
             Texture2D texture = new Texture2D(new SwapchainImage(id, format, swapchainWidth, swapchainHeight));
             FrameBuffer frameBuffer = new FrameBuffer(swapchainWidth, swapchainHeight, 1);
+            frameBuffer.setName("OpenXR direct buffer " + id);
             frameBuffer.addColorTarget(FrameBuffer.FrameBufferTarget.newTarget(texture));
             frameBuffer.setDepthTarget(FrameBuffer.FrameBufferTarget.newTarget(Image.Format.Depth));
             return frameBuffer;
         });
+    }
+
+    public FrameBuffer getOrCreateCopiedFrameBuffer(EyeSide side){
+        return frameBuffers_copied.computeIfAbsent(side, eyeSide -> {
+            Image.Format format = DESIRED_SWAPCHAIN_FORMATS.get(glColorFormat);
+            int samples = xrSettings.getSamples();
+            FrameBuffer eyeBuffer = new FrameBuffer(swapchainWidth, swapchainHeight, samples);
+            eyeBuffer.setName("OpenXR " + side + " eye buffer copied mode");
+            Texture2D texture = new Texture2D(swapchainWidth, swapchainHeight, samples, format);
+            Texture2D msDepth = new Texture2D(swapchainWidth, swapchainHeight, samples, Image.Format.Depth);
+            eyeBuffer.addColorTarget(FrameBuffer.FrameBufferTarget.newTarget(texture));
+            eyeBuffer.setDepthTarget(FrameBuffer.FrameBufferTarget.newTarget(msDepth));
+            return eyeBuffer;
+        });
+    }
+
+    private void glErrorCheck(String message){
+        int error = GL11.glGetError();
+        if(error != GL11.GL_NO_ERROR){
+            System.out.println("OpenGL Error: " + error + " " + message);
+        }
+    }
+
+    /**
+     * Blit from one framebuffer to another, resolving the multisampled buffer to the non-multisampled buffer.
+     * (This is usually done for MSAA).
+     */
+    private void resolveDownMultiSampled(FrameBuffer multisampledFrameBuffer, FrameBuffer nonSampledFrameBuffer){
+        glErrorCheck("Pre Resolve");
+        renderer.clearClipRect();
+        renderer.copyFrameBuffer(multisampledFrameBuffer, nonSampledFrameBuffer, true, false);
+        glErrorCheck("Resolve");
     }
 
     public void presentFrameBuffersToOpenXr(InProgressXrRender continuation){
@@ -725,7 +791,6 @@ public class OpenXrSessionManager{
         if (!continuation.inProgressXr){
             return;
         }
-
 
         try (MemoryStack stack = stackPush()) {
 
@@ -744,8 +809,14 @@ public class OpenXrSessionManager{
                 );
 
                 for(int viewIndex=0;viewIndex<2;viewIndex++){
-
                     Swapchain viewSwapchain = swapchains[viewIndex];
+                    if(xrSettings.drawMode == DrawMode.BLITTED){
+                        // In blitted mode the JME scene has been rendered to an intermediate buffer and must be blitted
+                        // into the final swapchain buffer (which resolves samples as it goes)
+                        int viewSwapchainImageIndex = viewIndex == 0 ? continuation.leftSwapchainImageIndex : continuation.rightSwapchainImageIndex;
+                        FrameBuffer viewBuffer = viewIndex == 0 ? continuation.leftBufferToRenderTo : continuation.rightBufferToRenderTo;
+                        resolveDownMultiSampled(viewBuffer, getOrCreateDirectFrameBuffer(viewSwapchainImageIndex));
+                    }
 
                     XrCompositionLayerProjectionView projectionLayerView = projectionLayerViews.get(viewIndex)
                             .pose(views.get(viewIndex).pose())

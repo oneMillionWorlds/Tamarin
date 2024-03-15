@@ -20,7 +20,7 @@ public class InProgressXrRender{
             new FieldOfViewData(0,0,0,0)
     );
 
-    public static InProgressXrRender NO_XR_FRAME = new InProgressXrRender(false, false, 0, NO_EYE_POSITION, NO_EYE_POSITION, null, null);
+    public static InProgressXrRender NO_XR_FRAME = new InProgressXrRender(false, false, 0, NO_EYE_POSITION, NO_EYE_POSITION, null, null, -1, -1);
 
     boolean inProgressXr;
     boolean shouldRender;
@@ -31,6 +31,9 @@ public class InProgressXrRender{
 
     FrameBuffer leftBufferToRenderTo;
     FrameBuffer rightBufferToRenderTo;
+
+    int leftSwapchainImageIndex;
+    int rightSwapchainImageIndex;
 
     public record EyePositionData(
             Vector3f eyePosition,

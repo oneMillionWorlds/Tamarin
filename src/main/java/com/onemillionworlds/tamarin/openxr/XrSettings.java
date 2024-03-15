@@ -16,7 +16,21 @@ public class XrSettings{
 
     @Getter
     @Setter
+    DrawMode drawMode = DrawMode.AUTOSELECT;
+
+    @Getter
+    @Setter
     private String applicationName = "";
+
+    /**
+     * Samples are used in MSAA to provide antialiasing at the boundaries of objects. Should be 1,2, 4, 8 etc
+     * <p>
+     * -1 means "use the JME settings"
+     * </p>
+     */
+    @Getter
+    @Setter
+    private int samples = -1;
 
     /**
      * Extensions that will be attempted to be bound to the session.
