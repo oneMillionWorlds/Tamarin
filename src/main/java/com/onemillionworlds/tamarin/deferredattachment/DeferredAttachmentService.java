@@ -40,11 +40,17 @@ public class DeferredAttachmentService extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
-        executor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = Executors.defaultThreadFactory().newThread(r);
-            t.setDaemon(true);
-            return t;
-        });
+        startExecutorIfRequired();
+    }
+
+    private void startExecutorIfRequired(){
+        if(executor == null){
+            executor = Executors.newSingleThreadExecutor(r -> {
+                Thread t = Executors.defaultThreadFactory().newThread(r);
+                t.setDaemon(true);
+                return t;
+            });
+        }
     }
 
     @Override
@@ -162,6 +168,7 @@ public class DeferredAttachmentService extends BaseAppState{
      * On the futures completion the node should be safe to add to the scene graph without causing performance hiccoughs
      */
     public Future<Spatial> prepareSpatial(Spatial spatialToPrepare){
+        startExecutorIfRequired();
         return executor.submit(() ->{
             generateCollisionData(spatialToPrepare);
             return spatialToPrepare;
@@ -174,6 +181,7 @@ public class DeferredAttachmentService extends BaseAppState{
      * to the scene graph without causing performance hiccoughs
      */
     public Future<Spatial> prepareSpatial(Supplier<Spatial> spatialToPrepare){
+        startExecutorIfRequired();
         return executor.submit(() ->{
             Spatial spatial = spatialToPrepare.get();
             generateCollisionData(spatial);
