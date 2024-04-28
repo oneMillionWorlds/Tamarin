@@ -21,10 +21,10 @@ import com.simsilica.lemur.event.MouseEventControl;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class MechanicalToggle extends Node{
 
@@ -36,6 +36,10 @@ public class MechanicalToggle extends Node{
     private final ObservableValue<Boolean> majorPressEvents = new ObservableValue<>(false);
 
     private final List<Consumer<ToggleState>> pressListeners = new SafeArrayList<>(castClass(Consumer.class));
+
+    private final List<Runnable> tutorialModePressListeners = new SafeArrayList<>(castClass(Runnable.class));
+
+    private boolean tutorialResetReadyToFire = true;
 
     private final Node movingNode;
 
@@ -69,9 +73,7 @@ public class MechanicalToggle extends Node{
     @Setter
     private boolean allowedToBeUntoggled = true;
 
-    @Getter
-    @Setter
-    private EnablementState enablementState = EnablementState.ENABLED;
+    private Supplier<EnablementState> enablementState = () -> EnablementState.ENABLED;
 
     public MechanicalToggle(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravelPoint, float toggleInTravel, float resetTime){
         assert toggleInTravel<maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
@@ -117,14 +119,24 @@ public class MechanicalToggle extends Node{
             MouseEventControl mec = new NoPressMouseEventControl(){
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture){
+                    if(!event.isReleased()){
+                        return;
+                    }
+
+                    EnablementState enablementState = getEnablementState();
                     if(enablementState == EnablementState.ENABLED){
-                        if(event.isReleased()){
-                            if(currentState == ToggleState.FULLY_OFF){
-                                setState(ToggleState.TOGGLED_ON);
-                            } else if(allowedToBeUntoggled){
-                                setState(ToggleState.FULLY_OFF);
-                            }
+                        if(currentState == ToggleState.FULLY_OFF){
+                            setState(ToggleState.TOGGLED_ON);
+                        } else if(allowedToBeUntoggled){
+                            setState(ToggleState.FULLY_OFF);
                         }
+                    }
+                    if(enablementState == EnablementState.TUTORIAL_MODE){
+
+                        for(Runnable listener : tutorialModePressListeners){
+                            listener.run();
+                        }
+
                     }
 
                 }
@@ -137,6 +149,7 @@ public class MechanicalToggle extends Node{
                 new AbstractTouchControl(){
                     @Override
                     protected void controlUpdate(float tpf){
+                        EnablementState enablementState = getEnablementState();
                         getTouchingHand().ifPresent(hand -> {
                             if (enablementState == EnablementState.DISABLED_LOCKED){
                                 return;
@@ -162,10 +175,15 @@ public class MechanicalToggle extends Node{
                         if (getTouchingHand().isEmpty()) {
 
                             if (currentTravel>toggleInTravel){
-                                if (currentState == ToggleState.FULLY_OFF){
-                                    updateAndNotifyState(ToggleState.TRANSITIONING_ON);
-                                } else if (currentState == ToggleState.TOGGLED_ON && allowedToBeUntoggled){
-                                    updateAndNotifyState(ToggleState.TRANSITIONING_OFF);
+                                if(enablementState == EnablementState.ENABLED){
+                                    if(currentState == ToggleState.FULLY_OFF){
+                                        updateAndNotifyState(ToggleState.TRANSITIONING_ON);
+                                    } else if(currentState == ToggleState.TOGGLED_ON && allowedToBeUntoggled){
+                                        updateAndNotifyState(ToggleState.TRANSITIONING_OFF);
+                                    }
+                                } else if (enablementState == EnablementState.TUTORIAL_MODE && tutorialResetReadyToFire){
+                                    updateAndNotifyState(ToggleState.FULLY_OFF);
+                                    tutorialResetReadyToFire = false;
                                 }
                             }
                             float distanceInThisTick = maximumButtonTravelPoint * tpf/resetTime;
@@ -179,6 +197,11 @@ public class MechanicalToggle extends Node{
                                     }
                                 }
                             }
+
+                            if(currentTravel<=0){
+                                tutorialResetReadyToFire = true;
+                            }
+
                             if (currentState == ToggleState.TRANSITIONING_OFF || currentState == ToggleState.FULLY_OFF){
                                 if (currentTravel>0){
                                     newTravel-=distanceInThisTick;
@@ -195,6 +218,24 @@ public class MechanicalToggle extends Node{
                 }
 
         );
+    }
+
+    public EnablementState getEnablementState(){
+        return enablementState.get();
+    }
+
+    public void setEnablementState(EnablementState enablementState){
+        this.enablementState = () -> enablementState;
+    }
+
+    /**
+     * Allows the enablement state to be dynamically determined. This is useful if the enablement state is dependent on
+     * some wider state in the application (and you don't want to have to be called setEnablementState every time that
+     * changes)
+     * @param enablementState a supplier that will be called to determine the enablement state of the button
+     */
+    public void setDynamicEnablementState(Supplier<EnablementState> enablementState){
+        this.enablementState = enablementState;
     }
 
     /**
@@ -279,6 +320,22 @@ public class MechanicalToggle extends Node{
     }
 
     /**
+     * Adds a listener that will be called when the button is fully depressed in tutorial mode. This is useful if you
+     * want to explain what the button does when it is pressed in tutorial mode.
+     *
+     * <p>
+     *     see {@link EnablementState#TUTORIAL_MODE} and {@link MechanicalToggle#setEnablementState(EnablementState)}
+     * </p>
+     *
+     * @param listener the listener that will be called when the button is fully depressed in tutorial mode.
+     * @return  A TerminateListener is returned, calling this de-registers the listener.
+     */
+    public TerminateListener addTutorialModePressListener(Runnable listener){
+        tutorialModePressListeners.add(listener);
+        return () -> tutorialModePressListeners.remove(listener);
+    }
+
+    /**
      * This manually sets the state of the button. ToggleState.TOGGLED_ON and {@link ToggleState#FULLY_OFF} move
      * the button to those set points. {@link ToggleState#TRANSITIONING_OFF} allows the button to slowly relax from a
      * locked position.
@@ -309,6 +366,7 @@ public class MechanicalToggle extends Node{
         if (currentState == state){
             return;
         }
+        EnablementState enablementState = getEnablementState();
         if (enablementState != EnablementState.ENABLED){
             return;
         }
@@ -361,7 +419,20 @@ public class MechanicalToggle extends Node{
         /**
          * Toggle button ignores the finger entirely, becomes static part of scene
          */
-        DISABLED_LOCKED
+        DISABLED_LOCKED,
+
+        /**
+         * Toggle button never changes state, but still visually moves when touched with the finger. When
+         * the button is fully depressed tutorialModePressListeners are called. The idea is that if your application is
+         * in "help mode" the toggle is disabled but any press on the button will explain what the button does (which
+         * must be hooked up by the application).
+         *
+         * <p>
+         *     See {@link MechanicalToggle#addTutorialModePressListener(Runnable)}
+         * </p>
+         *
+         */
+        TUTORIAL_MODE
     }
 
 }
