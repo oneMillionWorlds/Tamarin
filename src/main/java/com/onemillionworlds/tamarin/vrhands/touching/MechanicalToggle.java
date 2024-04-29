@@ -182,7 +182,7 @@ public class MechanicalToggle extends Node{
                                         updateAndNotifyState(ToggleState.TRANSITIONING_OFF);
                                     }
                                 } else if (enablementState == EnablementState.TUTORIAL_MODE && tutorialResetReadyToFire){
-                                    updateAndNotifyState(ToggleState.FULLY_OFF);
+                                    tutorialModePressListeners.forEach(Runnable::run);
                                     tutorialResetReadyToFire = false;
                                 }
                             }
