@@ -34,8 +34,15 @@ public class DeferredAttachmentService extends BaseAppState{
 
     List<NodeData> autoAttachings = new ArrayList<>();
 
+    private final int numberOfThreads;
+
     public DeferredAttachmentService(){
+        this(1);
+    }
+
+    public DeferredAttachmentService(int numberOfThreads){
         super(ID);
+        this.numberOfThreads = numberOfThreads;
     }
 
     @Override
@@ -45,7 +52,7 @@ public class DeferredAttachmentService extends BaseAppState{
 
     private void startExecutorIfRequired(){
         if(executor == null){
-            executor = Executors.newSingleThreadExecutor(r -> {
+            executor = Executors.newFixedThreadPool(numberOfThreads, r -> {
                 Thread t = Executors.defaultThreadFactory().newThread(r);
                 t.setDaemon(true);
                 return t;
