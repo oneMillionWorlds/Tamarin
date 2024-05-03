@@ -2,6 +2,9 @@ package com.onemillionworlds.tamarin.deferredattachment;
 
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.bounding.BoundingSphere;
+import com.jme3.collision.CollisionResults;
+import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -197,8 +200,14 @@ public class DeferredAttachmentService extends BaseAppState{
     }
 
     private void generateCollisionData(Spatial spatialToPrepare){
+        CollisionResults collisionResult = new CollisionResults();
+        //a sphere that won't actually collide with anything, to avoid unnecessary calculation
+        BoundingSphere boundingSphere = new BoundingSphere(0.01f, new Vector3f(1000000,1000000,100000));
+
         if (spatialToPrepare instanceof Geometry geometry){
-            geometry.getMesh().createCollisionData();
+            //by doing a geometry.collideWith (rather than geometry.getMesh().createCollisionData()) the collision
+            //data is calculated only if not already calculated
+            geometry.collideWith(boundingSphere, collisionResult);
         }else if (spatialToPrepare instanceof Node) {
             for(Spatial child : ((Node)spatialToPrepare).getChildren()){
                 generateCollisionData(child);
