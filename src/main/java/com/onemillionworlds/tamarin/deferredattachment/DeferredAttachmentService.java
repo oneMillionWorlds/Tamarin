@@ -65,7 +65,9 @@ public class DeferredAttachmentService extends BaseAppState{
 
     @Override
     protected void cleanup(Application app){
-        executor.shutdown();
+        if(executor != null){
+            executor.shutdown();
+        }
     }
 
     /**
