@@ -84,7 +84,7 @@ public class XrUtils{
         );
     }
 
-    static <S extends Struct, T extends StructBuffer<S, T>> T fill(T buffer, int offset, int value) {
+    static <S extends Struct<S>, T extends StructBuffer<S, T>> T fill(T buffer, int offset, int value) {
         long ptr    = buffer.address() + offset;
         int  stride = buffer.sizeof();
         for (long i = 0; i < buffer.limit(); i++) {
@@ -111,7 +111,7 @@ public class XrUtils{
      * @return sessionCreateInfo (after appending a graphics binding to it)
      * @throws IllegalStateException If the current OS and/or windowing system needs EGL, but <b>useEGL</b> is false
      */
-    static Struct createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
+    static Struct<?> createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
         if (useEGL) {
             long eglDisplay = glfwGetEGLDisplay();
 
