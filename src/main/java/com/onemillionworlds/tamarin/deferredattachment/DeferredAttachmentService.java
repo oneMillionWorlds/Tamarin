@@ -14,6 +14,7 @@ import lombok.Value;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,7 +36,7 @@ public class DeferredAttachmentService extends BaseAppState{
 
     ExecutorService executor;
 
-    List<NodeData> autoAttachings = new ArrayList<>();
+    ConcurrentLinkedQueue<NodeData> autoAttachings = new ConcurrentLinkedQueue<>();
 
     private final int numberOfThreads;
 
