@@ -4,6 +4,7 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.math.Line3f;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 
@@ -53,13 +54,21 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 startHandPosition = targetParent.worldToLocal(new Vector3f(hand.getHandNode_xPointing().getWorldTranslation()), null);
                 startHandRotation = targetParent.getWorldRotation().inverse().mult(new Quaternion(hand.getHandNode_xPointing().getWorldRotation()));
                 handToTargetOffset = startTargetPosition.subtract(startHandPosition);
+
+                assert !TamarinUtilities.isNaN(startTargetPosition) : "startTargetPosition is NaN";
+                assert !TamarinUtilities.isNaN(startTargetRotation) : "startTargetRotation is NaN";
             }
             Vector3f currentHandPosition = targetParent.worldToLocal(hand.getHandNode_xPointing().getWorldTranslation(), null);
             Quaternion currentHandRotation = targetParent.getWorldRotation().inverse().mult(hand.getHandNode_xPointing().getWorldRotation());
 
+            assert !TamarinUtilities.isNaN(currentHandPosition) : "currentHandPosition is NaN";
+            assert !TamarinUtilities.isNaN(currentHandRotation) : "currentHandRotation is NaN";
+
             Vector3f bulkMotion = currentHandPosition.subtract(startHandPosition);
 
             Quaternion changeInRotation = getQuaternionFromTo(startHandRotation, currentHandRotation);
+
+            assert !TamarinUtilities.isNaN(changeInRotation) : "changeInRotation is NaN";
 
             if (this.shouldApplyRotation){
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
@@ -69,6 +78,9 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 Quaternion newLocalRotation = changeInRotation.mult(startTargetRotation);
                 Quaternion changeInLocalRotationThisTick = getQuaternionFromTo(moveTargetSpatial.getLocalRotation(), newLocalRotation);
+
+                assert !TamarinUtilities.isNaN(newLocalTranslation) : "newLocalTranslation is NaN";
+                assert !TamarinUtilities.isNaN(newLocalRotation) : "newLocalRotation is NaN";
 
                 moveTargetSpatial.setLocalRotation(newLocalRotation);
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
@@ -135,4 +147,5 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
         return to.mult(from.inverse());
 
     }
+
 }

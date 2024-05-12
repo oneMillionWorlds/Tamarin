@@ -145,5 +145,13 @@ public class TamarinUtilities{
         return results;
     }
 
+    public static boolean isNaN(Quaternion quaternion){
+        return Float.isNaN(quaternion.getX()) || Float.isNaN(quaternion.getY()) || Float.isNaN(quaternion.getZ()) || Float.isNaN(quaternion.getW());
+    }
+
+    public static boolean isNaN(Vector3f vector){
+        return Float.isNaN(vector.getX()) || Float.isNaN(vector.getY()) || Float.isNaN(vector.getZ());
+    }
+
 }
 
