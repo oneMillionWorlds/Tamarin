@@ -9,9 +9,6 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Sphere;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
-import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
-
-import java.util.Optional;
 
 /**
  * If given a node to pick against will pick to determine distance and place a marker there
@@ -48,7 +45,9 @@ public class PickMarkerFunction implements BoundHandFunction{
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
 
-        BoundHand.firstNonSkippedHit(boundHand.pickBulkHand(pickMarkerAgainstContinuous)).ifPresentOrElse(
+        BoundHand.firstNonSkippedHit(boundHand.pickBulkHand(pickMarkerAgainstContinuous))
+                .filter(hit -> Float.isFinite(hit.getDistance())) //work around for JME bug #2284
+                .ifPresentOrElse(
                 hit -> {
                     pickMarker.setCullHint(Spatial.CullHint.Inherit);
                     pickMarker.setLocalTranslation(hit.getDistance(), 0, 0);
