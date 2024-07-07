@@ -17,6 +17,10 @@ public class RestrictToGlobalLine implements GrabMoveRestriction{
         this.restrictToLine = restrictToLine;
     }
 
+    public RestrictToGlobalLine(Vector3f min, Vector3f max){
+        this(new Line3f(min, max));
+    }
+
     @Override
     public Vector3f restrictPosition(Vector3f naturalPositionLocal, RestrictionUtilities restrictionUtilities){
         return restrictionUtilities.globalPositionToLocalPosition(restrictToLine.findPointOfClosedApproach(restrictionUtilities.localPositionToGlobalPosition(naturalPositionLocal)));

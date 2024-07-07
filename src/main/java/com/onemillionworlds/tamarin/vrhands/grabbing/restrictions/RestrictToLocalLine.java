@@ -14,8 +14,14 @@ public class RestrictToLocalLine implements GrabMoveRestriction{
 
     private final Line3f restrictToLine;
 
+
+
     public RestrictToLocalLine(Line3f restrictToLine){
         this.restrictToLine = restrictToLine;
+    }
+
+    public RestrictToLocalLine(Vector3f minPosition, Vector3f maxPosition){
+        this(new Line3f(minPosition, maxPosition));
     }
 
     @Override

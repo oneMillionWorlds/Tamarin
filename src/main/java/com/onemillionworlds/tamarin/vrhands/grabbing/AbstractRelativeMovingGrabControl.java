@@ -33,8 +33,8 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
     private SnapToPoints snapToPoints = SnapToPoints.EMPTY;
 
     private final RestrictionUtilities restrictionUtilities = new RestrictionUtilities(
-            (localPosition) -> getMoveTargetSpatial().localToWorld(localPosition, null),
-            (globalPosition) -> getMoveTargetSpatial().worldToLocal(globalPosition, null)
+            (localPosition) -> getMoveTargetSpatial().getParent().localToWorld(localPosition, null),
+            (globalPosition) -> getMoveTargetSpatial().getParent().worldToLocal(globalPosition, null)
     );
 
     /**
@@ -143,7 +143,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      * The move target will remain on that path. The path is relative to the move target's parent
      * </p>
      * <p>
-     * Deprecated; use {@link #setGrabRestriction(GrabMoveRestriction)} instead
+     * Deprecated; use {@link #setGrabMoveRestriction(GrabMoveRestriction)} instead
      * </p>
      */
     @Deprecated
@@ -155,7 +155,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      * Sets the restriction that will be applied to the move target's position. This allows for restrictions to be
      * placed on how teh grabbed object can be moved.
      */
-    public void setGrabRestriction(GrabMoveRestriction restriction){
+    public void setGrabMoveRestriction(GrabMoveRestriction restriction){
         grabRestriction = restriction;
     }
 
