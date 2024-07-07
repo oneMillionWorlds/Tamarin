@@ -7,6 +7,10 @@ import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.math.Line3f;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
+import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.GrabMoveRestriction;
+import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictToLocalLine;
+import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
+import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.Unrestricted;
 
 import java.util.Optional;
 
@@ -15,15 +19,20 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
     private static final Quaternion UNROTATED_QUATERNION = new Quaternion().fromAngleAxis(0, Vector3f.UNIT_Y);
 
-    Vector3f startTargetPosition;
-    Vector3f startHandPosition;
-    Vector3f handToTargetOffset;
-    Quaternion startTargetRotation;
-    Quaternion startHandRotation;
+    private Vector3f startTargetPosition;
+    private Vector3f startHandPosition;
+    private Vector3f handToTargetOffset;
+    private Quaternion startTargetRotation;
+    private Quaternion startHandRotation;
 
-    Optional<Line3f> restrictToLine = Optional.empty();
+    private GrabMoveRestriction grabRestriction = Unrestricted.INSTANCE;
 
     private boolean shouldApplyRotation = true;
+
+    private final RestrictionUtilities restrictionUtilities = new RestrictionUtilities(
+            (localPosition) -> getMoveTargetSpatial().localToWorld(localPosition, null),
+            (globalPosition) -> getMoveTargetSpatial().worldToLocal(globalPosition, null)
+    );
 
     /**
      * This is a control that allows for simple hand grab. When grabbed the object will be moved around with the hand.
@@ -74,7 +83,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
 
                 Vector3f fullMotionDuringFullGrab = bulkMotion.add(rotationInducedMotion);
-                Vector3f newLocalTranslation = applyLineRestriction(startTargetPosition.add(fullMotionDuringFullGrab));
+                Vector3f newLocalTranslation = applyPositionRestriction(startTargetPosition.add(fullMotionDuringFullGrab));
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 Quaternion newLocalRotation = changeInRotation.mult(startTargetRotation);
                 Quaternion changeInLocalRotationThisTick = getQuaternionFromTo(moveTargetSpatial.getLocalRotation(), newLocalRotation);
@@ -86,7 +95,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
                 whileGrabbing(hand, changeInLocalTranslationThisTick, changeInLocalRotationThisTick);
             }else{
-                Vector3f newLocalTranslation = applyLineRestriction(startTargetPosition.add(bulkMotion));
+                Vector3f newLocalTranslation = applyPositionRestriction(startTargetPosition.add(bulkMotion));
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
                 whileGrabbing(hand, changeInLocalTranslationThisTick, UNROTATED_QUATERNION);
@@ -117,17 +126,30 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
     }
 
 
-    private Vector3f applyLineRestriction(Vector3f unrestrictedPosition){
-        return restrictToLine.map(l -> l.findPointOfClosedApproach(unrestrictedPosition)).orElse(unrestrictedPosition);
+    private Vector3f applyPositionRestriction(Vector3f unrestrictedPosition){
+        return grabRestriction.restrictPosition(unrestrictedPosition, restrictionUtilities);
     }
 
     /**
      * Restricts the move target (often, but not always the spatial this control is attached to).
      * <p>
      * The move target will remain on that path. The path is relative to the move target's parent
+     * </p>
+     * <p>
+     * Deprecated; use {@link #setGrabRestriction(GrabMoveRestriction)} instead
+     * </p>
      */
+    @Deprecated
     public void restrictToPath(Vector3f startPoint, Vector3f endPoint){
-        restrictToLine = Optional.of(new Line3f(startPoint, endPoint));
+        grabRestriction = new RestrictToLocalLine(new Line3f(startPoint, endPoint));
+    }
+
+    /**
+     * Sets the restriction that will be applied to the move target's position. This allows for restrictions to be
+     * placed on how teh grabbed object can be moved.
+     */
+    public void setGrabRestriction(GrabMoveRestriction restriction){
+        grabRestriction = restriction;
     }
 
     /**
