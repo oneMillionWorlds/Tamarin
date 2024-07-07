@@ -11,6 +11,7 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.GrabMoveRestri
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictToLocalLine;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.Unrestricted;
+import com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints.SnapToPoints;
 
 import java.util.Optional;
 
@@ -28,6 +29,8 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
     private GrabMoveRestriction grabRestriction = Unrestricted.INSTANCE;
 
     private boolean shouldApplyRotation = true;
+
+    private SnapToPoints snapToPoints = SnapToPoints.EMPTY;
 
     private final RestrictionUtilities restrictionUtilities = new RestrictionUtilities(
             (localPosition) -> getMoveTargetSpatial().localToWorld(localPosition, null),
@@ -83,7 +86,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
 
                 Vector3f fullMotionDuringFullGrab = bulkMotion.add(rotationInducedMotion);
-                Vector3f newLocalTranslation = applyPositionRestriction(startTargetPosition.add(fullMotionDuringFullGrab));
+                Vector3f newLocalTranslation = applySnapToPoints(applyPositionRestriction(startTargetPosition.add(fullMotionDuringFullGrab)));
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 Quaternion newLocalRotation = changeInRotation.mult(startTargetRotation);
                 Quaternion changeInLocalRotationThisTick = getQuaternionFromTo(moveTargetSpatial.getLocalRotation(), newLocalRotation);
@@ -95,7 +98,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
                 whileGrabbing(hand, changeInLocalTranslationThisTick, changeInLocalRotationThisTick);
             }else{
-                Vector3f newLocalTranslation = applyPositionRestriction(startTargetPosition.add(bulkMotion));
+                Vector3f newLocalTranslation = applySnapToPoints(applyPositionRestriction(startTargetPosition.add(bulkMotion)));
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
                 whileGrabbing(hand, changeInLocalTranslationThisTick, UNROTATED_QUATERNION);
@@ -130,6 +133,10 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
         return grabRestriction.restrictPosition(unrestrictedPosition, restrictionUtilities);
     }
 
+    private Vector3f applySnapToPoints(Vector3f unsnappedPosition){
+        return snapToPoints.snap(unsnappedPosition, restrictionUtilities).orElse(unsnappedPosition);
+    }
+
     /**
      * Restricts the move target (often, but not always the spatial this control is attached to).
      * <p>
@@ -157,6 +164,19 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      */
     public void setShouldApplyRotation( boolean shouldApplyRotation ){
         this.shouldApplyRotation = shouldApplyRotation;
+    }
+
+    /**
+     * SnapToPoints are points that if the grabbed object is within a certain distance of, it will snap to that point
+     * (rather than exactly following the hand).
+     * <p>
+     * Be aware snapped points take place after restrictions, ideally make all snapped points within the restricted
+     * area to avoid unexpected behaviour.
+     * </p>
+     * @param snapToPoints object defining the snap behaviour
+     */
+    public void setSnapToPoints(SnapToPoints snapToPoints){
+        this.snapToPoints = snapToPoints;
     }
 
     /**
