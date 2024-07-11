@@ -88,7 +88,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 Vector3f rotationInducedMotion = changeInRotation.mult(handToTargetOffset).subtract(handToTargetOffset);
 
                 Vector3f fullMotionDuringFullGrab = bulkMotion.add(rotationInducedMotion);
-                Vector3f newLocalTranslation = applySnapToPoints(applyPositionRestriction(startTargetPosition.add(fullMotionDuringFullGrab)), hand.getHandSide());
+                Vector3f newLocalTranslation = applySnapToPoints(applyPositionRestriction(startTargetPosition.add(fullMotionDuringFullGrab)), hand);
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 Quaternion newLocalRotation = changeInRotation.mult(startTargetRotation);
                 Quaternion changeInLocalRotationThisTick = getQuaternionFromTo(moveTargetSpatial.getLocalRotation(), newLocalRotation);
@@ -100,7 +100,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
                 whileGrabbing(hand, changeInLocalTranslationThisTick, changeInLocalRotationThisTick);
             }else{
-                Vector3f newLocalTranslation = applySnapToPoints(applyPositionRestriction(startTargetPosition.add(bulkMotion)), hand.getHandSide());
+                Vector3f newLocalTranslation = applySnapToPoints(applyPositionRestriction(startTargetPosition.add(bulkMotion)), hand);
                 Vector3f changeInLocalTranslationThisTick = newLocalTranslation.subtract(moveTargetSpatial.getLocalTranslation());
                 moveTargetSpatial.setLocalTranslation(newLocalTranslation);
                 whileGrabbing(hand, changeInLocalTranslationThisTick, UNROTATED_QUATERNION);
@@ -130,12 +130,11 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
         //do nothing by default, this is a callback if child classes want to do something with the change
     }
 
-
     private Vector3f applyPositionRestriction(Vector3f unrestrictedPosition){
         return grabRestriction.restrictPosition(unrestrictedPosition, restrictionUtilities);
     }
 
-    private Vector3f applySnapToPoints(Vector3f unsnappedPosition, HandSide handSide){
+    private Vector3f applySnapToPoints(Vector3f unsnappedPosition, BoundHand handSide){
         return snapToPoints.snap(unsnappedPosition, restrictionUtilities, handSide).orElse(unsnappedPosition);
     }
 

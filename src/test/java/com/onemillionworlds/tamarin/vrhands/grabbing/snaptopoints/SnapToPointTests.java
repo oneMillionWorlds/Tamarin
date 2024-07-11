@@ -2,6 +2,7 @@ package com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints;
 
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import static org.mockito.Mockito.mock;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,6 +22,8 @@ class SnapToPointTests{
     private final SnapToPoint snapToPoint3 = new SnapToPoint(new Vector3f(3, 3, 3), 2.0f);
 
     static Vector3f localPositionOrigin = new Vector3f(100, 1000, 10000);
+
+    private final BoundHand mockHand = mock(BoundHand.class);
 
     private static final RestrictionUtilities restrictionUtilities = new RestrictionUtilities(
             local -> local.add(localPositionOrigin),
@@ -31,7 +36,7 @@ class SnapToPointTests{
         SnapToPoints snapToPoints = new SnapToPoints(false, Collections.emptyList());
 
         Vector3f position = new Vector3f(0, 0, 0);
-        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, mockHand);
 
         assertFalse(result.isPresent(), "No points to snap to should return empty");
     }
@@ -41,7 +46,7 @@ class SnapToPointTests{
         SnapToPoints snapToPoints = new SnapToPoints(false, List.of(snapToPoint1, snapToPoint2));
 
         Vector3f position = new Vector3f(0, 0, 0);
-        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, mockHand);
 
         assertTrue(result.isPresent(), "Position within radius should snap");
         assertEquals(new Vector3f(1, 1, 1), result.get(), "Position should snap to the closest point");
@@ -52,7 +57,7 @@ class SnapToPointTests{
         SnapToPoints snapToPoints = new SnapToPoints(false, List.of(snapToPoint1, snapToPoint2));
 
         Vector3f position = new Vector3f(5, 5, 5);
-        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, mockHand);
 
         assertFalse(result.isPresent(), "Position outside radius should not snap");
     }
@@ -62,7 +67,7 @@ class SnapToPointTests{
         SnapToPoints snapToPoints = new SnapToPoints(false, List.of(snapToPoint1, snapToPoint2, snapToPoint3));
 
         Vector3f position = new Vector3f(2.1f, 2.1f, 2.1f);
-        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, mockHand);
 
         assertTrue(result.isPresent(), "Position within radius of multiple points should snap");
         assertEquals(new Vector3f(2, 2, 2), result.get(), "Position should snap to the closest point");
@@ -76,7 +81,7 @@ class SnapToPointTests{
         SnapToPoints snapToPoints = new SnapToPoints(true, List.of(snapToPointGlobal));
 
         Vector3f position = new Vector3f(0.5f,0.5f,0.5f);
-        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result = snapToPoints.snap(position, restrictionUtilities, mockHand);
 
         assertTrue(result.isPresent(), "Position within global radius should snap");
         assertEquals(new Vector3f(0, 0, 0), result.get(), "Position should snap to the transformed closest point (but in local coords)");
@@ -97,21 +102,21 @@ class SnapToPointTests{
         Vector3f position2 = new Vector3f(2f, 2f, 2f);
 
         // Snap to first point
-        Optional<Vector3f> result1 = snapToPoints.snap(position1, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result1 = snapToPoints.snap(position1, restrictionUtilities, mockHand);
         assertTrue(result1.isPresent(), "Position within radius should snap");
         assertEquals(new Vector3f(1, 1, 1), result1.get(), "Position should snap to the first point");
         assertEquals(onSnap.poll().localPosition, new Vector3f(1, 1, 1), "OnSnap should be called with the snapped position");
         assertNull(onUnSnap.poll());
 
         // Snap to second point
-        Optional<Vector3f> result2 = snapToPoints.snap(position2, restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result2 = snapToPoints.snap(position2, restrictionUtilities, mockHand);
         assertTrue(result2.isPresent(), "Position within radius should snap");
         assertEquals(new Vector3f(2, 2, 2), result2.get(), "Position should snap to the second point");
         assertEquals(onSnap.poll().localPosition, new Vector3f(2, 2, 2), "OnSnap should be called with the snapped position");
         assertEquals(onUnSnap.poll().localPosition, new Vector3f(1, 1, 1), "OnUnSnap should be called with the previous snapped position");
 
         //fail to snap
-        Optional<Vector3f> result3 = snapToPoints.snap(new Vector3f(100,100,100), restrictionUtilities, HandSide.LEFT);
+        Optional<Vector3f> result3 = snapToPoints.snap(new Vector3f(100,100,100), restrictionUtilities, mockHand);
         assertFalse(result3.isPresent(), "Position outside radius should not snap");
         assertEquals(onUnSnap.poll().localPosition, new Vector3f(2, 2, 2), "OnUnSnap should be called with the previous snapped position");
         assertNull(onSnap.poll());
@@ -121,8 +126,8 @@ class SnapToPointTests{
         private final List<Arguments> arguments = new ArrayList<>();
 
         @Override
-        public void onSnap(HandSide handSide, Vector3f localPosition, Vector3f globalPosition) {
-            arguments.add(new Arguments(handSide, localPosition, globalPosition));
+        public void onSnap(BoundHand boundHand, Vector3f localPosition, Vector3f globalPosition) {
+            arguments.add(new Arguments(boundHand, localPosition, globalPosition));
         }
 
         public Arguments poll(){
@@ -134,8 +139,8 @@ class SnapToPointTests{
         private final List<Arguments> arguments = new ArrayList<>();
 
         @Override
-        public void onUnSnap(HandSide handSide, Vector3f localPosition, Vector3f globalPosition) {
-            arguments.add(new Arguments(handSide, localPosition, globalPosition));
+        public void onUnSnap(BoundHand boundHand, Vector3f localPosition, Vector3f globalPosition) {
+            arguments.add(new Arguments(boundHand, localPosition, globalPosition));
         }
 
         public Arguments poll(){
@@ -143,6 +148,6 @@ class SnapToPointTests{
         }
     }
 
-    private record Arguments(HandSide handSide, Vector3f localPosition, Vector3f globalPosition) {}
+    private record Arguments(BoundHand handSide, Vector3f localPosition, Vector3f globalPosition) {}
 
 }

@@ -2,6 +2,7 @@ package com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints;
 
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
 
 import java.util.List;
@@ -54,7 +55,7 @@ public class SnapToPoints{
      *     Will call onSnap and onUnsnap callbacks as appropriate (so this is a stateful operation).
      * </p>
      */
-    public Optional<Vector3f> snap(Vector3f position, RestrictionUtilities restrictionUtilities, HandSide handSide){
+    public Optional<Vector3f> snap(Vector3f position, RestrictionUtilities restrictionUtilities, BoundHand boundHand){
         Vector3f thisClassModeRelativeUnsnappedPoint;
         if (global){
             thisClassModeRelativeUnsnappedPoint = restrictionUtilities.localPositionToGlobalPosition(position);
@@ -73,10 +74,10 @@ public class SnapToPoints{
 
         if(isSnappedTo.isPresent() && (newSnap.isEmpty() || newSnap.get() != isSnappedTo.orElse(null))){
             Vector3f oldSnap = isSnappedTo.orElseThrow();
-            onUnsnap.onUnSnap(handSide, oldSnap, restrictionUtilities.localPositionToGlobalPosition(oldSnap));
+            onUnsnap.onUnSnap(boundHand, oldSnap, restrictionUtilities.localPositionToGlobalPosition(oldSnap));
         }
         if (newSnap.isPresent() && (newSnap.get() != isSnappedTo.orElse(null))){
-            onSnap.onSnap(handSide, newSnap.orElseThrow(), restrictionUtilities.localPositionToGlobalPosition(newSnap.orElseThrow()));
+            onSnap.onSnap(boundHand, newSnap.orElseThrow(), restrictionUtilities.localPositionToGlobalPosition(newSnap.orElseThrow()));
         }
         isSnappedTo = newSnap;
         return newSnap;
@@ -85,13 +86,13 @@ public class SnapToPoints{
     public interface OnSnapCallback{
         OnSnapCallback NO_OP = (boundHand, snappedToLocal, snappedToGlobal) -> {};
 
-        void onSnap(HandSide handGrabbing, Vector3f snappedToLocal, Vector3f snappedToGlobal);
+        void onSnap(BoundHand handGrabbing, Vector3f snappedToLocal, Vector3f snappedToGlobal);
     }
 
     public interface OnUnSnapCallback{
         OnUnSnapCallback NO_OP = (boundHand, snappedToLocal, snappedToGlobal) -> {};
 
-        void onUnSnap(HandSide handGrabbing, Vector3f snappedFromLocal, Vector3f snappedFromGlobal);
+        void onUnSnap(BoundHand handGrabbing, Vector3f snappedFromLocal, Vector3f snappedFromGlobal);
     }
 
 }
