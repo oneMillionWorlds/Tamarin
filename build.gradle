@@ -69,6 +69,7 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
     testImplementation "${jme3.g}:jme3-core:${jme3.v}"
+    testImplementation 'org.mockito:mockito-core:5.4.0'
 }
 
 publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.html
