@@ -1,10 +1,10 @@
 package com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints;
 
 import com.jme3.math.Vector3f;
-import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,7 +14,7 @@ public class SnapToPoints{
 
     private final boolean global;
 
-    private final List<SnapToPoint> points;
+    private final Collection<SnapToPoint> points;
 
     private final OnSnapCallback onSnap;
 
@@ -26,7 +26,7 @@ public class SnapToPoints{
      * @param global If true, the points are in global space, otherwise they are relative to the moved object's parent
      * @param points The points to snap to (and the ranges at which they snap)
      */
-    public SnapToPoints(boolean global, List<SnapToPoint> points){
+    public SnapToPoints(boolean global, Collection<SnapToPoint> points){
         this(global, points, OnSnapCallback.NO_OP, OnUnSnapCallback.NO_OP);
     }
 
@@ -37,7 +37,7 @@ public class SnapToPoints{
      *               (both the global and local snapped to positions are provided)
      * @param onUnsnap Called when a point is unsnapped from
      */
-    public SnapToPoints(boolean global, List<SnapToPoint> points, OnSnapCallback onSnap, OnUnSnapCallback onUnsnap){
+    public SnapToPoints(boolean global, Collection<SnapToPoint> points, OnSnapCallback onSnap, OnUnSnapCallback onUnsnap){
         this.global = global;
         this.points = points;
         this.onSnap = onSnap;
