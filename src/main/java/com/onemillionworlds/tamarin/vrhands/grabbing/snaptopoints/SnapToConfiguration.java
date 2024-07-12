@@ -57,9 +57,9 @@ public class SnapToConfiguration{
         for(SnapTarget snapTarget : snapTargets){
             Optional<Vector3f> snapPoint = snapTarget.shouldSnap(position, restrictionUtilities);
             if(snapPoint.isPresent()){
-                snapToPoint = snapPoint;
                 double distanceSquared = snapPoint.get().distanceSquared(position);
                 if(distanceSquared < snapDistanceSquared){
+                    snapToPoint = snapPoint;
                     snapDistanceSquared = distanceSquared;
                     newSnappedTarget = snapTarget;
                 }

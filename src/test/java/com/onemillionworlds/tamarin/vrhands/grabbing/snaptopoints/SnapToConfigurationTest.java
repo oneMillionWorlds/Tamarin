@@ -75,8 +75,7 @@ class SnapToConfigurationTest{
 
     @Test
     void testSnap_GlobalMode() {
-
-        SnapToLocalPoint snapToPointGlobal = new SnapToLocalPoint(new Vector3f(100, 1000, 10000), 2.0f);
+        SnapToGlobalPoint snapToPointGlobal = new SnapToGlobalPoint(new Vector3f(100, 1000, 10000), 2.0f);
 
         SnapToConfiguration snapToConfiguration = new SnapToConfiguration(List.of(snapToPointGlobal));
 
