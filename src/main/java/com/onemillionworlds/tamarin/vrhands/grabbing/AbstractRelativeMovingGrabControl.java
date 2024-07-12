@@ -5,14 +5,13 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.math.Line3f;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.GrabMoveRestriction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictToLocalLine;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.Unrestricted;
-import com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints.SnapToPoints;
+import com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints.SnapToConfiguration;
 
 import java.util.Optional;
 
@@ -32,7 +31,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
     private boolean shouldApplyRotation = true;
 
-    private SnapToPoints snapToPoints = SnapToPoints.EMPTY;
+    private SnapToConfiguration snapToConfiguration = SnapToConfiguration.EMPTY;
 
     private final RestrictionUtilities restrictionUtilities = new RestrictionUtilities(
             (localPosition) -> getMoveTargetSpatial().getParent().localToWorld(localPosition, null),
@@ -135,7 +134,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
     }
 
     private Vector3f applySnapToPoints(Vector3f unsnappedPosition, BoundHand handSide){
-        return snapToPoints.snap(unsnappedPosition, restrictionUtilities, handSide).orElse(unsnappedPosition);
+        return snapToConfiguration.snap(unsnappedPosition, restrictionUtilities, handSide).orElse(unsnappedPosition);
     }
 
     /**
@@ -174,10 +173,10 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      * Be aware snapped points take place after restrictions, ideally make all snapped points within the restricted
      * area to avoid unexpected behaviour.
      * </p>
-     * @param snapToPoints object defining the snap behaviour
+     * @param snapToConfiguration object defining the snap behaviour
      */
-    public void setSnapToPoints(SnapToPoints snapToPoints){
-        this.snapToPoints = snapToPoints;
+    public void setSnapToPoints(SnapToConfiguration snapToConfiguration){
+        this.snapToConfiguration = snapToConfiguration;
     }
 
     /**
