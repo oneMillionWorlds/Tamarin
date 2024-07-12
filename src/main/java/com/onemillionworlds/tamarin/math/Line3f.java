@@ -5,6 +5,8 @@ package com.onemillionworlds.tamarin.math;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 
+import java.util.Optional;
+
 public class Line3f{
     public final Vector3f start;
     public final Vector3f end;
@@ -200,6 +202,60 @@ public class Line3f{
 
     public float findDistanceFromPointOfCloesstApproach(Vector3f worldPosition) {
         return this.findPointOfClosedApproach(worldPosition).distance(worldPosition);
+    }
+
+    /**
+     * Clips the line down so it only exists inside the box, If no such line exists then an "empty" is returned
+     * @param min
+     * @param max
+     *
+     */
+    public Optional<Line3f> clipToBeWithinRectangle(Vector3f min, Vector3f max){
+
+        //t is the paramater of the parameterised line, its travel from 0 to 1 builds the line
+        Vector3f deltas =end.subtract(start);
+
+        //for example x = x0 + t * dx (dx is deltas.x)
+
+        float currentMinT=0;
+        float currentMaxT=1;
+
+        for (int coord=0; coord<3; coord++){
+
+            if (deltas.get(coord) == 0){
+                //if the line is parrallel to the window it either completely eliminates the line or has no effect
+
+                double coordinateOnWindow=start.get(coord); //(which equals end.get(coord);
+
+                if(!(min.get(coord) <= coordinateOnWindow) || !(coordinateOnWindow <= max.get(coord))){
+                    return Optional.empty(); //its completely clipped away
+                }
+
+            }else{
+                double tAtStart = (min.get(coord)-start.get(coord))/deltas.get(coord);
+                double tAtEnd = (max.get(coord)-start.get(coord))/deltas.get(coord);
+
+                if (tAtStart>tAtEnd){
+                    //flip them as the box is the opposite way round to the line
+                    double temp=tAtStart;
+                    tAtStart=tAtEnd;
+                    tAtEnd=temp;
+                }
+
+                currentMinT = (float)Math.max(currentMinT,tAtStart);
+                currentMaxT = (float)Math.min(currentMaxT,tAtEnd);
+            }
+        }
+
+        if (currentMaxT<=currentMinT){
+            //completely clipped away
+            return Optional.empty();
+        }else{
+            return Optional.of(new Line3f(
+                    start.add(deltas.mult(currentMinT)),
+                    start.add(deltas.mult(currentMaxT))
+            ));
+        }
     }
 
 }

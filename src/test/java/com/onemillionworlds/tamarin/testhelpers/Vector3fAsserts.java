@@ -33,7 +33,7 @@ public class Vector3fAsserts{
         }
     }
 
-    private static boolean equals(Vector3f a, Vector3f b, float permittedError) {
+    public static boolean equals(Vector3f a, Vector3f b, float permittedError) {
         if (a == b){
             return true;
         }
