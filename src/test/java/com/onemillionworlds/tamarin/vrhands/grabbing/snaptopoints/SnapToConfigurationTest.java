@@ -3,6 +3,7 @@ package com.onemillionworlds.tamarin.vrhands.grabbing.snaptopoints;
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUtilities;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -92,10 +93,9 @@ class SnapToConfigurationTest{
         SnapToLocalPoint snapToPoint1 = new SnapToLocalPoint(new Vector3f(1, 1, 1), 2.0f);
         SnapToLocalPoint snapToPoint2 = new SnapToLocalPoint(new Vector3f(2, 2, 2), 2.0f);
 
-        ArgumentRecordingOnSnapCallback onSnap = new ArgumentRecordingOnSnapCallback();
-        ArgumentRecordingOnUnSnapCallback onUnSnap = new ArgumentRecordingOnUnSnapCallback();
+        ArgumentRecordingOnSnapCallback onSnapCallbacks = new ArgumentRecordingOnSnapCallback();
 
-        SnapToConfiguration snapToConfiguration = new SnapToConfiguration(List.of(snapToPoint1, snapToPoint2), onSnap, onUnSnap);
+        SnapToConfiguration snapToConfiguration = new SnapToConfiguration(List.of(snapToPoint1, snapToPoint2), onSnapCallbacks);
 
         Vector3f position1 = new Vector3f(0, 0, 0);
         Vector3f position2 = new Vector3f(2f, 2f, 2f);
@@ -104,54 +104,116 @@ class SnapToConfigurationTest{
         Optional<Vector3f> result1 = snapToConfiguration.snap(position1, restrictionUtilities, mockHand);
         assertTrue(result1.isPresent(), "Position within radius should snap");
         assertEquals(new Vector3f(1, 1, 1), result1.get(), "Position should snap to the first point");
-        assertEquals(onSnap.poll().localPosition, new Vector3f(1, 1, 1), "OnSnap should be called with the snapped position");
-        assertNull(onUnSnap.poll());
+        onSnapCallbacks.assertAndClearExpectedState(
+                new Vector3f(1, 1, 1),
+                false,
+                null,
+                new Vector3f(1, 1, 1)
+        );
+
+        Optional<Vector3f> result1_5 = snapToConfiguration.snap(position1, restrictionUtilities, mockHand);
+        assertTrue(result1_5.isPresent(), "Position within radius should snap");
+        assertEquals(new Vector3f(1, 1, 1), result1.get(), "Position should continue to snap to the first point");
+        onSnapCallbacks.assertAndClearExpectedState(
+                null,
+                false,
+                null,
+                new Vector3f(1, 1, 1)
+        );
 
         // Snap to second point
         Optional<Vector3f> result2 = snapToConfiguration.snap(position2, restrictionUtilities, mockHand);
         assertTrue(result2.isPresent(), "Position within radius should snap");
         assertEquals(new Vector3f(2, 2, 2), result2.get(), "Position should snap to the second point");
-        assertEquals(onSnap.poll().localPosition, new Vector3f(2, 2, 2), "OnSnap should be called with the snapped position");
-        assertNotNull(onUnSnap.poll(), "OnUnSnap should be called with the previous snapped position");
+        onSnapCallbacks.assertAndClearExpectedState(
+                null,
+                false,
+                new Vector3f(2, 2, 2),
+                new Vector3f(2, 2, 2)
+        );
 
         //fail to snap
         Optional<Vector3f> result3 = snapToConfiguration.snap(new Vector3f(100,100,100), restrictionUtilities, mockHand);
         assertFalse(result3.isPresent(), "Position outside radius should not snap");
-        assertNotNull(onUnSnap.poll(), "OnUnSnap should be called with the previous snapped position");
-        assertNull(onSnap.poll());
+        onSnapCallbacks.assertAndClearExpectedState(
+                null,
+                true,
+                null,
+                null
+        );
 
         //2nd fail to snap
         Optional<Vector3f> result4 = snapToConfiguration.snap(new Vector3f(100,100,100), restrictionUtilities, mockHand);
         assertFalse(result4.isPresent(), "Position outside radius should not snap");
-        assertNull(onUnSnap.poll());
-        assertNull(onSnap.poll());
+        onSnapCallbacks.assertAndClearExpectedState(
+                null,
+                false,
+                null,
+                null
+        );
 
     }
 
-    private static class ArgumentRecordingOnSnapCallback implements SnapToConfiguration.OnSnapCallback {
-        private final List<Arguments> arguments = new ArrayList<>();
+    private static class ArgumentRecordingOnSnapCallback extends SnapChangeCallback{
+        private Arguments arguments_onSnapFromUnsnapped;
+
+        private BoundHand arguments_onUnsnapFromSnapped;
+
+        private Arguments arguments_onSnapTransfer;
+
+        private Arguments arguments_onSnapContinues;
 
         @Override
-        public void onSnap(BoundHand boundHand, Vector3f localPosition, Vector3f globalPosition) {
-            arguments.add(new Arguments(boundHand, localPosition, globalPosition));
+        public void onSnapFromUnsnapped(BoundHand handGrabbing, Vector3f snappedToLocal, Vector3f snappedToGlobal){
+            arguments_onSnapFromUnsnapped = new Arguments(handGrabbing, snappedToLocal, snappedToLocal);
         }
-
-        public Arguments poll(){
-            return arguments.isEmpty() ? null : arguments.remove(0);
-        }
-    }
-
-    private static class ArgumentRecordingOnUnSnapCallback implements SnapToConfiguration.OnUnSnapCallback {
-        private final List<Arguments> arguments = new ArrayList<>();
 
         @Override
-        public void onUnSnap(BoundHand boundHand) {
-            arguments.add(new Arguments(boundHand, null, null));
+        public void onUnsnapFromSnapped(BoundHand handGrabbing){
+            arguments_onUnsnapFromSnapped = handGrabbing;
         }
 
-        public Arguments poll(){
-            return arguments.isEmpty() ? null : arguments.remove(0);
+        @Override
+        public void onSnapTransfer(BoundHand handGrabbing, Vector3f snappedToLocal, Vector3f snappedToGlobal){
+            arguments_onSnapTransfer = new Arguments(handGrabbing, snappedToLocal, snappedToLocal);
         }
+
+        @Override
+        public void onSnapContinues(BoundHand handGrabbing, Vector3f snappedToLocal, Vector3f snappedToGlobal){
+            arguments_onSnapContinues = new Arguments(handGrabbing, snappedToLocal, snappedToLocal);
+        }
+
+        /**
+         * Asserts that the expected state is as follows, null means "no call to contructor":
+         * @param onSnapFromUnsnapped the local position that was snapped to (on an initial snap)
+         * @param onUnsnapFromSnapped whether the object was unsnapped
+         * @param onSnapTransfer the local position that was snapped to (on a transfer)
+         * @param onSnapContinues the local position that was snapped to (on a continues)
+         */
+        public void assertAndClearExpectedState(Vector3f onSnapFromUnsnapped, boolean onUnsnapFromSnapped, Vector3f onSnapTransfer, Vector3f onSnapContinues){
+
+            assertEquals(onSnapFromUnsnapped, arguments_onSnapFromUnsnapped, "onSnapFromUnsnapped");
+
+            if(onUnsnapFromSnapped){
+                assertNotNull(arguments_onUnsnapFromSnapped, "onUnsnapFromSnapped should be called");
+            } else{
+                assertNull(arguments_onUnsnapFromSnapped, "onUnsnapFromSnapped should not be called");
+            }
+
+            assertEquals(onSnapTransfer, arguments_onSnapTransfer, "onSnapTransfer");
+            assertEquals(onSnapContinues, arguments_onSnapContinues, "onSnapContinues");
+
+            arguments_onSnapFromUnsnapped = null;
+            arguments_onUnsnapFromSnapped = null;
+            arguments_onSnapTransfer = null;
+            arguments_onSnapContinues = null;
+        }
+
+        private void assertEquals(Vector3f expectedLocalPosition, Arguments actualArguments, String callbackName){
+            Vector3f actualLocalPosition = Optional.ofNullable(actualArguments).map(Arguments::localPosition).orElse(null);
+            Assertions.assertEquals(expectedLocalPosition, actualLocalPosition, callbackName + " expected to be " + expectedLocalPosition + " but was " + actualLocalPosition);
+        }
+
     }
 
     private record Arguments(BoundHand handSide, Vector3f localPosition, Vector3f globalPosition) {}
