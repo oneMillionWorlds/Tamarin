@@ -7,7 +7,6 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUti
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 public class SnapToConfiguration{
 
@@ -55,10 +54,14 @@ public class SnapToConfiguration{
         double snapDistanceSquared = Double.MAX_VALUE;
 
         for(SnapTarget snapTarget : snapTargets){
+            if(newSnappedTarget != null && snapTarget.getPriority() < newSnappedTarget.getPriority()){
+                continue;
+            }
+
             Optional<Vector3f> snapPoint = snapTarget.shouldSnap(position, restrictionUtilities);
             if(snapPoint.isPresent()){
                 double distanceSquared = snapPoint.get().distanceSquared(position);
-                if(distanceSquared < snapDistanceSquared){
+                if(distanceSquared < snapDistanceSquared || (newSnappedTarget!=null && newSnappedTarget.getPriority()<snapTarget.getPriority())){
                     snapToPoint = snapPoint;
                     snapDistanceSquared = distanceSquared;
                     newSnappedTarget = snapTarget;

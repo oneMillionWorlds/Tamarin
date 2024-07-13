@@ -5,7 +5,7 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUti
 
 import java.util.Optional;
 
-public class SnapToLocalPoint implements SnapTarget{
+public class SnapToLocalPoint extends SnapTarget{
     private final Vector3f point;
     private final float radiusToSnapAtSquared;
 

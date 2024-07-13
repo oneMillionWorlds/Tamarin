@@ -5,7 +5,7 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUti
 
 import java.util.Optional;
 
-public class SnapToGlobalPoint implements SnapTarget{
+public class SnapToGlobalPoint extends SnapTarget{
     private final Vector3f point;
     private final float radiusToSnapAtSquared;
 
@@ -25,7 +25,4 @@ public class SnapToGlobalPoint implements SnapTarget{
         }
     }
 
-    private float distanceSquared(Vector3f position){
-        return point.distanceSquared(position);
-    }
 }

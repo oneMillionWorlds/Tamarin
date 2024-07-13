@@ -9,7 +9,9 @@ import java.util.Optional;
  * A snap target is a point or shape that a grabbed object can snap to (i.e. when the object is close enough to the target
  * it will move to the target's position).
  */
-public interface SnapTarget{
+public abstract class SnapTarget{
+
+    int priority = 0;
 
     /**
      * Tests this target to see if it should snap to the given position. If it should, the position it should snap to
@@ -23,6 +25,23 @@ public interface SnapTarget{
      * @param restrictionUtilities utilities for coordinate conversions and similar (optional to use)
      * @return the position to snap to or an empty optional if it should not snap
      */
-    Optional<Vector3f> shouldSnap(Vector3f position, RestrictionUtilities restrictionUtilities);
+    public abstract Optional<Vector3f> shouldSnap(Vector3f position, RestrictionUtilities restrictionUtilities);
 
+    /**
+     * Gets the priority of this snap target. Higher priority snap targets are considered first (even if they are further
+     * away). Higher numbers indicate higher priority.
+     * @return the priority of this snap target. Higher numbers indicate higher priority.
+     */
+    public int getPriority(){
+        return priority;
+    }
+
+    /**
+     * Sets the priority of this snap target. Higher priority snap targets are considered first (even if they are further
+     * away). Higher numbers indicate higher priority.
+     * @param priority the priority of this snap target. Higher numbers indicate higher priority.
+     */
+    public void setPriority(int priority){
+        this.priority = priority;
+    }
 }

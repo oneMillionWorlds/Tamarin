@@ -6,7 +6,6 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUti
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +19,12 @@ class SnapToConfigurationTest{
     private final SnapToLocalPoint snapToPoint1 = new SnapToLocalPoint(new Vector3f(1, 1, 1), 2.0f);
     private final SnapToLocalPoint snapToPoint2 = new SnapToLocalPoint(new Vector3f(2, 2, 2), 2.0f);
     private final SnapToLocalPoint snapToPoint3 = new SnapToLocalPoint(new Vector3f(3, 3, 3), 2.0f);
+
+    private final SnapToLocalPoint snapToPoint3_highPriority = new SnapToLocalPoint(new Vector3f(3, 3, 3), 2.0f);
+
+    {
+        snapToPoint3_highPriority.setPriority(1);
+    }
 
     static Vector3f localPositionOrigin = new Vector3f(100, 1000, 10000);
 
@@ -74,6 +79,17 @@ class SnapToConfigurationTest{
     }
 
     @Test
+    void testSnap_highPriorityFirst() {
+        SnapToConfiguration snapToConfiguration = new SnapToConfiguration(List.of(snapToPoint1, snapToPoint2, snapToPoint3_highPriority));
+
+        Vector3f position = new Vector3f(2.1f, 2.1f, 2.1f);
+        Optional<Vector3f> result = snapToConfiguration.snap(position, restrictionUtilities, mockHand);
+
+        assertTrue(result.isPresent(), "Position within radius of multiple points should snap");
+        assertEquals(new Vector3f(3, 3, 3), result.get(), "Position should snap to the higher priority point");
+    }
+
+    @Test
     void testSnap_GlobalMode() {
         SnapToGlobalPoint snapToPointGlobal = new SnapToGlobalPoint(new Vector3f(100, 1000, 10000), 2.0f);
 
@@ -86,7 +102,6 @@ class SnapToConfigurationTest{
         assertEquals(new Vector3f(0, 0, 0), result.get(), "Position should snap to the transformed closest point (but in local coords)");
     }
 
-    @SuppressWarnings("DataFlowIssue")
     @Test
     void testSnap_OnSnapAndOnUnSnapCallbacks() {
         SnapToLocalPoint snapToPoint1 = new SnapToLocalPoint(new Vector3f(1, 1, 1), 2.0f);

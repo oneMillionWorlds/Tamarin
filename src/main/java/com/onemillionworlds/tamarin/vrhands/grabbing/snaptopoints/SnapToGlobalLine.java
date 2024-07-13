@@ -6,7 +6,7 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.restrictions.RestrictionUti
 
 import java.util.Optional;
 
-public class SnapToGlobalLine implements SnapTarget{
+public class SnapToGlobalLine extends SnapTarget{
     private final Line3f snapToLine;
 
     private final float distanceToSnapAtSquared;
