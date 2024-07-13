@@ -11,7 +11,7 @@ import java.util.Optional;
  */
 public abstract class SnapTarget{
 
-    int priority = 0;
+    int priority = 1;
 
     /**
      * Tests this target to see if it should snap to the given position. If it should, the position it should snap to
@@ -28,8 +28,8 @@ public abstract class SnapTarget{
     public abstract Optional<Vector3f> shouldSnap(Vector3f position, RestrictionUtilities restrictionUtilities);
 
     /**
-     * Gets the priority of this snap target. Higher priority snap targets are considered first (even if they are further
-     * away). Higher numbers indicate higher priority.
+     * Gets the priority of this snap target. Higher priority snap targets (that are close enough to snap at all)
+     * take priority (even if they are further away). Higher numbers indicate higher priority.
      * @return the priority of this snap target. Higher numbers indicate higher priority.
      */
     public int getPriority(){
@@ -37,8 +37,16 @@ public abstract class SnapTarget{
     }
 
     /**
-     * Sets the priority of this snap target. Higher priority snap targets are considered first (even if they are further
-     * away). Higher numbers indicate higher priority.
+     * Sets the priority of this snap target. Higher priority snap targets (that are close enough to snap at all)
+     * take priority (even if they are further away). Higher numbers indicate higher priority.
+     * <p>
+     *     The default priority is 1.
+     * </p>
+     *
+     * <p>
+     *     Snap targets with the same priority are prioritised by distance (i.e. closer snap targets win).
+     * </p>
+     *
      * @param priority the priority of this snap target. Higher numbers indicate higher priority.
      */
     public void setPriority(int priority){

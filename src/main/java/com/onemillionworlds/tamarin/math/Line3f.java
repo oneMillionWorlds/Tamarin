@@ -5,6 +5,7 @@ package com.onemillionworlds.tamarin.math;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class Line3f{
@@ -258,4 +259,8 @@ public class Line3f{
         }
     }
 
+    @Override
+    public int hashCode(){
+        return Objects.hash(start, end);
+    }
 }
