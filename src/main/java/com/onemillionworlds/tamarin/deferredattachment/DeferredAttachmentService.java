@@ -168,10 +168,10 @@ public class DeferredAttachmentService extends BaseAppState{
             if (inProgressItem.getNodePreparationFuture().isDone()){
                 try{
                     inProgressItem.attach();
-                    iterator.remove();
                 } catch(InterruptedException|ExecutionException e){
                     logger.log( Level.WARNING, "Error while retrieving prepared spatial", e);
                 }
+                iterator.remove();
             }
         }
     }
