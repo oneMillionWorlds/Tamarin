@@ -9,8 +9,9 @@ import com.jme3.asset.AssetManager;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.XrActionAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -18,7 +19,7 @@ import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SyntheticBonePositions;
@@ -41,9 +42,9 @@ import java.util.Optional;
 public class VRHandsAppState extends BaseAppState{
     public static final String ID = "VRHandsAppState";
 
-    OpenXrActionState actionState;
+    XrActionBaseAppState actionState;
 
-    XrAppState xrAppState;
+    XrBaseAppState xrAppState;
 
     Node rootNodeDelegate = new Node();
 
@@ -82,8 +83,8 @@ public class VRHandsAppState extends BaseAppState{
     @Override
     protected void initialize(Application app){
         this.assetManager = app.getAssetManager();
-        actionState = app.getStateManager().getState(OpenXrActionState.class);
-        xrAppState = app.getStateManager().getState(XrAppState.class);
+        actionState = app.getStateManager().getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
+        xrAppState = app.getStateManager().getState(XrBaseAppState.ID, XrBaseAppState.class);
         if (actionState == null){
             throw new IllegalStateException("VRHandsAppState requires ActionBasedOpenVr to have already been bound");
         }
@@ -149,7 +150,7 @@ public class VRHandsAppState extends BaseAppState{
 
                 boneStancesOpt.ifPresent(boneStances -> {
                     boundHand.update(tpf, boneStances);
-                    OpenXrActionState.updateHandSkeletonPositions(boundHand.getArmature(), boneStances, BoneMappings.getBoneMappings(boundHand.getHandSide()));
+                    XrActionAppState.updateHandSkeletonPositions(boundHand.getArmature(), boneStances, BoneMappings.getBoneMappings(boundHand.getHandSide()));
                     if (boundHand.getFunctionOpt(ClimbSupport.class).filter(cs -> cs.getGrabStartPosition() !=null).isPresent()){
                         handControlsWithActiveClimbs.add(boundHand);
                     }

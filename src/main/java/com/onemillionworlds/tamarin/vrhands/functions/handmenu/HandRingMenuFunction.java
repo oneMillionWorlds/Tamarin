@@ -6,18 +6,16 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.onemillionworlds.tamarin.TamarinUtilities;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.functions.BoundHandFunction;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
-import org.lwjgl.openxr.XrAction;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,8 +47,8 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     ActionHandle digitalActionToOpenMenu;
 
     private BoundHand boundHand;
-    private OpenXrActionState actionBasedOpenVrState;
-    private XrAppState vrAppState;
+    private XrActionBaseAppState actionBasedOpenVrState;
+    private XrBaseAppState vrAppState;
     Node menuNode = new Node("MenuNode");
     private boolean menuOpen = false;
 
@@ -120,8 +118,8 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
-        this.vrAppState = stateManager.getState(XrAppState.ID, XrAppState.class);
+        this.actionBasedOpenVrState = stateManager.getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
+        this.vrAppState = stateManager.getState(XrBaseAppState.ID, XrBaseAppState.class);
         Node rootNode = ((SimpleApplication)stateManager.getApplication()).getRootNode();
         rootNode.attachChild(menuNode);
         menuNode.setCullHint(Spatial.CullHint.Always);

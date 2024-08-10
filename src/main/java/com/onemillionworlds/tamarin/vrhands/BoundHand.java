@@ -19,8 +19,8 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
 import com.jme3.scene.shape.Sphere;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
@@ -162,7 +162,7 @@ public abstract class BoundHand{
     @Getter
     private final HandSide handSide;
 
-    private final OpenXrActionState vrState;
+    private final XrActionBaseAppState xrActionState;
 
     /**
      * Debug points add markers onto the hands where the bone positions are, and their directions
@@ -224,8 +224,8 @@ public abstract class BoundHand{
 
     private final HandJoint wristName = HandJoint.WRIST_EXT;
 
-    public BoundHand(OpenXrActionState vrState, ActionHandle handPoseActionName, ActionHandle skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
-        this.vrState = Objects.requireNonNull(vrState);
+    public BoundHand(XrActionBaseAppState xrActionState, ActionHandle handPoseActionName, ActionHandle skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
+        this.xrActionState = Objects.requireNonNull(xrActionState);
         this.geometryNode.attachChild(handGeometry);
         this.handPoseActionName = handPoseActionName;
         this.skeletonActionName = skeletonActionName;
@@ -325,7 +325,7 @@ public abstract class BoundHand{
      * @return a method that if called will remove the function
      */
     public FunctionRegistration addFunction(BoundHandFunction function){
-        function.onBind(this, vrState.getStateManager());
+        function.onBind(this, xrActionState.getStateManager());
         functions.add(function);
         return () ->
             removeFunction(function);
@@ -343,7 +343,7 @@ public abstract class BoundHand{
 
     public void removeFunction(BoundHandFunction functionToRemove){
         if (functionToRemove!=null){
-            functionToRemove.onUnbind(this, vrState.getStateManager());
+            functionToRemove.onUnbind(this, xrActionState.getStateManager());
             functions.remove(functionToRemove);
         }
     }
@@ -365,7 +365,7 @@ public abstract class BoundHand{
         updatePalm(timeSlice, boneStances);
         updateFingerTips(boneStances);
         updateWrist(boneStances);
-        functions.forEach(f -> f.update(timeSlice, this, vrState.getStateManager()));
+        functions.forEach(f -> f.update(timeSlice, this, xrActionState.getStateManager()));
 
         updatePointingState(boneStances);
     }
@@ -905,7 +905,7 @@ public abstract class BoundHand{
      * @return the AnalogActionState that has details on if the state has changed, what the state is etc.
      */
     public FloatActionState getFloatActionState(ActionHandle actionHandle){
-        return vrState.getFloatActionState(actionHandle, getHandSide().restrictToInputString);
+        return xrActionState.getFloatActionState(actionHandle, getHandSide().restrictToInputString);
     }
 
     /**
@@ -915,7 +915,7 @@ public abstract class BoundHand{
      * <p>
      */
     public void triggerHapticAction(Haptic haptic){
-        vrState.triggerHapticAction(haptic.actionHandle(), haptic.duration(), haptic.frequency(), haptic.amplitude(), getHandSide().restrictToInputString);
+        xrActionState.triggerHapticAction(haptic.actionHandle(), haptic.duration(), haptic.frequency(), haptic.amplitude(), getHandSide().restrictToInputString);
     }
 
     /**
@@ -929,7 +929,7 @@ public abstract class BoundHand{
      * @param amplitude between 0 and 1
      */
     public void triggerHapticAction(ActionHandle actionHandle, float duration, float frequency, float amplitude){
-        vrState.triggerHapticAction(actionHandle, duration, frequency, amplitude, getHandSide().restrictToInputString);
+        xrActionState.triggerHapticAction(actionHandle, duration, frequency, amplitude, getHandSide().restrictToInputString);
     }
 
     /**
@@ -947,6 +947,6 @@ public abstract class BoundHand{
      * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
      */
     public BooleanActionState getBooleanActionState(ActionHandle actionHandle){
-        return vrState.getBooleanActionState(actionHandle, getHandSide().restrictToInputString);
+        return xrActionState.getBooleanActionState(actionHandle, getHandSide().restrictToInputString);
     }
 }

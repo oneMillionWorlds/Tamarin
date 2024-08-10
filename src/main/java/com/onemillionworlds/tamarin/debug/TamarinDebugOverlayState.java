@@ -11,13 +11,13 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
 import com.jme3.scene.shape.Sphere;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
@@ -51,7 +51,7 @@ public class TamarinDebugOverlayState extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
-        viewportConfigurator = getState(XrAppState.ID, XrAppState.class).addAdditionalViewport(AdditionalViewportRequest.builder(overlayRootNode).build());
+        viewportConfigurator = getState(XrBaseAppState.ID, XrBaseAppState.class).addAdditionalViewport(AdditionalViewportRequest.builder(overlayRootNode).build());
 
         perHandData.put(HandSide.LEFT, new PerHandData());
         perHandData.put(HandSide.RIGHT, new PerHandData());
@@ -61,10 +61,10 @@ public class TamarinDebugOverlayState extends BaseAppState{
     public void update(float tpf){
         super.update(tpf);
 
-        boolean skeletonAvailable = getState(XrAppState.ID, XrAppState.class).checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+        boolean skeletonAvailable = getState(XrBaseAppState.ID, XrBaseAppState.class).checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME);
 
         VRHandsAppState vrHandsAppState = getState(VRHandsAppState.ID, VRHandsAppState.class);
-        OpenXrActionState openXrActionState = getState(OpenXrActionState.ID, OpenXrActionState.class);
+        XrActionBaseAppState openXrActionState = getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
 
         for(BoundHand boundHand : vrHandsAppState.getHandControls()){
             PerHandData handData = perHandData.get(boundHand.getHandSide());

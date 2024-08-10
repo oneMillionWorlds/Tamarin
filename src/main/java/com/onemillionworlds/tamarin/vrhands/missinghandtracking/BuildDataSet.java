@@ -1,7 +1,7 @@
 package com.onemillionworlds.tamarin.vrhands.missinghandtracking;
 
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
@@ -30,7 +30,7 @@ public class BuildDataSet{
     static float buildUp = 0;
 
 
-    public static void fillInData(HandSide handSide, BoundHand hand, OpenXrActionState actionState, Map<HandJoint, BonePose> bonePoses){
+    public static void fillInData(HandSide handSide, BoundHand hand, XrActionBaseAppState actionState, Map<HandJoint, BonePose> bonePoses){
         Map<Float, Map<HandJoint, BonePose>> handSideData = skeletonData.computeIfAbsent(handSide, hs -> new LinkedHashMap<>());
         Optional<GrabPickingFunction> grabPickingFunction = hand.getFunctionOpt(GrabPickingFunction.class);
         if (grabPickingFunction.isEmpty() || complete){

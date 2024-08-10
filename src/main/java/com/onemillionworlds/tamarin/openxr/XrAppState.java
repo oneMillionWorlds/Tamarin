@@ -3,21 +3,16 @@ package com.onemillionworlds.tamarin.openxr;
 import com.jme3.app.Application;
 import com.jme3.app.FlyCamAppState;
 import com.jme3.app.SimpleApplication;
-import com.jme3.app.state.BaseAppState;
 import com.jme3.audio.AudioListenerState;
-import com.jme3.material.Material;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
-import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
-import com.jme3.scene.shape.Box;
 import com.jme3.system.AppSettings;
 import com.jme3.system.lwjgl.LwjglWindow;
 import com.jme3.texture.FrameBuffer;
-import com.jme3.texture.Texture2D;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportData;
@@ -34,10 +29,10 @@ import java.util.Queue;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-public class XrAppState extends BaseAppState{
+public class XrAppState extends XrBaseAppState{
     private static final Logger LOGGER = Logger.getLogger(XrAppState.class.getName());
 
-    public static String ID = "XrAppState";
+    public static String ID = XrBaseAppState.ID;
 
     @Getter
     OpenXrSessionManager xrSession;
@@ -91,7 +86,7 @@ public class XrAppState extends BaseAppState{
         this(new XrSettings());
     }
     public XrAppState(XrSettings xrSettings){
-        super(ID);
+        super();
         this.xrSettings = xrSettings;
     }
 
@@ -167,30 +162,14 @@ public class XrAppState extends BaseAppState{
         return newViewport;
     }
 
-    /**
-     * Allows initialisation of both eyes viewports (e.g. adding scene processors or changing the background colour).
-     * Note that Tamarin forms MORE THAN TWO viewports (because it is triple buffered).  This method may be called
-     * now (for existing viewports) or when a new viewport is created (if they haven't yet been intialised). You
-     * should anticipate that this method may be called 6 times.
-     */
+    @Override
     public void setMainViewportConfiguration(Consumer<ViewPort> configureViewport){
         viewPorts.values().forEach(configureViewport);
         this.newViewportConfiguration = configureViewport;
     }
 
-    /**
-     * Adds an additional scene (with associated viewports for both eyes and triple buffering) that will be
-     * an overlay to the main scene. This is useful for things like debug shapes or a menu screen that shouldn't be clipped by the
-     * main game scene.
-     *
-     * <p>
-     *     Note that Tamarin will not take charge of calling `node.updateLogicalState()` and `node.updateGeometricState(tpf)`
-     *     on the additional viewport's root node, so you need to do that within your update method after all other node
-     *     mutations are done.
-     * </p>
-     *
-     * @return a ViewportConfigurator that can be used to remove the additional viewports or update their configuration
-     */
+
+    @Override
     public ViewportConfigurator addAdditionalViewport(AdditionalViewportRequest additionalViewportRequest){
         AdditionalViewportData additionalViewportData = new AdditionalViewportData(additionalViewportRequest, getApplication().getRenderManager(), leftCamera, rightCamera);
         this.additionalViewports.add(additionalViewportData);
@@ -209,26 +188,13 @@ public class XrAppState extends BaseAppState{
         };
     }
 
-    /**
-     * If the state has not yet been initialised will run when the eye cameras are positioned for the first time
-     * (Otherwise will run the next time they are positioned. i.e. the next update)
-     * <p>
-     * This is useful for things you'd like to run once the XR environment is set up
-     * </p>
-     * @param runnable the code to run
-     */
+
+    @Override
     public void runAfterInitialisation(Runnable runnable){
         runOnceHaveCameraPositions.add(runnable);
     }
 
-    /**
-     * Will return a string that describes the system (e.g. "SteamVR/OpenXR : oculus"). This is useful for debugging.
-     * <p>
-     *     In general an application should not change it's behaviour by sniffing the device type, actions should be
-     *     used instead to abstract away the specific device
-     * </p>
-     * @return the system name, which may include both the headset and OpenXR runtime
-     */
+    @Override
     public String getSystemName(){
         return xrSession.getSystemName();
     }
@@ -300,11 +266,8 @@ public class XrAppState extends BaseAppState{
         return xrSession.getExtensionsLoaded();
     }
 
-    /**
-     * If you've requested extra extensions in {@link XrSettings} this method can be used to check if they really
-     * were loaded. Extensions are things like "XR_KHR_binding_modification"
-     */
     @SuppressWarnings("unused")
+    @Override
     public boolean checkExtensionLoaded(String extensionName){
         //the below converts nulls to false
         return getExtensionsLoaded().get(extensionName) == Boolean.TRUE;
@@ -326,13 +289,8 @@ public class XrAppState extends BaseAppState{
         camera.setFrustum(nearClip, farClip, left, right, top, bottom);
     }
 
-    /**
-     * Sets the near clip plane for the cameras (will trigger a refresh of the projection matrix).
-     * <p>
-     * Note that the field of view cannot be changed by the user because it is set by OpenXr to reflect the devices
-     * lens arrangement.
-     */
     @SuppressWarnings("unused")
+    @Override
     public void setNearClip(float nearClip){
         this.nearClip = nearClip;
         this.refreshProjectionMatrix = true;
@@ -345,6 +303,7 @@ public class XrAppState extends BaseAppState{
      * lens arrangement.
      */
     @SuppressWarnings("unused")
+    @Override
     public void setFarClip(float farClip){
         this.farClip = farClip;
         this.refreshProjectionMatrix = true;
@@ -359,17 +318,23 @@ public class XrAppState extends BaseAppState{
         }
     }
 
+    @Override
+    public void setObserverPosition(Vector3f observerPosition){
+        observer.setLocalTranslation(observerPosition);
+    }
+
     /**
-     * Sets the observer position. The observer is the point in the virtual world that maps to the VR origin in the real world.
+     * Gets the observer position. The observer is the point in the virtual world that maps to the VR origin in the real world.
      * <strong>NOTE: the observer is only indirectly related to the players head position</strong>. This is a highly technical method you
      * probably don't want to use, if you want to move the player directly (for example to support a teleport-style movement)
      * use {@link XrAppState#movePlayersFeetToPosition(Vector3f)}.
      *
-     * @param observerPosition observer position
+     * @return  observerPosition observer position
      */
+    @Override
     @SuppressWarnings("unused")
-    public void setObserverPosition(Vector3f observerPosition){
-        observer.setLocalTranslation(observerPosition);
+    public Vector3f getObserverPosition(){
+        return observer.getLocalTranslation();
     }
 
     /**
@@ -379,54 +344,22 @@ public class XrAppState extends BaseAppState{
      * @param facePosition the facePosition.
      */
     @SuppressWarnings("unused")
+    @Override
     public void movePlayersFaceToPosition(Vector3f facePosition){
         this.runOnceHaveCameraPositions.add(() -> TamarinUtilities.movePlayerFaceToPosition(this, facePosition));
     }
 
-    /**
-     * Moves the players feet to the requested position. This is useful for teleportation style movement.
-     * <p>
-     * Note that this queues the result till the next update, which is much better when these calls are chained multiple in the same tick
-     * @param feetPosition the feetPosition.
-     */
+    @Override
     public void movePlayersFeetToPosition(Vector3f feetPosition){
         this.runOnceHaveCameraPositions.add(() -> TamarinUtilities.movePlayerFeetToPosition(this, feetPosition));
     }
 
-
-    /**
-     * Sets the observer rotation. The observer is the point in the virtual world that maps to the VR origin in the real world.
-     * <strong>NOTE: the observer is only indirectly related to the players head position</strong>. Note that rotating the
-     * observer may implicitly move the player if they aren't currently standing exactly at the observer position.
-     * <p>
-     * Note that it's probably a bad idea to apply any sort of rotation other than about the Y axis, but you can (this is
-     * the only rotation method that supports that).
-     * </p>
-     * This is a highly technical method, and you're more likely to want one of these methods:
-     * <ul>
-     *     <li>{@link XrAppState#rotateObserverWithoutMovingPlayer}</li>
-     *     <li>{@link XrAppState#playerLookInDirection}</li>
-     *     <li>{@link XrAppState#playerLookAtPosition}</li>
-     * </ul>
-     * @param observerRotation observer rotation
-     */
-    @SuppressWarnings("unused")
+    @Override
     public void setObserverRotation(Quaternion observerRotation){
         getObserver().setLocalRotation(observerRotation);
     }
 
-    /**
-     * Applies a <strong>relative</strong> rotation to the observer. This also applys the same relative rotation to the player.
-     * The observer is also moved so the player doesn't seem to move in the virtual world.
-     * <p>
-     * Often you'll want to programatically turn the player, which should be done by rotating the observer.
-     * However, if the player isn't standing directly above the observer this rotation will induce motion.
-     * This method corrects for that and gives the impression the player is just turning
-     * <p>
-     * Note that this queues the result till the next update, which is much better when these calls are chained multiple in the same tick
-     * @param angleAboutYAxis the requested turn angle. Positive numbers turn left, negative numbers turn right
-     */
-    @SuppressWarnings("unused")
+    @Override
     public void rotateObserverWithoutMovingPlayer(float angleAboutYAxis){
         this.runOnceHaveCameraPositions.add(() -> TamarinUtilities.rotateObserverWithoutMovingPlayer(this, angleAboutYAxis));
     }
@@ -443,34 +376,28 @@ public class XrAppState extends BaseAppState{
         this.runOnceHaveCameraPositions.add(() -> TamarinUtilities.playerLookInDirection(this, lookDirection));
     }
 
-    /**
-     * This will rotate the observer such that the player is looking at the requested position. Only considered rotation
-     * in the X-Z plane so the y coordinate is ignored (and so you won't get your universe all messed up relative to the
-     * real world).
-     * <p>
-     * If the position is the same as the current position, this will do nothing.
-     * Note that this queues the result till the next update, which is much better when these calls are chained multiple in the same tick
-     */
-    @SuppressWarnings("unused")
+    @Override
     public void playerLookAtPosition(Vector3f position){
         this.runOnceHaveCameraPositions.add(() -> TamarinUtilities.playerLookAtPosition(this, position));
     }
 
-    /**
-     * Returns the rotation of the VR cameras (technically the left camera, but they should be the same
-     */
+    @Override
     public Vector3f getVrCameraLookDirection(){
         return getLeftCamera().getDirection();
     }
 
-    /**
-     * Returns the average position of the 2 VR cameras (i.e. half way between the left and right eyes)
-     */
+    @Override
     public Vector3f getVrCameraPosition(){
         return getLeftCamera().getLocation().add(getRightCamera().getLocation()).mult(0.5f);
     }
 
+    @Override
     public Vector3f getPlayerFeetPosition(){
         return getVrCameraPosition().clone().setY(getObserver().getWorldTranslation().y);
+    }
+
+    @Override
+    public Quaternion getVrCameraRotation(){
+        return getLeftCamera().getRotation();
     }
 }

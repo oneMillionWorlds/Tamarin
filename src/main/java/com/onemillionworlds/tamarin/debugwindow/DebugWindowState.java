@@ -10,7 +10,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.FunctionRegistration;
@@ -24,7 +24,6 @@ import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.BoxLayout;
 import lombok.AllArgsConstructor;
-import org.lwjgl.openxr.XrAction;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,7 +65,7 @@ public class DebugWindowState extends BaseAppState{
     Map<String, LineItem> newLineItems = new LinkedHashMap<>();
     Map<String, LineItem> currentLineItems = new HashMap<>();
 
-    XrAppState xrAppState;
+    XrBaseAppState xrAppState;
     VRHandsAppState vrHandsAppState;
     StatsAppState statsAppState;
 
@@ -112,7 +111,7 @@ public class DebugWindowState extends BaseAppState{
         AbstractGrabControl control = new RelativeMovingGrabControl();
         debugWindowNode.addControl(control);
 
-        xrAppState = getState(XrAppState.class);
+        xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
         vrHandsAppState = getState(VRHandsAppState.class);
         statsAppState = getState(StatsAppState.class);
         ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
@@ -280,8 +279,8 @@ public class DebugWindowState extends BaseAppState{
 
     }
 
-    private static Vector3f getVrCameraPosition(XrAppState vrAppState){
-        return vrAppState.getLeftCamera().getLocation().add(vrAppState.getRightCamera().getLocation()).mult(0.5f);
+    private static Vector3f getVrCameraPosition(XrBaseAppState vrAppState){
+        return vrAppState.getVrCameraPosition();
     }
 
     private class NonFadingRenderText extends LineItem{

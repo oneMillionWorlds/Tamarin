@@ -12,7 +12,7 @@ import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.KeyboardButton;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardEvent;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.event.MouseListener;
@@ -75,8 +75,8 @@ public class LemurKeyboard extends BaseAppState{
     protected void initialize(Application app){
         rootNodeDelegate.attachChild(keyboardNode);
 
-        XrAppState vrAppState = app.getStateManager().getState(XrAppState.ID, XrAppState.class);
-        Vector3f cameraLocation = vrAppState.getLeftCamera().getLocation().add(vrAppState.getRightCamera().getLocation()).mult(0.5f);
+        XrBaseAppState vrAppState = app.getStateManager().getState(XrBaseAppState.ID, XrBaseAppState.class);
+        Vector3f cameraLocation = vrAppState.getVrCameraPosition();
         Vector3f toCameraDirection = cameraLocation.subtract(ownerPosition).normalizeLocal();
         float cameraDistance = cameraLocation.distance(ownerPosition);
 

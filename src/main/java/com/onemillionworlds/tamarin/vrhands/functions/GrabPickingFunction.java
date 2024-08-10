@@ -4,7 +4,7 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -45,7 +45,7 @@ public class GrabPickingFunction implements BoundHandFunction{
     Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
 
     private BoundHand boundHand;
-    private OpenXrActionState actionBasedOpenVrState;
+    private XrActionBaseAppState actionBasedOpenVrState;
 
     public GrabPickingFunction(ActionHandle grabAction, Node nodeToGrabPickAgainst){
         this.grabAction = grabAction;
@@ -55,7 +55,7 @@ public class GrabPickingFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
+        this.actionBasedOpenVrState = stateManager.getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
     }
 
     @Override

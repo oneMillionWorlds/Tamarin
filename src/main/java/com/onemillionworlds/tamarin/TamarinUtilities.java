@@ -8,7 +8,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.Control;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 
 import java.util.ArrayList;
@@ -23,14 +23,13 @@ public class TamarinUtilities{
      * @param xrAppState the XRAppState
      * @param feetPosition where the players feet should be after the move
      */
-    public static void movePlayerFeetToPosition(XrAppState xrAppState, Vector3f feetPosition){
+    public static void movePlayerFeetToPosition(XrBaseAppState xrAppState, Vector3f feetPosition){
         Vector3f playerCurrentPosition = xrAppState.getVrCameraPosition();
-        Node observerNode = xrAppState.getObserver();
         Vector3f movement = feetPosition.subtract(playerCurrentPosition);
 
-        Vector3f currentObserverPosition = observerNode.getWorldTranslation();
+        Vector3f currentObserverPosition = xrAppState.getObserverPosition();
 
-        observerNode.setLocalTranslation(currentObserverPosition.x+movement.x, feetPosition.y, currentObserverPosition.z+movement.z);
+        xrAppState.setObserverPosition(new Vector3f(currentObserverPosition.x+movement.x, feetPosition.y, currentObserverPosition.z+movement.z));
     }
 
     /**
@@ -43,14 +42,13 @@ public class TamarinUtilities{
      * @param xrAppState the XRAppState
      * @param facePosition where the players face should be after the move (face being the mid-point of the two eyes)
      */
-    public static void movePlayerFaceToPosition(XrAppState xrAppState, Vector3f facePosition){
+    public static void movePlayerFaceToPosition(XrBaseAppState xrAppState, Vector3f facePosition){
         Vector3f playerCurrentPosition = xrAppState.getVrCameraPosition();
-        Node observerNode = xrAppState.getObserver();
         Vector3f movement = facePosition.subtract(playerCurrentPosition);
 
-        Vector3f currentObserverPosition = observerNode.getWorldTranslation();
+        Vector3f currentObserverPosition = xrAppState.getObserverPosition();
 
-        observerNode.setLocalTranslation(currentObserverPosition.x+movement.x, currentObserverPosition.y+facePosition.y, currentObserverPosition.z+movement.z);
+        xrAppState.setObserverPosition(new Vector3f(currentObserverPosition.x+movement.x, currentObserverPosition.y+facePosition.y, currentObserverPosition.z+movement.z));
     }
 
     /**
@@ -59,7 +57,7 @@ public class TamarinUtilities{
      * real world).
      * If the position is the same as the current position, this will do nothing.
      */
-    public static void playerLookAtPosition(XrAppState vrAppState, Vector3f position){
+    public static void playerLookAtPosition(XrBaseAppState vrAppState, Vector3f position){
         Vector3f currentPosition = vrAppState.getVrCameraPosition();
 
         Vector3f desiredLookDirection = position.subtract(currentPosition);
@@ -74,7 +72,7 @@ public class TamarinUtilities{
      * int the X-Z plane so the y coordinate is ignored (and so you won't get your universe all messed up relative to the
      * real world).
      */
-    public static void playerLookInDirection(XrAppState vrAppState, Vector3f lookDirection){
+    public static void playerLookInDirection(XrBaseAppState vrAppState, Vector3f lookDirection){
         Vector3f currentLookDirection = new Vector3f(vrAppState.getVrCameraLookDirection());
         currentLookDirection.y = 0;
         Vector3f requestedLookDirection = new Vector3f(lookDirection);
@@ -97,7 +95,7 @@ public class TamarinUtilities{
      * @param vrAppState the VRAppState
      * @param angleAboutYAxis the requested turn angle. Positive numbers turn left, negative numbers turn right
      */
-    public static void rotateObserverWithoutMovingPlayer(XrAppState vrAppState, float angleAboutYAxis){
+    public static void rotateObserverWithoutMovingPlayer(XrBaseAppState vrAppState, float angleAboutYAxis){
         Node observerNode = vrAppState.getObserver();
 
         Quaternion currentRotation = observerNode.getLocalRotation();
@@ -107,7 +105,7 @@ public class TamarinUtilities{
         /* Because the player may be a short distance from the observer rotating the observer may move the
          * player. This requires that a small movement in the observer occur along with the rotation
          */
-        Vector3f playerStartPosition = vrAppState.getLeftCamera().getLocation().add(vrAppState.getRightCamera().getLocation()).mult(0.5f);
+        Vector3f playerStartPosition = vrAppState.getVrCameraPosition();
         Vector3f playerStartPositionObserverRelative = observerNode.worldToLocal(playerStartPosition, null);
         observerNode.setLocalRotation(leftTurn.mult(currentRotation));
         Vector3f playerPositionAfterRotation = observerNode.localToWorld(playerStartPositionObserverRelative, null);

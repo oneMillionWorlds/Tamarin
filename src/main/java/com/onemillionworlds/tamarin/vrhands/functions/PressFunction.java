@@ -4,7 +4,7 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.lemursupport.FullHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
@@ -13,7 +13,6 @@ import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
 import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
-import org.lwjgl.openxr.XrAction;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -46,7 +45,7 @@ public class PressFunction implements BoundHandFunction{
     Optional<ActionHandle> vibrateActionOnTouch;
     float vibrateOnTouchIntensity;
 
-    private OpenXrActionState actionBasedOpenVrState;
+    private XrActionBaseAppState actionBasedOpenVrState;
 
     private AppStateManager stateManager;
 
@@ -76,7 +75,7 @@ public class PressFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.stateManager = stateManager;
-        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
+        this.actionBasedOpenVrState = stateManager.getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
     }
 
     @Override

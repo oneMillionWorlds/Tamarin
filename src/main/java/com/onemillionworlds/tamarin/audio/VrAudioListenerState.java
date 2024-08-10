@@ -6,12 +6,12 @@ import com.jme3.audio.Listener;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
 public class VrAudioListenerState extends BaseAppState {
 
     private Listener listener;
-    private XrAppState xrAppState;
+    private XrBaseAppState xrAppState;
     private float lastTpf;
 
     public VrAudioListenerState() {
@@ -20,7 +20,7 @@ public class VrAudioListenerState extends BaseAppState {
     @Override
     protected void initialize(Application app) {
         this.listener = app.getListener();
-        this.xrAppState = app.getStateManager().getState(XrAppState.ID, XrAppState.class);
+        this.xrAppState = app.getStateManager().getState(XrBaseAppState.ID, XrBaseAppState.class);
     }
 
     @Override
@@ -52,7 +52,7 @@ public class VrAudioListenerState extends BaseAppState {
         }
 
         Quaternion lastRotation = listener.getRotation();
-        Quaternion currentRotation = xrAppState.getLeftCamera().getRotation();
+        Quaternion currentRotation = xrAppState.getVrCameraRotation();
         if (!lastRotation.equals(currentRotation)) {
             listener.setRotation(currentRotation);
         }

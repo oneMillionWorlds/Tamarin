@@ -7,8 +7,8 @@ import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.OpenXrActionState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -55,7 +55,7 @@ public class LemurClickFunction implements BoundHandFunction{
     private float lastTriggerPressure = 0;
 
     private BoundHand boundHand;
-    private OpenXrActionState actionBasedOpenVrState;
+    private XrActionBaseAppState actionBasedOpenVrState;
     private VRHandsAppState vrHandsAppState;
 
     @Setter
@@ -101,7 +101,7 @@ public class LemurClickFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(OpenXrActionState.ID, OpenXrActionState.class);
+        this.actionBasedOpenVrState = stateManager.getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
         this.stateManager = stateManager;
         this.mouseAppState = this.stateManager.getState(VrLemurAppState.class);
         this.vrHandsAppState = this.stateManager.getState(VRHandsAppState.class);
