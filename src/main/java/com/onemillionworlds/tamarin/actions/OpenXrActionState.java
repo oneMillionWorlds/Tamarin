@@ -154,21 +154,6 @@ public class OpenXrActionState extends BaseAppState{
     XrAppState xrAppState;
 
     /**
-     * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make.
-     * (An action is an abstract version of a button press etc.).
-     * <p>
-     * Deprecated because it was too easy to forget the starting action sets and then wonder why nothing worked.
-     * </p>
-     *
-     * @param manifest a class describing all the actions (abstract versions of buttons, hand poses etc) available to the application
-     * @param startingActionSets the names of the action sets that should be activated at the start of the application (aka the ones that will work)
-     */
-    @Deprecated
-    public OpenXrActionState(ActionManifest manifest, String... startingActionSets){
-        this(manifest, Arrays.asList(startingActionSets));
-    }
-
-    /**
      * Creates an OpenXrActionState with a single active action set (but with potentially more than one registered, ready to use later).
      * <p>
      * Registers an action manifest. An actions manifest is a file that defines "actions" a player can make. This will also contain suggestions at to what physical
