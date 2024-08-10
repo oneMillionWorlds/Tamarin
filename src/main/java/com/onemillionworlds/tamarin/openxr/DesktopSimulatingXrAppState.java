@@ -86,35 +86,42 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
 
     @Override
     public Vector3f getObserverPosition(){
-        return null;
+        return observer.getLocalTranslation();
     }
 
     @Override
     public void movePlayersFaceToPosition(Vector3f facePosition){
-        Vector3f playerCurrentPosition = getVrCameraPosition();
-        Vector3f movement = facePosition.subtract(playerCurrentPosition);
+        //this runs defered to be the same as the VR version
+        runOnceInitialised.add(() -> {
+            Vector3f playerCurrentPosition = getVrCameraPosition();
+            Vector3f movement = facePosition.subtract(playerCurrentPosition);
 
-        Vector3f currentObserverPosition = getObserverPosition();
+            Vector3f currentObserverPosition = getObserverPosition();
 
-        setObserverPosition(new Vector3f(currentObserverPosition.x+movement.x, currentObserverPosition.y+facePosition.y, currentObserverPosition.z+movement.z));
+            setObserverPosition(new Vector3f(currentObserverPosition.x + movement.x, currentObserverPosition.y, currentObserverPosition.z + movement.z));
 
-        //because this is simulated (so no VR headset to respond to the change) we need to update the camera position
-        getApplication().getCamera().setLocation(facePosition);
+            //because this is simulated (so no VR headset to respond to the change) we need to update the camera position
+            getApplication().getCamera().setLocation(facePosition);
+        });
     }
 
     @Override
     public void movePlayersFeetToPosition(Vector3f feetPosition){
-        Vector3f playerCurrentPosition = getVrCameraPosition();
-        Node observerNode = getObserver();
-        Vector3f movement = feetPosition.subtract(playerCurrentPosition);
+        //this runs defered to be the same as the VR version
+        runOnceInitialised.add(() -> {
+            Vector3f playerCurrentPosition = getVrCameraPosition();
+            Node observerNode = getObserver();
+            Vector3f movement = feetPosition.subtract(playerCurrentPosition);
 
-        Vector3f currentObserverPosition = observerNode.getWorldTranslation();
+            Vector3f currentObserverPosition = observerNode.getWorldTranslation();
 
-        observerNode.setLocalTranslation(currentObserverPosition.x+movement.x, feetPosition.y, currentObserverPosition.z+movement.z);
+            observerNode.setLocalTranslation(currentObserverPosition.x+movement.x, feetPosition.y, currentObserverPosition.z+movement.z);
 
-        //because this is simulated (so no VR headset to respond to the change) we need to update the camera position
-        float headHeightAboveFeet = playerCurrentPosition.y - feetPosition.y;
-        getApplication().getCamera().setLocation(feetPosition.add(0, headHeightAboveFeet, 0));
+            //because this is simulated (so no VR headset to respond to the change) we need to update the camera position
+            float headHeightAboveFeet = playerCurrentPosition.y - feetPosition.y;
+            getApplication().getCamera().setLocation(feetPosition.add(0, headHeightAboveFeet, 0));
+        });
+
     }
 
     @Override
@@ -147,13 +154,16 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
 
     @Override
     public void playerLookAtPosition(Vector3f position){
-        Vector3f currentPosition = getVrCameraPosition();
+        //this runs defered to be the same as the VR version
+        runOnceInitialised.add(() -> {
+            Vector3f currentPosition = getVrCameraPosition();
 
-        Vector3f desiredLookDirection = position.subtract(currentPosition);
-        desiredLookDirection.y = 0;
-        if (desiredLookDirection.lengthSquared()>0){
-            playerLookInDirection(desiredLookDirection.normalizeLocal());
-        }
+            Vector3f desiredLookDirection = position.subtract(currentPosition);
+            desiredLookDirection.y = 0;
+            if(desiredLookDirection.lengthSquared() > 0){
+                playerLookInDirection(desiredLookDirection.normalizeLocal());
+            }
+        });
     }
 
     @Override
