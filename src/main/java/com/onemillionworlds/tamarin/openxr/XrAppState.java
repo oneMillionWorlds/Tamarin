@@ -169,19 +169,6 @@ public class XrAppState extends BaseAppState{
 
     /**
      * Allows initialisation of both eyes viewports (e.g. adding scene processors or changing the background colour).
-     * Note that it is safe to call this before the state is initialised (the code will wait till it is and then run it).
-     * <p>
-     * Deprecated, use setViewportConfiguration instead
-     * </p>
-     */
-    @SuppressWarnings("unused")
-    @Deprecated
-    public void configureBothViewports(Consumer<ViewPort> configureViewport){
-        setMainViewportConfiguration(configureViewport);
-    }
-
-    /**
-     * Allows initialisation of both eyes viewports (e.g. adding scene processors or changing the background colour).
      * Note that Tamarin forms MORE THAN TWO viewports (because it is triple buffered).  This method may be called
      * now (for existing viewports) or when a new viewport is created (if they haven't yet been intialised). You
      * should anticipate that this method may be called 6 times.
