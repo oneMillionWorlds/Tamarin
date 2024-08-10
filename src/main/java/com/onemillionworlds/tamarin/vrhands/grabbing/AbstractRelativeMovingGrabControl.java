@@ -146,7 +146,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      * Deprecated; use {@link #setGrabMoveRestriction(GrabMoveRestriction)} instead
      * </p>
      */
-    @Deprecated
+    @Deprecated(since="2.6", forRemoval = true)
     public void restrictToPath(Vector3f startPoint, Vector3f endPoint){
         grabRestriction = new RestrictToLocalLine(new Line3f(startPoint, endPoint));
     }

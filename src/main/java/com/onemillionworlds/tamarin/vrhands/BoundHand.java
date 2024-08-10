@@ -129,8 +129,6 @@ public abstract class BoundHand{
     @Getter
     private final Node indexFingerTip_xPointing = new Node();
 
-    private final Node debugPointsNode = new Node();
-
     /**
      * A node at the wrist.
      * <p>
@@ -164,10 +162,6 @@ public abstract class BoundHand{
 
     private final XrActionBaseAppState xrActionState;
 
-    /**
-     * Debug points add markers onto the hands where the bone positions are, and their directions
-     */
-    private boolean debugPoints = false;
 
     private float baseSkinDepth = 0.02f;
 
@@ -233,7 +227,6 @@ public abstract class BoundHand{
         this.assetManager = assetManager;
         this.handSide = handSide;
         this.rawOpenXrPosition.attachChild(handNode_xPointing);
-        this.rawOpenXrPosition.attachChild(debugPointsNode);
 
         float outOfPalm = (handSide == HandSide.LEFT ? 1 : -1);
         this.palmPickPoints = List.of(new Vector3f(0,0,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.02f,-0.03f,outOfPalm*(0.01f+palmPickSphereRadius)), new Vector3f(0.03f,0.03f,outOfPalm*(0.005f+palmPickSphereRadius)), new Vector3f(-0.03f,0,outOfPalm*(0.01f+palmPickSphereRadius)));
@@ -358,10 +351,6 @@ public abstract class BoundHand{
     }
 
     protected void update(float timeSlice, Map<HandJoint, BonePose> boneStances){
-        if (debugPoints){
-            debugPointsNode.detachAllChildren();
-            debugPointsNode.attachChild(armatureToNodes(getArmature(), ColorRGBA.Red));
-        }
         updatePalm(timeSlice, boneStances);
         updateFingerTips(boneStances);
         updateWrist(boneStances);
@@ -500,7 +489,7 @@ public abstract class BoundHand{
      *
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public CollisionResults pickPalm(Node nodeToPickAgainst){
         return pickPalm(nodeToPickAgainst, Vector3f.ZERO);
     }
@@ -540,7 +529,7 @@ public abstract class BoundHand{
      * @param nodeToPickAgainst node that is the parent of all things that can be picked. Probably the root node
      * @param palmRelativePosition the position for the pick line to start
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public CollisionResults pickPalm(Node nodeToPickAgainst, Vector3f palmRelativePosition){
         Vector3f pickOrigin = getPalmNode().localToWorld(palmRelativePosition, null);
         Vector3f pickingPoint = getPalmNode().localToWorld(palmRelativePosition.add(0,0,handSide == HandSide.LEFT?1:-1), null);
@@ -551,87 +540,6 @@ public abstract class BoundHand{
 
         nodeToPickAgainst.collideWith(ray, results);
         return results;
-    }
-
-    /**
-     * Will start rendering the positions of the bones (note if all is well they will be inside the hands, so not really
-     * visible (doing this is not performant, debug only)
-     * Deprecated. Use {@link TamarinDebugOverlayState} instead
-     */
-    @Deprecated
-    public void debugArmature(){
-        this.debugPoints = true;
-    }
-
-    /**
-     * Adds a debug line in the direction the hand would use for picking or clicking
-     * Deprecated. Use {@link TamarinDebugOverlayState} instead
-     */
-    @Deprecated
-    public void debugPointingPickLine(){
-        handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
-        indexFingerTip_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0) ));
-    }
-
-    /**
-     * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
-     * {@link BoundHand#getHandNode_xPointing()}
-     * Deprecated. Use {@link TamarinDebugOverlayState} instead
-     */
-    @Deprecated
-    public void debugHandNodeXPointingCoordinateSystem(){
-        handNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
-        handNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
-        handNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
-    }
-
-    /**
-     * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
-     * {@link BoundHand#getHandNode_xPointing()}
-     *
-     * Deprecated. Use {@link TamarinDebugOverlayState} instead (Although it doesn't actually support this particular point
-     * it does support the getHandNode_xPointing one)
-     */
-    @Deprecated
-    public void debugHandNodeZPointingCoordinateSystem(){
-        handNode_zPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.15f,0,0)));
-        handNode_zPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
-        handNode_zPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.25f)));
-    }
-
-    /**
-     * Adds green (x), yellow (y) and red (x) lines indicating the coordinate system of the node
-     * {@link BoundHand#getPalmNode()}
-     * Deprecated. Sort of replaced by {@link TamarinDebugOverlayState} but really the palmNode_xPointing coordinate system
-     * is niche
-     */
-    @Deprecated
-    public void debugPalmCoordinateSystem(){
-        palmNode_xPointing.attachChild(microLine(ColorRGBA.Green, new Vector3f(0.25f,0,0)));
-        palmNode_xPointing.attachChild(microLine(ColorRGBA.Yellow, new Vector3f(0,0.15f,0)));
-        palmNode_xPointing.attachChild(microLine(ColorRGBA.Red, new Vector3f(0,0f,0.1f)));
-    }
-
-    /**
-     * spheres showing the current grab points for the palm.
-     * <p>
-     * The first (index zero) points are bright, the last points (high index) are dark
-     * {@link BoundHand#getPalmNode()}
-     * Deprecated. Use {@link TamarinDebugOverlayState} instead
-     */
-    @Deprecated
-    public FunctionRegistration debugPalmGrabPoints(){
-        List<Geometry> addedPoints = new ArrayList<>();
-
-        int index = 0;
-        for(Vector3f grabPoint: this.palmPickPoints){
-            float brightness = ((float)this.palmPickPoints.size()-index)/this.palmPickPoints.size();
-            index++;
-            Geometry sphere = sphere(new ColorRGBA(brightness,brightness,brightness,1), grabPoint, palmPickSphereRadius);
-            addedPoints.add(sphere);
-            palmNode_xPointing.attachChild(sphere);
-        }
-        return () -> addedPoints.forEach(Spatial::removeFromParent);
     }
 
     /**
