@@ -342,7 +342,7 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         guiOverlay.attachChild(keyText);
 
         setupMouseMotionListeners();
-
+        cameraToFlycamMode();
     }
 
     private void setupMouseMotionListeners(){
