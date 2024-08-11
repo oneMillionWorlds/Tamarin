@@ -271,8 +271,9 @@ public class Action{
          * Sub action paths are things like "/user/hand/left", for use when restricting actions to a specific input source.
          * This is defaulted to ["/user/hand/left", "/user/hand/right"] and there is usually no reason to change it.
          */
-        public void overrideSupportedSubActionPaths(List<String> supportedSubActionPaths){
+        public ActionBuilder overrideSupportedSubActionPaths(List<String> supportedSubActionPaths){
             this.supportedSubActionPaths = supportedSubActionPaths;
+            return this;
         }
 
         /**
@@ -288,8 +289,9 @@ public class Action{
          * @param desktopDebugKeyTrigger the key to bind to this action
          * @param toggle if true, the action will be toggled on and off when the key is pressed, if false, the action will be on while the key is pressed
          */
-        public void withDesktopSimulationKeyTrigger(String inputStringGeneratingPress, KeyTrigger desktopDebugKeyTrigger, boolean toggle){
+        public ActionBuilder withDesktopSimulationKeyTrigger(String inputStringGeneratingPress, KeyTrigger desktopDebugKeyTrigger, boolean toggle){
             this.desktopDebugKeyTrigger.put(inputStringGeneratingPress, new DesktopSimulationKeybinding(desktopDebugKeyTrigger, toggle));
+            return this;
         }
 
         /**
@@ -303,8 +305,9 @@ public class Action{
          * @param desktopDebugKeyTrigger the key to bind to this action
          * @param toggle if true, the action will be toggled on and off when the key is pressed, if false, the action will be on while the key is pressed
          */
-        public void withDesktopSimulationKeyTrigger(HandSide handPretendingToCreateAction, KeyTrigger desktopDebugKeyTrigger, boolean toggle){
+        public ActionBuilder withDesktopSimulationKeyTrigger(HandSide handPretendingToCreateAction, KeyTrigger desktopDebugKeyTrigger, boolean toggle){
             this.desktopDebugKeyTrigger.put(handPretendingToCreateAction.restrictToInputString, new DesktopSimulationKeybinding(desktopDebugKeyTrigger, toggle));
+            return this;
         }
 
         public Action build(){

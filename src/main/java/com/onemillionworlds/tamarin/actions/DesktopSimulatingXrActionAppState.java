@@ -10,6 +10,7 @@ import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
@@ -27,6 +28,7 @@ import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +83,8 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private BitmapText modeText;
 
+    private EnumMap<HandSide, Vector3f> handPositions = new EnumMap<>(HandSide.class);
+
     public DesktopSimulatingXrActionAppState(ActionManifest manifest, ActionHandle handPoseActionHandle, String startingActionSet){
         this(manifest, handPoseActionHandle, List.of(startingActionSet));
     }
@@ -90,6 +94,8 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         this.handPoseActionHandle = handPoseActionHandle;
         this.activeActionSets = startingActionSets;
         this.manifest = manifest;
+        handPositions.put(HandSide.LEFT, new Vector3f(0.15f,0,0.35f));
+        handPositions.put(HandSide.RIGHT, new Vector3f(-0.15f,0,0.35f));
     }
 
     @Override
@@ -173,9 +179,11 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
                 Node hand = new Node("hand");
                 bodyAtHandHeight.attachChild(hand);
-                hand.setLocalTranslation((handSide == HandSide.LEFT ? 0.25f: - 0.25f),0,0.25f);
+                hand.setLocalTranslation(handPositions.get(handSide));
 
-                return Optional.of(new PoseActionState(hand.getWorldTranslation(), bodyAtHandHeight.getWorldRotation()));
+                hand.setLocalRotation(new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y));
+
+                return Optional.of(new PoseActionState(hand.getWorldTranslation(), hand.getWorldRotation()));
             }
         }
         return Optional.empty();
@@ -315,6 +323,15 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         modeText.setLocalTranslation(10, application.getCamera().getHeight()-modeText.getLineHeight(), 0);
         modeText.setColor(ColorRGBA.Cyan);
         guiOverlay.attachChild(modeText);
+
+        BitmapText keyText = new BitmapText(font);
+        keyText.setText("Mode: " + simulationMode);
+        keyText.setSize(font.getCharSet().getRenderedSize());
+        keyText.setLocalTranslation(10, application.getCamera().getHeight()- 3 * modeText.getLineHeight(), 0);
+        keyText.setColor(ColorRGBA.Cyan);
+        keyText.setText(debugStringForActions());
+        guiOverlay.attachChild(keyText);
+
     }
 
     @Override
@@ -412,6 +429,28 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         inputManager.addListener(newKeyBinding, mappingName);
 
         return newKeyBinding;
+    }
+
+    private String debugStringForActions(){
+        StringBuilder sb = new StringBuilder();
+        manifest.getActionSets().stream().flatMap(as -> as.getActions().stream()).forEach(action -> {
+            ActionHandle handle = action.getActionHandle();
+            String actionHandleString = handle.actionName() + "(" + handle.actionSetName() + ")";
+
+            action.getDesktopSimulationKeybinding().forEach((actionPath,desktopSimulationKeybinding) -> {
+                String controllerString;
+                if(actionPath.equals(HandSide.LEFT.restrictToInputString)){
+                    controllerString = "[L]";
+                }else if (actionPath.equals(HandSide.RIGHT.restrictToInputString)){
+                    controllerString = "[R]";
+                } else{
+                    controllerString = "["+actionPath+"]";
+                }
+                sb.append(actionHandleString).append(controllerString).append(" -> ")
+                        .append(ReverseKeyMapper.getKeyName(desktopSimulationKeybinding.desktopDebugKeyTrigger().getKeyCode())).append("\n");
+            });
+        });
+        return sb.toString();
     }
 
     private void cameraToMouseMode(){
