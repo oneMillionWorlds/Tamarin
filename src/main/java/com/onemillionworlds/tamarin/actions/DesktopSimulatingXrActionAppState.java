@@ -7,8 +7,15 @@ import com.jme3.font.BitmapText;
 import com.jme3.input.FlyByCamera;
 import com.jme3.input.InputManager;
 import com.jme3.input.KeyInput;
+import com.jme3.input.RawInputListener;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.event.JoyAxisEvent;
+import com.jme3.input.event.JoyButtonEvent;
+import com.jme3.input.event.KeyInputEvent;
+import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.input.event.MouseMotionEvent;
+import com.jme3.input.event.TouchEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
@@ -84,6 +91,8 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     private BitmapText modeText;
 
     private EnumMap<HandSide, Vector3f> handPositions = new EnumMap<>(HandSide.class);
+
+    private RawInputListener rawMouseListener;
 
     public DesktopSimulatingXrActionAppState(ActionManifest manifest, ActionHandle handPoseActionHandle, String startingActionSet){
         this(manifest, handPoseActionHandle, List.of(startingActionSet));
@@ -332,6 +341,54 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         keyText.setText(debugStringForActions());
         guiOverlay.attachChild(keyText);
 
+        setupMouseMotionListeners();
+
+    }
+
+    private void setupMouseMotionListeners(){
+        InputManager inputManager = getApplication().getInputManager();
+
+        rawMouseListener = new RawInputListener(){
+            @Override
+            public void beginInput(){}
+
+            @Override
+            public void endInput(){}
+
+            @Override
+            public void onJoyAxisEvent(JoyAxisEvent joyAxisEvent){}
+
+            @Override
+            public void onJoyButtonEvent(JoyButtonEvent joyButtonEvent){}
+
+            @Override
+            public void onMouseMotionEvent(MouseMotionEvent mouseMotionEvent){
+
+                float deltaX = mouseMotionEvent.getDX();
+                float deltaY = mouseMotionEvent.getDY();
+                float deltaWheel = mouseMotionEvent.getDeltaWheel();
+
+                Vector3f motion = new Vector3f(-deltaX/1000, deltaY/1000, deltaWheel/3000);
+
+                if(simulationMode == SimulationMode.LEFT_HAND){
+                    handPositions.put(HandSide.LEFT, handPositions.get(HandSide.LEFT).add(motion));
+                }else if(simulationMode == SimulationMode.RIGHT_HAND){
+                    handPositions.put(HandSide.RIGHT, handPositions.get(HandSide.RIGHT).add(motion));
+                }
+            }
+
+            @Override
+            public void onMouseButtonEvent(MouseButtonEvent mouseButtonEvent){}
+
+            @Override
+            public void onKeyEvent(KeyInputEvent keyInputEvent){}
+
+            @Override
+            public void onTouchEvent(TouchEvent touchEvent){}
+        };
+
+        inputManager.addRawInputListener(rawMouseListener);
+
     }
 
     @Override
@@ -339,6 +396,7 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().closeProcedure());
         changeModeBinding.closeProcedure();
         guiOverlay.removeFromParent();
+        getApplication().getInputManager().removeRawInputListener(rawMouseListener);
     }
 
     @Override
