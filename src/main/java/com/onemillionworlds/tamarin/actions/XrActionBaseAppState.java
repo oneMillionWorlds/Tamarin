@@ -78,7 +78,9 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @return the DigitalActionState that has details on if the state has changed, what the state is etc.
      */
     @SuppressWarnings("unused")
-    public abstract BooleanActionState getBooleanActionState(ActionHandle action);
+    public BooleanActionState getBooleanActionState(ActionHandle action){
+        return getBooleanActionState(action, null);
+    }
 
     /**
      * Gets the current state of the action (abstract version of a button press).
@@ -146,6 +148,24 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
      */
     public abstract FloatActionState getFloatActionState(ActionHandle action, String restrictToInput );
+
+    /**
+     * Gets the current state of the action (abstract version of a button press).
+     * <p>
+     * This is called for analog style actions (most commonly triggers but button pressure can also be mapped in analog).
+     * </p>
+     * <p>
+     * This method is commonly called when it is important which hand the action is found on. For example an "in universe"
+     * joystick that has a hat control might (while you are holding it) bind to the on-controller hat, but only on the hand
+     * holding it
+     * </p>
+     * @param action The action.
+     * @return the AnalogActionState that has details on how much the state has changed, what the state is etc.
+     */
+    public FloatActionState getFloatActionState(ActionHandle action){
+        return getFloatActionState(action, null);
+    }
+
 
     /**
      * Gets the current state of the action (abstract version of a button press).

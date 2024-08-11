@@ -1,5 +1,6 @@
 package com.onemillionworlds.tamarin.actions.actionprofile;
 
+import com.jme3.input.controls.KeyTrigger;
 import com.onemillionworlds.tamarin.actions.ActionType;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.controllerprofile.GoogleDaydreamController;
@@ -13,7 +14,9 @@ import com.onemillionworlds.tamarin.actions.controllerprofile.ValveIndexControll
 import lombok.Getter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Action{
 
@@ -27,6 +30,7 @@ public class Action{
         DEFAULT_SUB_ACTIONS.add(HandSide.RIGHT.restrictToInputString);
     }
 
+    @Getter
     private final ActionHandle actionHandle;
 
     /**
@@ -46,12 +50,16 @@ public class Action{
     @Getter
     private final List<String> supportedSubActionPaths;
 
+    @Getter
+    private final Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding;
+
     public Action(ActionHandle actionHandle, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings){
         this.actionHandle = actionHandle;
         this.translatedName = translatedName;
         this.actionType = actionType;
         this.suggestedBindings = suggestedBindings;
         this.supportedSubActionPaths = DEFAULT_SUB_ACTIONS;
+        this.desktopSimulationKeybinding = new HashMap<>();
     }
 
     public Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths){
@@ -60,6 +68,16 @@ public class Action{
         this.actionType = actionType;
         this.suggestedBindings = suggestedBindings;
         this.supportedSubActionPaths = supportedSubActionPaths;
+        this.desktopSimulationKeybinding = new HashMap<>();
+    }
+
+    private Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths, Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding){
+        this.actionHandle = actionName;
+        this.translatedName = translatedName;
+        this.actionType = actionType;
+        this.suggestedBindings = suggestedBindings;
+        this.supportedSubActionPaths = supportedSubActionPaths;
+        this.desktopSimulationKeybinding = desktopSimulationKeybinding;
     }
 
     public String getActionName(){
@@ -87,6 +105,8 @@ public class Action{
         private final List<SuggestedBinding> suggestedBindings = new ArrayList<>();
 
         private List<String> supportedSubActionPaths = DEFAULT_SUB_ACTIONS;
+
+        private Map<String,DesktopSimulationKeybinding> desktopDebugKeyTrigger = new HashMap<>();
 
         /**
          * This is used to identify the action when you want to programatically interact with it e.g. getting an actions value. It is anticipated that
@@ -255,6 +275,38 @@ public class Action{
             this.supportedSubActionPaths = supportedSubActionPaths;
         }
 
+        /**
+         * This is only used with the {@link com.onemillionworlds.tamarin.actions.DesktopSimulatingXrActionAppState}.
+         * It allows a keyboard button to be bound to this action for debugging purposes (allowing VR like behaviour
+         * without having actually plugged in a VR headset).
+         * Note this only applies to boolean and float actions. Haptics are N/A and Vector2fs are not supported currently.
+         * Poses are handled differently (as the mouse is used to simulate those).
+         * @param inputStringGeneratingPress the input string for the controller the keypress is pretending to come from
+         *                                  (e.g. "/user/hand/left", available as Side.LEFT.restrictToInputString).
+         *                                  (even if it "doesn't matter" from a simulation perspective the
+         *                                  keypress still "comes from somewhere")
+         * @param desktopDebugKeyTrigger the key to bind to this action
+         * @param toggle if true, the action will be toggled on and off when the key is pressed, if false, the action will be on while the key is pressed
+         */
+        public void withDesktopSimulationKeyTrigger(String inputStringGeneratingPress, KeyTrigger desktopDebugKeyTrigger, boolean toggle){
+            this.desktopDebugKeyTrigger.put(inputStringGeneratingPress, new DesktopSimulationKeybinding(desktopDebugKeyTrigger, toggle));
+        }
+
+        /**
+         * This is only used with the {@link com.onemillionworlds.tamarin.actions.DesktopSimulatingXrActionAppState}.
+         * It allows a keyboard button to be bound to this action for debugging purposes (allowing VR like behaviour
+         * without having actually plugged in a VR headset).
+         * Note this only applies to boolean and float actions. Haptics are N/A and Vector2fs are not supported currently.
+         * Poses are handled differently (as the mouse is used to simulate those).
+         * @param handPretendingToCreateAction the hand that this key trigger comes from (even if it "doesn't matter" from a simulation perspective the
+         *                       keypress still "comes from somewhere")
+         * @param desktopDebugKeyTrigger the key to bind to this action
+         * @param toggle if true, the action will be toggled on and off when the key is pressed, if false, the action will be on while the key is pressed
+         */
+        public void withDesktopSimulationKeyTrigger(HandSide handPretendingToCreateAction, KeyTrigger desktopDebugKeyTrigger, boolean toggle){
+            this.desktopDebugKeyTrigger.put(handPretendingToCreateAction.restrictToInputString, new DesktopSimulationKeybinding(desktopDebugKeyTrigger, toggle));
+        }
+
         public Action build(){
             if(actionHandle == null){
                 throw new IllegalArgumentException("actionHandle cannot be null");
@@ -268,7 +320,10 @@ public class Action{
             if(suggestedBindings.isEmpty()){
                 throw new IllegalArgumentException("suggestedBindings cannot be empty");
             }
-            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths);
+            if(actionType != ActionType.BOOLEAN && actionType != ActionType.FLOAT && !desktopDebugKeyTrigger.isEmpty()){
+                throw new IllegalArgumentException("desktopDebugKeyTrigger can only be set for boolean and float actions");
+            }
+            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths, desktopDebugKeyTrigger);
         }
 
     }

@@ -1,10 +1,16 @@
 package com.onemillionworlds.tamarin.actions;
 
 import com.jme3.app.Application;
+import com.jme3.input.InputManager;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.actions.actionprofile.Action;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
+import com.onemillionworlds.tamarin.actions.actionprofile.DesktopSimulationKeybinding;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -15,6 +21,7 @@ import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +29,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
+
     private static final Logger LOGGER = Logger.getLogger(DesktopSimulatingXrActionAppState.class.getName());
 
     private final List<Runnable> runAfterActionsSync = new ArrayList<>(0);
@@ -36,8 +44,24 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private XrBaseAppState xrAppState;
 
-    public DesktopSimulatingXrActionAppState(ActionHandle handPoseActionHandle){
+    private List<String> activeActionSets;
+
+    private final ActionManifest manifest;
+
+    /**
+     * Map of "restrictToInputString" -> "ActionHandle" -> "BoundActionHandle"
+     */
+    Map<String, Map<ActionHandle, BoundActionHandle>> keyBindingMap = new HashMap<>();
+
+    public DesktopSimulatingXrActionAppState(ActionManifest manifest, ActionHandle handPoseActionHandle, String startingActionSet){
+        this(manifest, handPoseActionHandle, List.of(startingActionSet));
+    }
+
+
+    public DesktopSimulatingXrActionAppState(ActionManifest manifest, ActionHandle handPoseActionHandle, List<String> startingActionSets){
         this.handPoseActionHandle = handPoseActionHandle;
+        this.activeActionSets = startingActionSets;
+        this.manifest = manifest;
     }
 
     @Override
@@ -47,7 +71,7 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     @Override
     public void setActiveActionSets(List<String> actionSets){
-        // doesn't mean anything in this context
+        this.activeActionSets = actionSets;
     }
 
     @Override
@@ -56,12 +80,52 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     }
 
     @Override
-    public BooleanActionState getBooleanActionState(ActionHandle action){
-        return new BooleanActionState(false, false);
-    }
-
-    @Override
     public BooleanActionState getBooleanActionState(ActionHandle action, String restrictToInput){
+        if(actionIsActive(action)){
+            List<BoundActionHandle> availableKeyBindings = new ArrayList<>();
+            if( restrictToInput!=null ){
+                BoundActionHandle singleResult = keyBindingMap.getOrDefault(restrictToInput, Map.of()).get(action);
+
+                if(singleResult != null){
+                    availableKeyBindings.add(singleResult);
+                }
+            } else{
+                for(Map<ActionHandle, BoundActionHandle> actionHandleBoundActionHandleMap : keyBindingMap.values()){
+                    BoundActionHandle availableKeyBinding = actionHandleBoundActionHandleMap.get(action);
+                    if(availableKeyBinding!=null){
+                        availableKeyBindings.add(availableKeyBinding);
+                    }
+                }
+            }
+
+            if(availableKeyBindings.size() == 1){
+                BoundActionHandle availableKeyBinding = availableKeyBindings.get(0);
+                NonVrKeyBinding keyBinding = availableKeyBinding.keyBinding();
+                if(availableKeyBinding.toggleMode()){
+                    return new BooleanActionState(keyBinding.getStateAsToggle(), keyBinding.toggleValueHasChangedThisTick());
+                }else{
+                    return new BooleanActionState(keyBinding.isKeyPressed(), keyBinding.valueHasChangedThisTick());
+                }
+            } else if (availableKeyBindings.size() > 1){
+                //have to munge the results together
+                boolean state = false;
+                boolean changed = false;
+
+                for(BoundActionHandle actionHandle : availableKeyBindings){
+                    NonVrKeyBinding keyBinding = actionHandle.keyBinding();
+
+                    if(actionHandle.toggleMode()){
+                        state = state || keyBinding.getStateAsToggle();
+                        changed = changed || keyBinding.toggleValueHasChangedThisTick();
+                    } else{
+                        state = state || keyBinding.isKeyPressed();
+                        changed = changed || keyBinding.valueHasChangedThisTick();
+                    }
+                }
+
+                return new BooleanActionState(state, changed);
+            }
+        }
         return new BooleanActionState(false, false);
     }
 
@@ -115,7 +179,9 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     @Override
     public FloatActionState getFloatActionState(ActionHandle action, String restrictToInput){
-        return new FloatActionState(0, false);
+        BooleanActionState booleanActionState = getBooleanActionState(action, restrictToInput);
+
+        return new FloatActionState(booleanActionState.getState()?1:0, booleanActionState.hasChanged());
     }
 
     @Override
@@ -160,16 +226,29 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
             runAfterActionsSync.forEach(Runnable::run);
             runAfterActionsSync.clear();
         }
+        keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().update());
     }
 
     @Override
     protected void initialize(Application application){
         xrAppState = application.getStateManager().getState(XrBaseAppState.ID, XrBaseAppState.class);
+
+        InputManager inputManager = application.getInputManager();
+
+        for(Action action : manifest.getActionSets().stream().flatMap(as -> as.getActions().stream()).toList()){
+            for(Map.Entry<String, DesktopSimulationKeybinding> restrictToInputBindingPair: action.getDesktopSimulationKeybinding().entrySet()){
+                String controllerString = restrictToInputBindingPair.getKey();
+                DesktopSimulationKeybinding keyTrigger = restrictToInputBindingPair.getValue();
+                NonVrKeyBinding keyBinding = createKeyBinding(inputManager, keyTrigger.desktopDebugKeyTrigger());
+                keyBindingMap.computeIfAbsent(controllerString, k -> new HashMap<>())
+                        .put(action.getActionHandle(), new BoundActionHandle(keyBinding, keyTrigger.toggle()));
+            }
+        }
     }
 
     @Override
     protected void cleanup(Application application){
-
+        keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().closeProcedure());
     }
 
     @Override
@@ -181,4 +260,99 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     protected void onDisable(){
 
     }
+
+    private boolean actionIsActive(ActionHandle actionHandle){
+        return manifest.getActionSets().stream().filter(actionSet ->
+            actionSet.getActions().stream().map(Action::getActionHandle).anyMatch(h -> h == actionHandle)
+        ).anyMatch(actionSet -> activeActionSets.contains(actionSet.getName()));
+    }
+
+    private static NonVrKeyBinding createKeyBinding(InputManager inputManager, KeyTrigger keyInput){
+
+        String mappingName = "Key " + keyInput.getKeyCode();
+        inputManager.addMapping(mappingName, keyInput);
+
+        NonVrKeyBinding newKeyBinding = new NonVrKeyBinding(){
+            private boolean isKeyPressedLastTick;
+            private boolean isKeyPressed;
+            private boolean hasBecomeTrueThisTick;
+            private boolean hasBecomeFalseThisTick;
+            private boolean toggleState;
+            private boolean toggleChangedThisTick;
+            @Override
+            public void onAction(String name, boolean isPressed, float tpf){
+                isKeyPressed = isPressed;
+            }
+
+            @Override
+            public void closeProcedure(){
+                inputManager.removeListener(this);
+                inputManager.deleteMapping(mappingName);
+            }
+
+            @Override
+            public boolean isKeyPressed(){
+                return isKeyPressed;
+            }
+
+            @Override
+            public boolean getStateAsToggle(){
+                return toggleState;
+            }
+
+            @Override
+            public void update(){
+                if(!isKeyPressedLastTick && isKeyPressed){
+                    hasBecomeTrueThisTick = true;
+                    toggleState = !toggleState;
+                    toggleChangedThisTick = true;
+                }else{
+                    toggleChangedThisTick = false;
+                }
+                if(isKeyPressedLastTick && !isKeyPressed){
+                    hasBecomeFalseThisTick = true;
+                }
+                isKeyPressedLastTick = isKeyPressed;
+            }
+
+            @Override
+            public String toString(){
+                return mappingName;
+            }
+
+            @Override
+            public boolean valueHasChangedThisTick(){
+                return hasBecomeFalseThisTick || hasBecomeTrueThisTick;
+            }
+
+            @Override
+            public boolean toggleValueHasChangedThisTick(){
+                return toggleChangedThisTick;
+            }
+        };
+
+        inputManager.addListener(newKeyBinding, mappingName);
+
+        return newKeyBinding;
+    }
+
+    private interface NonVrKeyBinding extends ActionListener{
+        boolean isKeyPressed();
+
+        void closeProcedure();
+
+        boolean getStateAsToggle();
+
+        /**
+         * Called once per tick to allow things like toggles to trigger
+         */
+        void update();
+
+        boolean valueHasChangedThisTick();
+
+        boolean toggleValueHasChangedThisTick();
+    }
+
+    private record BoundActionHandle(NonVrKeyBinding keyBinding, boolean toggleMode){}
+
 }

@@ -499,11 +499,6 @@ public class XrActionAppState extends XrActionBaseAppState{
     }
 
     @Override
-    public BooleanActionState getBooleanActionState(ActionHandle action){
-        return getBooleanActionState(action, null);
-    }
-
-    @Override
     public BooleanActionState getBooleanActionState(ActionHandle action, String restrictToInput){
         if (!isReady()){
             return new BooleanActionState(false, false);
