@@ -1,9 +1,15 @@
 package com.onemillionworlds.tamarin.actions;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
+import com.jme3.font.BitmapFont;
+import com.jme3.font.BitmapText;
+import com.jme3.input.FlyByCamera;
 import com.jme3.input.InputManager;
+import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
@@ -28,6 +34,20 @@ import java.util.Optional;
 
 import java.util.logging.Logger;
 
+/**
+ * This allows the mouse and keyboard to be used to "pretend" to control the VR system, including button presses,
+ * moving the hands, and moving the head (which is left to the normal fly cam, but the mode is switched in and out of).
+ *
+ * <p>
+ * The `esc` key is used to change between these modes:
+ * </p>
+ * <ul>
+ *   <li><b>FLY_CAM</b>: normal fly cam</li>
+ *   <li><b>MOUSE</b>: the mouse is visible and can click (most VR objects that accept touch and pick line input can also be clicked)</li>
+ *   <li><b>LEFT_HAND</b>: the left hand is controlled by the mouse (scroll to move forward and back, grab, etc. may have been bound to a keyboard button)</li>
+ *   <li><b>RIGHT_HAND</b>: the right hand is controlled by the mouse (scroll to move forward and back, grab, etc. may have been bound to a keyboard button)</li>
+ * </ul>
+ */
 public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private static final Logger LOGGER = Logger.getLogger(DesktopSimulatingXrActionAppState.class.getName());
@@ -52,6 +72,14 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
      * Map of "restrictToInputString" -> "ActionHandle" -> "BoundActionHandle"
      */
     Map<String, Map<ActionHandle, BoundActionHandle>> keyBindingMap = new HashMap<>();
+
+    private SimulationMode simulationMode = SimulationMode.FLY_CAM;
+
+    private NonVrKeyBinding changeModeBinding;
+
+    private Node guiOverlay = new Node("guiOverlay");
+
+    private BitmapText modeText;
 
     public DesktopSimulatingXrActionAppState(ActionManifest manifest, ActionHandle handPoseActionHandle, String startingActionSet){
         this(manifest, handPoseActionHandle, List.of(startingActionSet));
@@ -227,10 +255,40 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
             runAfterActionsSync.clear();
         }
         keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().update());
+
+        changeModeBinding.update();
+
+        if(changeModeBinding.hasBecomeTrueThisTick()){
+            switch(simulationMode){
+                case FLY_CAM -> {
+                    simulationMode = SimulationMode.MOUSE;
+                    cameraToMouseMode();
+                }
+                case MOUSE -> {
+                    simulationMode = SimulationMode.LEFT_HAND;
+                    cameraToHandControlMode();
+                }
+                case LEFT_HAND -> {
+                    simulationMode = SimulationMode.RIGHT_HAND;
+                    cameraToHandControlMode();
+                }
+                case RIGHT_HAND -> {
+                    simulationMode = SimulationMode.FLY_CAM;
+                    cameraToFlycamMode();
+                }
+            };
+            updateModeText();
+        }
+    }
+
+    private void updateModeText(){
+        modeText.setText("Mode: " + simulationMode);
     }
 
     @Override
     protected void initialize(Application application){
+        ((SimpleApplication)application).getGuiNode().attachChild(guiOverlay);
+
         xrAppState = application.getStateManager().getState(XrBaseAppState.ID, XrBaseAppState.class);
 
         InputManager inputManager = application.getInputManager();
@@ -244,11 +302,26 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
                         .put(action.getActionHandle(), new BoundActionHandle(keyBinding, keyTrigger.toggle()));
             }
         }
+
+        inputManager.deleteMapping(SimpleApplication.INPUT_MAPPING_EXIT); //remove the default exit on esc
+        inputManager.addMapping( "changeMode", new KeyTrigger(KeyInput.KEY_ESCAPE));
+
+        changeModeBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_ESCAPE));
+
+        BitmapFont font = application.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
+        modeText = new BitmapText(font);
+        modeText.setText("Mode: " + simulationMode);
+        modeText.setSize(font.getCharSet().getRenderedSize());
+        modeText.setLocalTranslation(10, application.getCamera().getHeight()-modeText.getLineHeight(), 0);
+        modeText.setColor(ColorRGBA.Cyan);
+        guiOverlay.attachChild(modeText);
     }
 
     @Override
     protected void cleanup(Application application){
         keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().closeProcedure());
+        changeModeBinding.closeProcedure();
+        guiOverlay.removeFromParent();
     }
 
     @Override
@@ -307,11 +380,11 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
                     toggleState = !toggleState;
                     toggleChangedThisTick = true;
                 }else{
+                    hasBecomeTrueThisTick = false;
                     toggleChangedThisTick = false;
                 }
-                if(isKeyPressedLastTick && !isKeyPressed){
-                    hasBecomeFalseThisTick = true;
-                }
+                hasBecomeFalseThisTick = isKeyPressedLastTick && !isKeyPressed;
+
                 isKeyPressedLastTick = isKeyPressed;
             }
 
@@ -329,11 +402,34 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
             public boolean toggleValueHasChangedThisTick(){
                 return toggleChangedThisTick;
             }
+
+            @Override
+            public boolean hasBecomeTrueThisTick(){
+                return hasBecomeTrueThisTick;
+            }
         };
 
         inputManager.addListener(newKeyBinding, mappingName);
 
         return newKeyBinding;
+    }
+
+    private void cameraToMouseMode(){
+        FlyByCamera flyCam = ((SimpleApplication)getApplication()).getFlyByCamera();
+        getApplication().getInputManager().setCursorVisible(true);
+        flyCam.setEnabled(false);
+    }
+
+    private void cameraToFlycamMode(){
+        FlyByCamera flyCam = ((SimpleApplication)getApplication()).getFlyByCamera();
+        getApplication().getInputManager().setCursorVisible(false);
+        flyCam.setEnabled(true);
+    }
+
+    private void cameraToHandControlMode(){
+        FlyByCamera flyCam = ((SimpleApplication)getApplication()).getFlyByCamera();
+        getApplication().getInputManager().setCursorVisible(false);
+        flyCam.setEnabled(false);
     }
 
     private interface NonVrKeyBinding extends ActionListener{
@@ -351,8 +447,17 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         boolean valueHasChangedThisTick();
 
         boolean toggleValueHasChangedThisTick();
+
+        boolean hasBecomeTrueThisTick();
     }
 
     private record BoundActionHandle(NonVrKeyBinding keyBinding, boolean toggleMode){}
+
+    private enum SimulationMode{
+        FLY_CAM,
+        MOUSE,
+        LEFT_HAND,
+        RIGHT_HAND
+    }
 
 }
