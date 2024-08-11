@@ -19,6 +19,7 @@ import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
+import com.onemillionworlds.tamarin.openxr.DesktopSimulatingXrAppState;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
@@ -96,9 +97,11 @@ public class VRHandsAppState extends BaseAppState{
             pendingHandSpec = null;
         }
         if (BoundHand.isLemurAvailable()){
-            BasePickState basePickState = getStateManager().getState(BasePickState.class);
-            if (basePickState != null){
-                getStateManager().detach(basePickState);
+            if(!(xrAppState instanceof DesktopSimulatingXrAppState)){ //if it is desktop simulating let the mouse remain in charge
+                BasePickState basePickState = getStateManager().getState(BasePickState.class);
+                if(basePickState != null){
+                    getStateManager().detach(basePickState);
+                }
             }
             getStateManager().attach(new VrLemurAppState());
         }
