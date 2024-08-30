@@ -86,11 +86,11 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private NonVrKeyBinding changeModeBinding;
 
-    private Node guiOverlay = new Node("guiOverlay");
+    private final Node guiOverlay = new Node("guiOverlay");
 
     private BitmapText modeText;
 
-    private EnumMap<HandSide, Vector3f> handPositions = new EnumMap<>(HandSide.class);
+    private final EnumMap<HandSide, Vector3f> handPositions = new EnumMap<>(HandSide.class);
 
     private RawInputListener rawMouseListener;
 
@@ -293,7 +293,7 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
                     simulationMode = SimulationMode.FLY_CAM;
                     cameraToFlycamMode();
                 }
-            };
+            }
             updateModeText();
         }
     }
@@ -320,10 +320,7 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
             }
         }
 
-        inputManager.deleteMapping(SimpleApplication.INPUT_MAPPING_EXIT); //remove the default exit on esc
-        inputManager.addMapping( "changeMode", new KeyTrigger(KeyInput.KEY_ESCAPE));
-
-        changeModeBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_ESCAPE));
+        changeModeBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_TAB));
 
         BitmapFont font = application.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         modeText = new BitmapText(font);
