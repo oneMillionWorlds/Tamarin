@@ -30,4 +30,18 @@ public class BooleanActionState{
     public boolean hasChanged(){
         return changed;
     }
+
+    /**
+     * If since the last loop the value of this action has changed
+     */
+    public boolean hasChangedToTrue(){
+        return getState() && hasChanged();
+    }
+
+    /**
+     * If since the last loop the value of this action has changed
+     */
+    public boolean hasChangedToFalse(){
+        return !getState() && hasChanged();
+    }
 }
