@@ -84,7 +84,11 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private SimulationMode simulationMode = SimulationMode.FLY_CAM;
 
-    private NonVrKeyBinding changeModeBinding;
+    private NonVrKeyBinding changeModeLookAndMouseBinding;
+
+    private NonVrKeyBinding leftHandBinding;
+
+    private NonVrKeyBinding rightHandBinding;
 
     private final Node guiOverlay = new Node("guiOverlay");
 
@@ -273,27 +277,31 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
         }
         keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().update());
 
-        changeModeBinding.update();
+        changeModeLookAndMouseBinding.update();
+        leftHandBinding.update();
+        rightHandBinding.update();
 
-        if(changeModeBinding.hasBecomeTrueThisTick()){
+        if(changeModeLookAndMouseBinding.hasBecomeTrueThisTick()){
             switch(simulationMode){
                 case FLY_CAM -> {
                     simulationMode = SimulationMode.MOUSE;
                     cameraToMouseMode();
                 }
-                case MOUSE -> {
-                    simulationMode = SimulationMode.LEFT_HAND;
-                    cameraToHandControlMode();
-                }
-                case LEFT_HAND -> {
-                    simulationMode = SimulationMode.RIGHT_HAND;
-                    cameraToHandControlMode();
-                }
-                case RIGHT_HAND -> {
+                case MOUSE,LEFT_HAND,RIGHT_HAND  -> {
                     simulationMode = SimulationMode.FLY_CAM;
                     cameraToFlycamMode();
                 }
             }
+            updateModeText();
+        }
+        if(leftHandBinding.hasBecomeTrueThisTick()){
+            simulationMode = SimulationMode.LEFT_HAND;
+            cameraToHandControlMode();
+            updateModeText();
+        }
+        if(rightHandBinding.hasBecomeTrueThisTick()){
+            simulationMode = SimulationMode.RIGHT_HAND;
+            cameraToHandControlMode();
             updateModeText();
         }
     }
@@ -320,7 +328,9 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
             }
         }
 
-        changeModeBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_TAB));
+        changeModeLookAndMouseBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_TAB));
+        leftHandBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_F11));
+        rightHandBinding = createKeyBinding(inputManager, new KeyTrigger(KeyInput.KEY_F12));
 
         BitmapFont font = application.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         modeText = new BitmapText(font);
@@ -391,7 +401,9 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     @Override
     protected void cleanup(Application application){
         keyBindingMap.values().stream().flatMap(m -> m.values().stream()).forEach(kb -> kb.keyBinding().closeProcedure());
-        changeModeBinding.closeProcedure();
+        changeModeLookAndMouseBinding.closeProcedure();
+        leftHandBinding.closeProcedure();
+        rightHandBinding.closeProcedure();
         guiOverlay.removeFromParent();
         getApplication().getInputManager().removeRawInputListener(rawMouseListener);
     }
@@ -488,6 +500,11 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private String debugStringForActions(){
         StringBuilder sb = new StringBuilder();
+
+        sb.append("Tab -> Control Look / Control Mouse\n");
+        sb.append("F11 -> Control Left Hand\n");
+        sb.append("F12 -> Control Right Hand\n");
+
         manifest.getActionSets().stream().flatMap(as -> as.getActions().stream()).forEach(action -> {
             ActionHandle handle = action.getActionHandle();
             String actionHandleString = handle.actionName() + "(" + handle.actionSetName() + ")";
@@ -510,20 +527,20 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
     private void cameraToMouseMode(){
         FlyByCamera flyCam = ((SimpleApplication)getApplication()).getFlyByCamera();
-        getApplication().getInputManager().setCursorVisible(true);
         flyCam.setEnabled(false);
+        getApplication().getInputManager().setCursorVisible(true);
     }
 
     private void cameraToFlycamMode(){
         FlyByCamera flyCam = ((SimpleApplication)getApplication()).getFlyByCamera();
-        getApplication().getInputManager().setCursorVisible(false);
         flyCam.setEnabled(true);
+        getApplication().getInputManager().setCursorVisible(false);
     }
 
     private void cameraToHandControlMode(){
         FlyByCamera flyCam = ((SimpleApplication)getApplication()).getFlyByCamera();
-        getApplication().getInputManager().setCursorVisible(false);
         flyCam.setEnabled(false);
+        getApplication().getInputManager().setCursorVisible(false);
     }
 
     private interface NonVrKeyBinding extends ActionListener{
