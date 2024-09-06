@@ -23,7 +23,7 @@ class SnapToConfigurationTest{
     private final SnapToLocalPoint snapToPoint3_highPriority = new SnapToLocalPoint(new Vector3f(3, 3, 3), 2.0f);
 
     {
-        snapToPoint3_highPriority.setPriority(1);
+        snapToPoint3_highPriority.setPriorityWeight(2);
     }
 
     static Vector3f localPositionOrigin = new Vector3f(100, 1000, 10000);

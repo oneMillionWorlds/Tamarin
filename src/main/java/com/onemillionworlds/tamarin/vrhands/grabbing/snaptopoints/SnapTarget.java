@@ -30,6 +30,11 @@ public abstract class SnapTarget{
     /**
      * Gets the priority of this snap target. Higher priority snap targets (that are close enough to snap at all)
      * take priority (even if they are further away). Higher numbers indicate higher priority.
+     *
+     * <p>
+     *  <b>Higher numbers indicate higher priority.</b>
+     * </p>
+     *
      * @return the priority of this snap target. Higher numbers indicate higher priority.
      */
     public int getPriority(){
@@ -38,7 +43,10 @@ public abstract class SnapTarget{
 
     /**
      * Sets the priority of this snap target. Higher priority snap targets (that are close enough to snap at all)
-     * take priority (even if they are further away). Higher numbers indicate higher priority.
+     * take priority (even if they are further away).
+     * <p>
+     *   <b>Higher numbers indicate higher priority.</b>
+     * </p>
      * <p>
      *     The default priority is 1.
      * </p>
@@ -49,7 +57,7 @@ public abstract class SnapTarget{
      *
      * @param priority the priority of this snap target. Higher numbers indicate higher priority.
      */
-    public void setPriority(int priority){
+    public void setPriorityWeight(int priority){
         this.priority = priority;
     }
 }
