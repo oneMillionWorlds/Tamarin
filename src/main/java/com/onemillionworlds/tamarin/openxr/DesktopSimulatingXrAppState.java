@@ -39,15 +39,31 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
 
     @Override
     public ViewportConfigurator addAdditionalViewport(AdditionalViewportRequest additionalViewportRequest){
+        ViewPort overlay = switch(additionalViewportRequest.getType()){
+            case MAINVIEW:
+                yield getApplication().getRenderManager().createMainView("xrSimulatedViewport", getApplication().getCamera());
+            case PREVIEW:
+                yield getApplication().getRenderManager().createPreView("xrSimulatedViewport", getApplication().getCamera());
+            case POSTVIEW:
+                yield getApplication().getRenderManager().createPostView("xrSimulatedViewport", getApplication().getCamera());
+        };
+        overlay.setClearFlags(
+                additionalViewportRequest.isClearFlags_color(),
+                additionalViewportRequest.isClearFlags_depth(),
+                additionalViewportRequest.isClearFlags_stencil());
+        overlay.attachScene(additionalViewportRequest.getAdditionalRootNode());
+        additionalViewportRequest.getConfigureViewport().accept(overlay);
+
         return new ViewportConfigurator(){
             @Override
             public void updateViewportConfiguration(Consumer<ViewPort> configureViewport){
-                // not relevant for desktop simulation
+                // because there is only 1 viewport in simulation mode this is much simpler than in VR mode
+                configureViewport.accept(overlay);
             }
 
             @Override
             public void removeViewports(){
-                // not relevant for desktop simulation
+                getApplication().getRenderManager().removeMainView(overlay);
             }
         };
     }
