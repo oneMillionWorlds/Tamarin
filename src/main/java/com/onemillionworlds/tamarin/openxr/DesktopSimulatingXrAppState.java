@@ -147,8 +147,10 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
 
     @Override
     public void rotateObserverWithoutMovingPlayer(float angleAboutYAxis){
-        Camera camera = getApplication().getCamera();
-        camera.setRotation(new Quaternion().fromAngleAxis(angleAboutYAxis, Vector3f.UNIT_Y).mult(camera.getRotation()));
+        runOnceInitialised.add(() -> {
+            Camera camera = getApplication().getCamera();
+            camera.setRotation(new Quaternion().fromAngleAxis(angleAboutYAxis, Vector3f.UNIT_Y).mult(camera.getRotation()));
+        });
     }
 
     @Override
