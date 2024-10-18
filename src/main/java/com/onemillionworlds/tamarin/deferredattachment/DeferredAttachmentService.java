@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -83,8 +84,26 @@ public class DeferredAttachmentService extends BaseAppState{
      * @param itemToAttachWhenReady a spatial that is to have its collision data calculated on annother thread
      */
     public void attachWhenReady(Node nodeToAttachTo, Spatial itemToAttachWhenReady){
+        attachWhenReady(nodeToAttachTo, itemToAttachWhenReady, null);
+    }
+
+    /**
+     * This will attach the item to the node once all its collision data is produced. The idea being that if it was just
+     * attached then it might cause a performance hiccup, this avoids that.
+     *
+     * <p>
+     *     The generation of the collision data is done on a separate thread so the rest of the application can continue but
+     *     the attachment itself will happen on the main thread so it is safe to attach to the scene graph
+     * </p>
+     *
+     * @param nodeToAttachTo the node to attach the spatial to once the spatial is ready
+     * @param itemToAttachWhenReady a spatial that is to have its collision data calculated on annother thread
+     * @param onAttachCallback a callback that will be called when the spatial is attached. Use for any post-attachment setup or
+     *                         other actions that need to be aligned with the attachment
+     */
+    public void attachWhenReady(Node nodeToAttachTo, Spatial itemToAttachWhenReady, Consumer<Spatial> onAttachCallback){
         Future<Spatial> preparement = prepareSpatial(itemToAttachWhenReady);
-        autoAttachings.add(new NodeData(preparement, nodeToAttachTo));
+        autoAttachings.add(new NodeData(preparement, nodeToAttachTo, onAttachCallback));
     }
 
     /**
@@ -101,8 +120,27 @@ public class DeferredAttachmentService extends BaseAppState{
      * @param itemToAttachWhenReady a builder for the spatial
      */
     public void attachWhenReady(Node nodeToAttachTo, Supplier<Spatial> itemToAttachWhenReady){
+        attachWhenReady(nodeToAttachTo, itemToAttachWhenReady, null);
+    }
+
+    /**
+     * This will build the spatial in another thread, generate all its collision data.
+     * Then once done it will attach the item to the node. The idea being that if it was just
+     * attached then it might cause a performance hiccup, this avoids that.
+     *
+     * <p>
+     *     The generation is done on a separate thread so the rest of the application can continue but
+     *     the attachment itself will happen on the main thread so it is safe to attach to the scene graph
+     * </p>
+     *
+     * @param nodeToAttachTo the node to attach the spatial to once the spatial is ready
+     * @param itemToAttachWhenReady a builder for the spatial (will run on a seperate thread)
+     * @param onAttachCallback a callback that will be called when the spatial is attached. Use for any post-attachment setup or
+     *                         other actions that need to be aligned with the attachment
+     */
+    public void attachWhenReady(Node nodeToAttachTo, Supplier<Spatial> itemToAttachWhenReady, Consumer<Spatial> onAttachCallback){
         Future<Spatial> preparement = prepareSpatial(itemToAttachWhenReady);
-        autoAttachings.add(new NodeData(preparement, nodeToAttachTo));
+        autoAttachings.add(new NodeData(preparement, nodeToAttachTo, onAttachCallback));
     }
 
     /**
@@ -149,10 +187,34 @@ public class DeferredAttachmentService extends BaseAppState{
      * @return a node that will initially be empty, but once the spatial is ready that spatial will be attached
      */
     public Node attachWhenReadyWithSafeClone(Supplier<Spatial> itemToAttachWhenReady){
+        return attachWhenReadyWithSafeClone(itemToAttachWhenReady, null);
+    }
+
+    /**
+     * This will build the spatial in another thread, generate all its collision data.
+     * Then once done it will attach the item to the node (which is immediately returned but initially empty.
+     * The idea being that if it was just attached then it might cause a performance hiccup, this avoids that.
+     *
+     * <p>
+     *     The generation is done on a separate thread so the rest of the application can continue but
+     *     the attachment itself will happen on the main thread so it is safe to attach to the scene graph
+     * </p>
+     *
+     * <p>
+     *     The returned node CAN be cloned and the clone will initially be empty (if this is empty) but will be
+     *     filled in when the item is ready.
+     * </p>
+     *
+     * @param itemToAttachWhenReady a builder for the spatial
+     * @param onAttachCallback a callback that will be called when the spatial is attached. Use for any post-attachment setup or
+     *                         other actions that need to be aligned with the attachment
+     * @return a node that will initially be empty, but once the spatial is ready that spatial will be attached
+     */
+    public Node attachWhenReadyWithSafeClone(Supplier<Spatial> itemToAttachWhenReady, Consumer<Spatial> onAttachCallback){
         NodeWithSafeClone node = new NodeWithSafeClone("DeferredAttachmentNode");
 
         Future<Spatial> preparement = prepareSpatial(itemToAttachWhenReady);
-        NodeData nodeData = new NodeData(preparement, node);
+        NodeData nodeData = new NodeData(preparement, node, onAttachCallback);
         node.setNodeData(nodeData);
         autoAttachings.add(nodeData);
         return node;
@@ -228,10 +290,12 @@ public class DeferredAttachmentService extends BaseAppState{
         Object lock = new Object();
         List<Node> nodeToCloneAttachTo = new ArrayList<>();
         List<Node> nodeToCloneAttachToCloningMaterials = new ArrayList<>();
+        Consumer<Spatial> onAttachCallback;
 
-        public NodeData(Future<Spatial> nodePreparationFuture, Node nodeToAttachTo){
+        public NodeData(Future<Spatial> nodePreparationFuture, Node nodeToAttachTo, Consumer<Spatial> onAttachCallback){
             this.nodePreparationFuture = nodePreparationFuture;
             this.nodeToAttachTo = nodeToAttachTo;
+            this.onAttachCallback = onAttachCallback;
         }
 
         public void attach() throws InterruptedException, ExecutionException{
@@ -248,6 +312,9 @@ public class DeferredAttachmentService extends BaseAppState{
                     }
                     getNodeToAttachTo().attachChild(getNodePreparationFuture().get());
                 }
+            }
+            if (onAttachCallback != null){
+                onAttachCallback.accept(getNodePreparationFuture().get());
             }
         }
     }
