@@ -283,7 +283,7 @@ public class Action{
          * Note this only applies to boolean and float actions. Haptics are N/A and Vector2fs are not supported currently.
          * Poses are handled differently (as the mouse is used to simulate those).
          * @param inputStringGeneratingPress the input string for the controller the keypress is pretending to come from
-         *                                  (e.g. "/user/hand/left", available as Side.LEFT.restrictToInputString).
+         *                                  (e.g. "/user/hand/left", available as HandSide.LEFT.restrictToInputString).
          *                                  (even if it "doesn't matter" from a simulation perspective the
          *                                  keypress still "comes from somewhere")
          * @param desktopDebugKeyTrigger the key to bind to this action
