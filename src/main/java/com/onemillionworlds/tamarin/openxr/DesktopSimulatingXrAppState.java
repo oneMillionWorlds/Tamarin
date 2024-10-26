@@ -135,6 +135,12 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
 
             //because this is simulated (so no VR headset to respond to the change) we need to update the camera position
             float headHeightAboveFeet = playerCurrentPosition.y - feetPosition.y;
+            //if the players head is unnaturally low, put them their head a normal distance above the floor.
+            //This typically happens at the beginning of a game when the camera defaults to 0,0,0
+            if(headHeightAboveFeet<0.3){
+                headHeightAboveFeet = 1.2f;
+            }
+
             getApplication().getCamera().setLocation(feetPosition.add(0, headHeightAboveFeet, 0));
         });
 
