@@ -47,7 +47,7 @@ public class VRHandsAppState extends BaseAppState{
 
     XrBaseAppState xrAppState;
 
-    Node rootNodeDelegate = new Node();
+    Node rootNodeDelegate = new Node("vrHandsRootNodeDelegate");
 
     List<BoundHand> handControls = new ArrayList<>();
 
