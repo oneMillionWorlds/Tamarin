@@ -22,7 +22,7 @@ public class GrabPickingFunction implements BoundHandFunction{
 
     private final Node nodeToGrabPickAgainst;
 
-    private float timeSinceGrabbed;
+    private long timeLastCheckedForGrab = 0;
 
     /**
      * How much time to let pass between the picking events that trigger grabs (and releases)
@@ -65,9 +65,12 @@ public class GrabPickingFunction implements BoundHandFunction{
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        timeSinceGrabbed+=timeSlice;
-        if (timeSinceGrabbed>grabEvery){
-            timeSinceGrabbed = 0;
+        // don't use timeSlice as that doesn't play nice with pausing (which might be passing zeros into
+        // app states to pause animations)
+        long timeNow = System.currentTimeMillis();
+        long timeSinceLastChecked = timeNow - timeLastCheckedForGrab;
+        if (timeSinceLastChecked>(1000*grabEvery)){
+            timeLastCheckedForGrab = timeNow;
             float gripPressure =  getGripActionPressure(boundHand, grabAction);
 
             //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
