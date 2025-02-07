@@ -22,6 +22,11 @@ public class OverallBoundsCalculator{
     protected static BoundingBox getOverallBoundsLocalisedToSpatialOrigin(Spatial spatial) {
         BoundingBox result = new BoundingBox();
         updateOverallBounds(spatial, new Vector3f(0, 0, 0), new Quaternion(), result);
+
+        result.setCenter(result.getCenter().mult(spatial.getLocalScale()));
+        result.setXExtent(result.getXExtent() * spatial.getLocalScale().x);
+        result.setYExtent(result.getYExtent() * spatial.getLocalScale().y);
+        result.setZExtent(result.getZExtent() * spatial.getLocalScale().z);
         return result;
     }
 
