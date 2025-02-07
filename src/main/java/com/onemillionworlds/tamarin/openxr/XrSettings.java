@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.openxr.EXTDebugUtils;
 import org.lwjgl.openxr.EXTHandTracking;
+import org.lwjgl.openxr.FBPassthrough;
 import org.lwjgl.openxr.KHRBindingModification;
 import org.lwjgl.openxr.KHROpenGLEnable;
 import org.lwjgl.openxr.MNDXEGLEnable;
@@ -42,12 +43,18 @@ public class XrSettings{
      * <p>
      * AKA it controls if the application is VR (virtual reality) or AR (Augmented Reality). Note the background should be
      * black/transparent if you choose one of the AR modes.
+     * </p>
      * <p>
-     * Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     *     It is likely you'll need to add a passthrough extension, e.g. FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME
+     * </p>
+     * <p>
+     *      <b>EXPERIMENTAL</b> Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     * </p>
+     *
      */
     @Getter
     @Setter
-    XrVrMode xrVrMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
+    XrVrMode initialXrVrMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
     /**
      * If true the ears will no longer follow the main camera but will instead follow the VR cameras mid positions.
@@ -72,6 +79,8 @@ public class XrSettings{
         requiredXrExtensions.add(KHRBindingModification.XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME); //required by XR_EXT_DPAD_BINDING_EXTENSION_NAME
         // below can be replaced with EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME once JME upgrades to LWJGL 3.3.3 or higher
         requiredXrExtensions.add("XR_EXT_dpad_binding"); //treating joysticks as dpads
+
+        requiredXrExtensions.add(FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME);
     }
 
     /**
@@ -95,5 +104,15 @@ public class XrSettings{
 
     public Set<String> getRequiredXrExtensions(){
         return Collections.unmodifiableSet(requiredXrExtensions);
+    }
+
+    /**
+     * Deprecated, use {@link XrSettings#setInitialXrVrMode(XrVrMode)}
+     * @param initialXrVrMode the mode (i.e. XR or VR) that the application STARTS in. Future updates should
+     *                        be made via
+     */
+    @Deprecated(forRemoval = true)
+    public void setXrVrMode(XrVrMode initialXrVrMode){
+        this.initialXrVrMode = initialXrVrMode;
     }
 }

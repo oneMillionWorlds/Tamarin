@@ -6,6 +6,7 @@ import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
 import lombok.Getter;
+import lombok.Setter;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.openxr.EXTDebugUtils;
@@ -176,6 +177,9 @@ public class OpenXrSessionManager{
     private final static Map<Integer, Image.Format> DESIRED_SWAPCHAIN_FORMATS = new LinkedHashMap<>();
 
     private final Renderer renderer;
+
+    @Setter
+    private XrVrMode xrVrBlendMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
     static {
         DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
@@ -854,7 +858,7 @@ public class OpenXrSessionManager{
                             .type$Default()
                             .next(NULL)
                             .displayTime(continuation.getPredictedDisplayTime())
-                            .environmentBlendMode(xrSettings.getXrVrMode().getXrValue())
+                            .environmentBlendMode(xrVrBlendMode.getXrValue())
                             .layers(didRender ? layers : null)
                             .layerCount(didRender ? layers.remaining() : 0)
             ));

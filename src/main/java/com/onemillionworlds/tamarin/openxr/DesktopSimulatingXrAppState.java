@@ -244,4 +244,9 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
     public Quaternion getVrCameraRotation(){
         return getApplication().getCamera().getRotation();
     }
+
+    @Override
+    public void setXrVrMode(XrVrMode xrVrMode){
+        // meaningless in a desktop context. No - op
+    }
 }

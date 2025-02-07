@@ -192,4 +192,21 @@ public abstract class XrBaseAppState extends BaseAppState{
     public abstract Node getObserver();
 
     public abstract Quaternion getVrCameraRotation();
+
+    /**
+     * Configures the XR/VR mode for the application. This method determines the specific
+     * XR/VR mode to be used during runtime, if in XR mode (and the hardware supports it)
+     * then black/transparent pixels may show through to the real world (based on the mode)
+     *
+     * <p>
+     *     It is likely you'll need to add a passthrough extension, e.g. FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME
+     * </p>
+     * <p>
+     *      <b>EXPERIMENTAL</b> Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     * </p>
+     *
+     * @param xrVrMode the XR/VR mode to set, which defines the behavior and configuration
+     *                 of the application in the XR/VR environment.
+     */
+    public abstract void setXrVrMode(XrVrMode xrVrMode);
 }

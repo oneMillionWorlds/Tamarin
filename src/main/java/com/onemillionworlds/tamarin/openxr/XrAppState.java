@@ -119,7 +119,7 @@ public class XrAppState extends XrBaseAppState{
         }
 
         xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings, settings, app.getRenderer());
-
+        xrSession.setXrVrBlendMode(xrSettings.getInitialXrVrMode());
         int width = xrSession.getSwapchainWidth();
         int height = xrSession.getSwapchainHeight();
 
@@ -399,5 +399,10 @@ public class XrAppState extends XrBaseAppState{
     @Override
     public Quaternion getVrCameraRotation(){
         return getLeftCamera().getRotation();
+    }
+
+    @Override
+    public void setXrVrMode(XrVrMode xrVrMode){
+        xrSession.setXrVrBlendMode(xrVrMode);
     }
 }
