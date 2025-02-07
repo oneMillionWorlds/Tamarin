@@ -56,6 +56,19 @@ public abstract class XrBaseAppState extends BaseAppState{
     public abstract void runAfterInitialisation(Runnable runnable);
 
     /**
+     * Runs the provided function just after any already requested player movements have occurred.
+     * E.g. if you've called {@link XrBaseAppState#movePlayersFaceToPosition(Vector3f)} but then want to
+     * do something that is going to query that position putting it within this enqueue may make it more reliable
+     *
+     * <p>
+     *     This method <b>is not</b> thread safe. It is intended to be called from the JME thread
+     * </p>
+     */
+    public void enqueue(Runnable runnable){
+        runAfterInitialisation(runnable);
+    }
+
+    /**
      * Will return a string that describes the system (e.g. "SteamVR/OpenXR : oculus"). This is useful for debugging.
      * <p>
      *     In general an application should not change it's behaviour by sniffing the device type, actions should be
