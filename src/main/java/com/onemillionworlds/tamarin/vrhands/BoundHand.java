@@ -510,7 +510,9 @@ public abstract class BoundHand{
             nodeToPickAgainst.collideWith(sphere, results);
             for(int i=0;i<results.size();i++){
                 CollisionResult result = results.getCollision(i);
-                if(!Boolean.TRUE.equals(result.getGeometry().getUserData(NO_PICK))){
+                Geometry geometry = result.getGeometry();
+                boolean noPick = geometry!=null && Boolean.TRUE.equals(result.getGeometry().getUserData(NO_PICK));
+                if(!noPick){
                     overallResults.addCollision(result);
                 }
             }

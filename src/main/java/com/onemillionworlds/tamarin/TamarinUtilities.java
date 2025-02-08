@@ -5,6 +5,7 @@ import com.jme3.collision.CollisionResults;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.Control;
@@ -124,10 +125,13 @@ public class TamarinUtilities{
         List<T> results = new ArrayList<>(1); //usually we find 1 or zero results
         directResults:
         for(CollisionResult result : collisionResults){
-            if (Boolean.TRUE.equals(result.getGeometry().getUserData(BoundHand.NO_PICK))){
+            Geometry geometry = result.getGeometry();
+            boolean noPick = geometry!=null && Boolean.TRUE.equals(geometry.getUserData(BoundHand.NO_PICK));
+
+            if (noPick || geometry == null){
                 continue;
             }
-            Spatial workingTarget = result.getGeometry();
+            Spatial workingTarget = geometry;
             while(workingTarget !=null){
                 if (Boolean.TRUE.equals(workingTarget.getUserData(BoundHand.TAMARIN_STOP_BUBBLING))){
                     continue directResults;
