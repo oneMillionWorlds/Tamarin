@@ -4,11 +4,13 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.texture.FrameBuffer;
 import com.onemillionworlds.tamarin.openxr.EyeSide;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public class AdditionalViewportData{
@@ -38,7 +40,7 @@ public class AdditionalViewportData{
 
     public ViewPort getAssociatedViewport(FrameBuffer fb, EyeSide eyeSide){
         return overlayViewPorts.computeIfAbsent(fb, (f) -> {
-            String name = "Overlay Viewport " + rootNode.getName() + " " +eyeSide+ " " + overlayViewPorts.size()/2;
+            String name = "Overlay Viewport " + Optional.ofNullable(rootNode).map(Spatial::getName).orElse("null") + " " +eyeSide+ " " + overlayViewPorts.size()/2;
             Camera camera = additionalViewportRequest.getCameraOverride().orElse(eyeSide == EyeSide.LEFT ? leftCamera : rightCamera);
 
             ViewPort newViewport =
@@ -51,7 +53,9 @@ public class AdditionalViewportData{
                             renderManager.createPreView(name, camera);
                     };
             newViewport.setClearFlags(additionalViewportRequest.isClearFlags_color(), additionalViewportRequest.isClearFlags_depth(), additionalViewportRequest.isClearFlags_stencil());
-            newViewport.attachScene(rootNode);
+            if(rootNode!=null){
+                newViewport.attachScene(rootNode);
+            }
             newViewport.setOutputFrameBuffer(fb);
             this.configureViewport.accept(newViewport);
             return newViewport;
