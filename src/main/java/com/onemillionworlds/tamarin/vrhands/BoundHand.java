@@ -41,6 +41,7 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -217,6 +218,8 @@ public abstract class BoundHand{
 
     private final HandJoint wristName = HandJoint.WRIST_EXT;
 
+    private Map<HandJoint, BonePose> boneStances = new HashMap<>();
+
     public BoundHand(XrActionBaseAppState xrActionState, ActionHandle handPoseActionName, ActionHandle skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.xrActionState = Objects.requireNonNull(xrActionState);
         this.geometryNode.attachChild(handGeometry);
@@ -350,6 +353,8 @@ public abstract class BoundHand{
     }
 
     protected void update(float timeSlice, Map<HandJoint, BonePose> boneStances){
+        this.boneStances.putAll(boneStances);
+
         updatePalm(timeSlice, boneStances);
         updateFingerTips(boneStances);
         updateWrist(boneStances);
@@ -410,6 +415,30 @@ public abstract class BoundHand{
             palmNode_xPointing.setLocalTranslation(proximal.position().add(metacarpel.position()).multLocal(0.5f));
             palmNode_xPointing.setLocalRotation(metacarpel.orientation().mult(coordinateStandardisingRotation));
         }
+    }
+
+    /**
+     * Gets the bone pose (in hand relative space)
+     * @param joint the identifier for the joint
+     * @return the BonePose (might be null if hands not yet initialised)
+     */
+    public BonePose getBonePose(HandJoint joint){
+        return boneStances.get(joint);
+    }
+
+    /**
+     * Gets the bone pose (in jme world space)
+     * @param joint the identifier for the joint
+     * @return the BonePose (might be null if hands not yet initialised)
+     */
+    public BonePose getBonePose_world(HandJoint joint){
+        BonePose basePose = getBonePose(joint);
+        if(basePose == null){
+            return null;
+        }
+        Vector3f worldPosition = rawOpenXrPosition.localToWorld(basePose.position(), null);
+        Quaternion worldRotation = rawOpenXrPosition.getWorldRotation().mult(basePose.orientation());
+        return new BonePose(worldPosition, worldRotation, basePose.radius());
     }
 
     private void updateFingerTips(Map<HandJoint, BonePose> boneStances){

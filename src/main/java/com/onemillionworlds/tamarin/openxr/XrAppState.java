@@ -71,7 +71,7 @@ public class XrAppState extends XrBaseAppState{
     InProgressXrRender.FieldOfViewData leftFovLastRendered = null;
     InProgressXrRender.FieldOfViewData rightFovLastRendered = null;
 
-    private float nearClip = 0.05f;
+    private float nearClip = 0.1f;
 
     private float farClip = 500;
 
