@@ -1,0 +1,19 @@
+MaterialDef VignetteShader {
+    MaterialParameters {
+        Float VignetteAmount
+        Float EdgeWidth
+        Color VignetteColor (Color)
+    }
+
+    Technique {
+        VertexShader  GLSL300 GLSL150 GLSL100: Common/MatDefs/Misc/Unshaded.vert
+        FragmentShader  GLSL300 GLSL150 GLSL100: Tamarin/Materials/VignetteShader.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            ViewProjectionMatrix
+            ViewMatrix
+            Resolution
+        }
+    }
+}

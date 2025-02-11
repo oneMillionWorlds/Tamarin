@@ -39,13 +39,15 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
 
     @Override
     public ViewportConfigurator addAdditionalViewport(AdditionalViewportRequest additionalViewportRequest){
+        Camera camera = additionalViewportRequest.getCameraOverride().orElse(getApplication().getCamera());
+
         ViewPort overlay = switch(additionalViewportRequest.getType()){
             case MAINVIEW:
-                yield getApplication().getRenderManager().createMainView("xrSimulatedViewport", getApplication().getCamera());
+                yield getApplication().getRenderManager().createMainView("xrSimulatedViewport", camera);
             case PREVIEW:
-                yield getApplication().getRenderManager().createPreView("xrSimulatedViewport", getApplication().getCamera());
+                yield getApplication().getRenderManager().createPreView("xrSimulatedViewport", camera);
             case POSTVIEW:
-                yield getApplication().getRenderManager().createPostView("xrSimulatedViewport", getApplication().getCamera());
+                yield getApplication().getRenderManager().createPostView("xrSimulatedViewport", camera);
         };
         overlay.setClearFlags(
                 additionalViewportRequest.isClearFlags_color(),
@@ -248,5 +250,11 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
     @Override
     public void setXrVrMode(XrVrMode xrVrMode){
         // meaningless in a desktop context. No - op
+    }
+
+    @Override
+    public CameraResolution getCameraResolution(){
+        Camera camera = getApplication().getCamera();
+        return new CameraResolution(camera.getWidth(), camera.getWidth());
     }
 }

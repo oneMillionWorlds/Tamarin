@@ -39,7 +39,7 @@ public class AdditionalViewportData{
     public ViewPort getAssociatedViewport(FrameBuffer fb, EyeSide eyeSide){
         return overlayViewPorts.computeIfAbsent(fb, (f) -> {
             String name = "Overlay Viewport " + rootNode.getName() + " " +eyeSide+ " " + overlayViewPorts.size()/2;
-            Camera camera = eyeSide == EyeSide.LEFT ? leftCamera : rightCamera;
+            Camera camera = additionalViewportRequest.getCameraOverride().orElse(eyeSide == EyeSide.LEFT ? leftCamera : rightCamera);
 
             ViewPort newViewport =
                     switch(additionalViewportRequest.getType()){

@@ -79,8 +79,6 @@ public class XrSettings{
         requiredXrExtensions.add(KHRBindingModification.XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME); //required by XR_EXT_DPAD_BINDING_EXTENSION_NAME
         // below can be replaced with EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME once JME upgrades to LWJGL 3.3.3 or higher
         requiredXrExtensions.add("XR_EXT_dpad_binding"); //treating joysticks as dpads
-
-        requiredXrExtensions.add(FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME);
     }
 
     /**

@@ -1,9 +1,11 @@
 package com.onemillionworlds.tamarin.viewports;
 
+import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import lombok.Getter;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 
 @Getter
@@ -15,15 +17,16 @@ public class AdditionalViewportRequest{
     private final Consumer<ViewPort> configureViewport;
 
     private final boolean clearFlags_color, clearFlags_depth, clearFlags_stencil;
+    private final Optional<Camera> cameraOverride;
 
-
-    private AdditionalViewportRequest(ViewportType type, Node additionalRootNode, Consumer<ViewPort> configureViewport, boolean clearFlags_color, boolean clearFlags_depth, boolean clearFlags_stencil){
+    private AdditionalViewportRequest(ViewportType type, Node additionalRootNode, Consumer<ViewPort> configureViewport, boolean clearFlags_color, boolean clearFlags_depth, boolean clearFlags_stencil, Optional<Camera> cameraOverride){
         this.type = type;
         this.additionalRootNode = additionalRootNode;
         this.configureViewport = configureViewport;
         this.clearFlags_color = clearFlags_color;
         this.clearFlags_depth = clearFlags_depth;
         this.clearFlags_stencil = clearFlags_stencil;
+        this.cameraOverride = cameraOverride;
     }
 
     /**
@@ -46,6 +49,11 @@ public class AdditionalViewportRequest{
         private boolean clearFlags_color = false;
         private boolean  clearFlags_depth = true;
         private boolean  clearFlags_stencil = false;
+        /**
+         * Usually null. If non-null then this camera is used instead of the tamarin managed cameras.
+         * Usually only sensible for things like vignette which aren't really "part of the world"
+         */
+        private Camera camera;
 
         public Builder setType(ViewportType type){
             this.type = type;
@@ -77,8 +85,26 @@ public class AdditionalViewportRequest{
             return this;
         }
 
+        /**
+         * <b>Usually you shouldn't call this method</b>
+         * <p>
+         *  If non-null then this camera is used instead of the tamarin managed cameras.
+         *  Usually only sensible for things like vignette which aren't really "part of the world"
+         * </p>
+         * <p>
+         *  If not called the normal tamarin managed cameras are used which track the players real world position
+         * </p>
+         *
+         * @param camera the camera to override the tamarin cameras
+         * @return the builder
+         */
+        public Builder setCamera(Camera camera){
+           this.camera = camera;
+           return this;
+        }
+
         public AdditionalViewportRequest build(){
-            return new AdditionalViewportRequest(type, additionalRootNode, configureViewport, clearFlags_color, clearFlags_depth, clearFlags_stencil);
+            return new AdditionalViewportRequest(type, additionalRootNode, configureViewport, clearFlags_color, clearFlags_depth, clearFlags_stencil, Optional.ofNullable(camera));
         }
     }
 

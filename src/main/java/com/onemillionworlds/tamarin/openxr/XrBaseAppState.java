@@ -222,4 +222,10 @@ public abstract class XrBaseAppState extends BaseAppState{
      *                 of the application in the XR/VR environment.
      */
     public abstract void setXrVrMode(XrVrMode xrVrMode);
+
+    public abstract CameraResolution getCameraResolution();
+
+    public record CameraResolution(int width, int height){
+
+    }
 }

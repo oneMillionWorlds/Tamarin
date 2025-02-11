@@ -405,4 +405,9 @@ public class XrAppState extends XrBaseAppState{
     public void setXrVrMode(XrVrMode xrVrMode){
         xrSession.setXrVrBlendMode(xrVrMode);
     }
+
+    @Override
+    public CameraResolution getCameraResolution(){
+        return new CameraResolution(leftCamera.getWidth(), leftCamera.getWidth());
+    }
 }
