@@ -23,6 +23,7 @@ import java.util.Map;
  *
  * <p>
  *     Use like:
+ * </p>
  * <pre>
  * {@code
  *         vrHands.getHandControls().forEach(hand -> {
@@ -30,7 +31,7 @@ import java.util.Map;
  *         });
  * }
  * </pre>
- * </p>
+ *
  */
 @SuppressWarnings("unused")
 public class KinematicHandPhysics implements BoundHandFunction{
