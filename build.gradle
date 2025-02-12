@@ -62,6 +62,12 @@ dependencies {
      */
     compileOnly ("com.simsilica:lemur:1.16.0")
     compileOnly ("com.simsilica:lemur-proto:1.13.0")
+
+    /*
+     * Minie is an optional dependency
+     */
+    compileOnly 'com.github.stephengold:Minie:8.2.0'
+
     /*
      * Lombok is only required during compile (it's an annotation processor)
      */

@@ -20,7 +20,19 @@ import java.util.Map;
 /**
  * This binds the hands to physics. The hand will provide kinematic physics objects that allow for interactions between
  * the hands and physics objects
+ *
+ * <p>
+ *     Use like:
+ * <pre>
+ * {@code
+ *         vrHands.getHandControls().forEach(hand -> {
+ *             functionRegistrations.add(hand.addFunction(new KinematicHandPhysics(bulletAppState.getPhysicsSpace())));
+ *         });
+ * }
+ * </pre>
+ * </p>
  */
+@SuppressWarnings("unused")
 public class KinematicHandPhysics implements BoundHandFunction{
 
     Quaternion fromZToY = new Quaternion();

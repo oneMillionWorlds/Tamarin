@@ -68,11 +68,13 @@ public class VrVignetteState extends BaseAppState{
     }
 
     public void setVignetteAmount(float amount){
-        vignetteAmount = amount;
-        if(vignetteMaterial!=null){
-            vignetteMaterial.setFloat("VignetteAmount", amount);
+        if(vignetteAmount != amount){
+            vignetteAmount = amount;
+            if(vignetteMaterial != null){
+                vignetteMaterial.setFloat("VignetteAmount", amount);
+            }
+            vignetteNode.setCullHint(amount == 0 ? Spatial.CullHint.Always : Spatial.CullHint.Inherit);
         }
-        vignetteNode.setCullHint(amount == 0 ? Spatial.CullHint.Always : Spatial.CullHint.Inherit);
     }
 
     public void setEdgeWidth(float width){
