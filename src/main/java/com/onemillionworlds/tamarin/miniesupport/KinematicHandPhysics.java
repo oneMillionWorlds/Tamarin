@@ -35,6 +35,11 @@ import java.util.Map;
 @SuppressWarnings("unused")
 public class KinematicHandPhysics implements BoundHandFunction{
 
+    VrMinieAdvice vrMinieAdvice = VrMinieAdvice.builder()
+            .setShouldPreventPlayerWalkingThrough(false) // don't have hands blocking own walking
+            .setShouldTriggerViewOcclusion(false) // don't have hands close to eyes triggering occlusion
+            .build();
+
     Quaternion fromZToY = new Quaternion();
     {
         fromZToY.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_X);
@@ -97,6 +102,7 @@ public class KinematicHandPhysics implements BoundHandFunction{
         CollisionShape shape = new CapsuleCollisionShape(to.radius(), length/2);
 
         PhysicsRigidBody physicsRigidBody = new PhysicsRigidBody(shape, 10);
+        physicsRigidBody.setApplicationData(vrMinieAdvice);
         physicsRigidBody.setKinematic(true);
         physicsSpace.add(physicsRigidBody);
         return physicsRigidBody;

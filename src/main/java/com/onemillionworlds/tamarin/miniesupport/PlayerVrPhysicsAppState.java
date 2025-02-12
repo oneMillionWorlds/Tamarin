@@ -45,7 +45,7 @@ import java.util.List;
  *
  */
 @SuppressWarnings("unused")
-public class PlayerPhysicsAppState extends BaseAppState{
+public class PlayerVrPhysicsAppState extends BaseAppState{
     public static final String ID = "PlayerPhysicsAppState";
 
     private static final float FALL_CHECK_STEP_HEIGHT = 0.01f;
@@ -64,7 +64,7 @@ public class PlayerPhysicsAppState extends BaseAppState{
 
     private float playerFallSpeed = 10;
 
-    public PlayerPhysicsAppState(){
+    public PlayerVrPhysicsAppState(){
         super(ID);
     }
 
@@ -107,7 +107,7 @@ public class PlayerPhysicsAppState extends BaseAppState{
                     depths.add(event.getDistance1());
                 }
             };
-
+            headGhostSphere.setPhysicsLocation(vrAppState.getVrCameraPosition());
             physicsSpace.contactTest(headGhostSphere, collisionListener);
 
             float maxPenetration = 0;
@@ -205,8 +205,7 @@ public class PlayerPhysicsAppState extends BaseAppState{
      *                   on the horizontal plane (i.e. the traditional x and z).
      */
     public void moveByWalking(Vector2f walkAmount){
-        if (walkAmount.length()>0.01){
-            walkAmount.normalizeLocal();
+        if (walkAmount.length()>0){
 
             float sizeOfFootTest = 0.3f;
             ConvexShape footTestShape = new SphereCollisionShape(sizeOfFootTest);
@@ -225,7 +224,7 @@ public class PlayerPhysicsAppState extends BaseAppState{
                     .filter(str -> {
                         Object applicationData = str.getCollisionObject().getApplicationData();
                         if(applicationData instanceof VrMinieAdvice vrMinieAdvice){
-                            return !vrMinieAdvice.shouldPreventPlayerWalkingThrough();
+                            return vrMinieAdvice.shouldPreventPlayerWalkingThrough();
                         }
                         return true;
                     })
