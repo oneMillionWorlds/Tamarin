@@ -67,6 +67,8 @@ public class KinematicHandPhysics implements BoundHandFunction{
 
     private final Map<JointPair, PhysicsRigidBody> existingFingerParts = new HashMap<>();
 
+    private final Map<JointPair, Vector3f> previousPositions = new HashMap<>();
+
     public KinematicHandPhysics(PhysicsSpace physicsSpace){
         this.physicsSpace = physicsSpace;
     }
@@ -94,6 +96,13 @@ public class KinematicHandPhysics implements BoundHandFunction{
 
                 rigidBody.setPhysicsLocation(averagePosition);
                 rigidBody.setPhysicsRotation(from.orientation().mult(fromZToY));
+
+                Vector3f previousPosition = previousPositions.getOrDefault(pairGettingPhysicalised, averagePosition);
+
+                Vector3f velocity = averagePosition.subtract(previousPosition).multLocal(1/timeSlice);
+                rigidBody.setLinearVelocity(velocity);
+                
+                previousPositions.put(pairGettingPhysicalised, averagePosition);
             }
         }
     }
