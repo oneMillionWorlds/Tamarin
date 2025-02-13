@@ -4,10 +4,7 @@ import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.TamarinUtilities;
-import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
-import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
-import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import lombok.Getter;
@@ -25,7 +22,7 @@ public class GrabPickingFunction implements BoundHandFunction{
     private long timeLastCheckedForGrab = 0;
 
     /**
-     * How much time to let pass between the picking events that trigger grabs (and releases)
+     * How much time to let pass between the picking events that trigger grabs (and releases). In seconds
      */
     @Setter
     private float grabEvery;
@@ -37,15 +34,13 @@ public class GrabPickingFunction implements BoundHandFunction{
     @Setter
     private float minimumGripToTrigger = 0.5f;
 
-    @Setter
-    private boolean grabActionIsAnalog = true;
-
     private float lastGripPressure;
 
     Optional<AbstractGrabControl> currentlyGrabbed = Optional.empty();
 
     private BoundHand boundHand;
-    private XrActionBaseAppState actionBasedOpenVrState;
+
+    private final GrabActionNormaliser grabActionNormaliser = new GrabActionNormaliser();
 
     public GrabPickingFunction(ActionHandle grabAction, Node nodeToGrabPickAgainst){
         this.grabAction = grabAction;
@@ -55,7 +50,6 @@ public class GrabPickingFunction implements BoundHandFunction{
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
         this.boundHand= boundHand;
-        this.actionBasedOpenVrState = stateManager.getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
     }
 
     @Override
@@ -71,7 +65,7 @@ public class GrabPickingFunction implements BoundHandFunction{
         long timeSinceLastChecked = timeNow - timeLastCheckedForGrab;
         if (timeSinceLastChecked>(1000*grabEvery)){
             timeLastCheckedForGrab = timeNow;
-            float gripPressure =  getGripActionPressure(boundHand, grabAction);
+            float gripPressure =  grabActionNormaliser.getGripActionPressure(boundHand, grabAction);
 
             //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
             if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
@@ -107,14 +101,5 @@ public class GrabPickingFunction implements BoundHandFunction{
         grabControl.onGrab(boundHand);
     }
 
-    private float getGripActionPressure(BoundHand boundHand, ActionHandle action){
-        if (grabActionIsAnalog){
-            FloatActionState grabActionState = actionBasedOpenVrState.getFloatActionState(action, boundHand.getHandSide().restrictToInputString);
-            return grabActionState.getState();
-        }else{
-            BooleanActionState grabActionState = actionBasedOpenVrState.getBooleanActionState(action, boundHand.getHandSide().restrictToInputString);
-            return grabActionState.getState()?1:0;
-        }
-    }
 
 }

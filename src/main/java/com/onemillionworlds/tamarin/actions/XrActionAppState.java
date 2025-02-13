@@ -514,7 +514,12 @@ public class XrActionAppState extends XrActionBaseAppState{
             actionInfo.subactionPath(pathToLong(restrictToInput, true));
         }
 
-        withResponseCodeLogging("getActionState", XR10.xrGetActionStateBoolean(xrSessionHandle, actionInfo, actionState));
+        int responseCode = XR10.xrGetActionStateBoolean(xrSessionHandle, actionInfo, actionState);
+        if(responseCode == XR10.XR_ERROR_ACTION_TYPE_MISMATCH){
+            throw new IncorrectActionTypeException("Called for the boolean action but the action is not of that type");
+        }
+        checkResponseCode("getActionState", responseCode);
+
         return new BooleanActionState(actionState.currentState(), actionState.changedSinceLastSync());
     }
 
@@ -676,7 +681,11 @@ public class XrActionAppState extends XrActionBaseAppState{
         if (restrictToInput != null){
             actionInfo.subactionPath(pathToLong(restrictToInput, true));
         }
-        withResponseCodeLogging("getActionState", XR10.xrGetActionStateFloat(xrSessionHandle, actionInfo, actionState));
+        int responseCode = XR10.xrGetActionStateFloat(xrSessionHandle, actionInfo, actionState);
+        if(responseCode == XR10.XR_ERROR_ACTION_TYPE_MISMATCH){
+            throw new IncorrectActionTypeException("Called for the float action but the action is not of that type");
+        }
+        checkResponseCode("getActionState", responseCode);
         return new FloatActionState(actionState.currentState(), actionState.changedSinceLastSync());
     }
 
@@ -700,7 +709,12 @@ public class XrActionAppState extends XrActionBaseAppState{
         if (restrictToInput != null){
             actionInfo.subactionPath(pathToLong(restrictToInput, true));
         }
-        withResponseCodeLogging("getVector2fActionState", XR10.xrGetActionStateVector2f(xrSessionHandle, actionInfo, actionState));
+
+        int responseCode = XR10.xrGetActionStateVector2f(xrSessionHandle, actionInfo, actionState);
+        if(responseCode == XR10.XR_ERROR_ACTION_TYPE_MISMATCH){
+            throw new IncorrectActionTypeException("Called for the Vector2f action but the action is not of that type");
+        }
+        checkResponseCode("getVector2fActionState", responseCode);
 
         return new Vector2fActionState(actionState.currentState().x(), actionState.currentState().y(), actionState.changedSinceLastSync());
     }
@@ -858,6 +872,12 @@ public class XrActionAppState extends XrActionBaseAppState{
                 joint.setLocalTranslation(bonePose.getValue().position());
                 joint.setLocalRotation(bonePose.getValue().orientation());
             }
+        }
+    }
+
+    public static class IncorrectActionTypeException extends RuntimeException{
+        public IncorrectActionTypeException(String message){
+            super(message);
         }
     }
 

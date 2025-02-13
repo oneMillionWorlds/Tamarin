@@ -104,7 +104,7 @@ public class PlayerVrPhysicsAppState extends BaseAppState{
                         : headOcclusionMode == HeadOcclusionMode.DEFAULT_RIGID_BODIES_CAUSE_OCCLUSION;
 
                 if(shouldContribute){
-                    depths.add(event.getDistance1());
+                    depths.add(Math.abs(event.getDistance1()));
                 }
             };
             headGhostSphere.setPhysicsLocation(vrAppState.getVrCameraPosition());

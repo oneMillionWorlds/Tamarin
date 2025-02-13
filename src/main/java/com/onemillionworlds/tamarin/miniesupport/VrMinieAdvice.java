@@ -26,6 +26,17 @@ public interface VrMinieAdvice{
      */
     boolean shouldPreventPlayerWalkingThrough();
 
+    /**
+     * Overrides whether the associated object can be picked up by the player.
+     *
+     * <b>
+     *     By default kinematic objects can't be picked up and non kinematic objects can
+     * </b>
+     *
+     * @return true if the object can be picked up, otherwise false.
+     */
+    boolean canBePickedUp();
+
     static VrMinieAdviceBuilder builder(){
         return new VrMinieAdviceBuilder();
     }
@@ -33,6 +44,7 @@ public interface VrMinieAdvice{
     class VrMinieAdviceBuilder{
         boolean shouldTriggerViewOcclusion = true;
         boolean shouldPreventPlayerWalkingThrough = true;
+        boolean objectCanBePickedUp = true;
         public VrMinieAdviceBuilder setShouldTriggerViewOcclusion(boolean shouldTriggerViewOcclusion){
             this.shouldTriggerViewOcclusion = shouldTriggerViewOcclusion;
             return this;
@@ -40,6 +52,11 @@ public interface VrMinieAdvice{
 
         public VrMinieAdviceBuilder setShouldPreventPlayerWalkingThrough(boolean shouldPreventPlayerWalkingThrough){
             this.shouldPreventPlayerWalkingThrough = shouldPreventPlayerWalkingThrough;
+            return this;
+        }
+
+        public VrMinieAdviceBuilder setObjectCanBePickedUp(boolean objectCanBePickedUp){
+            this.objectCanBePickedUp = objectCanBePickedUp;
             return this;
         }
 
@@ -52,6 +69,10 @@ public interface VrMinieAdvice{
                 @Override
                 public boolean shouldPreventPlayerWalkingThrough() {
                     return shouldPreventPlayerWalkingThrough;
+                }
+                @Override
+                public boolean canBePickedUp() {
+                    return objectCanBePickedUp;
                 }
             };
         }
