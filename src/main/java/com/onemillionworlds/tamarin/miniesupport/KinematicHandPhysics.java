@@ -140,8 +140,6 @@ public class KinematicHandPhysics implements BoundHandFunction{
         }
 
         if(grabAction!=null){
-
-
             float gripPressure = grabActionNormaliser.getGripActionPressure(boundHand, grabAction);
 
             Node palmNode = boundHand.getPalmNode();
@@ -178,8 +176,6 @@ public class KinematicHandPhysics implements BoundHandFunction{
                     Vector3f startingPosition_local = palmNode.worldToLocal(startingPosition, null);
                     Quaternion startingRotation_local = palmNode.getWorldRotation().inverse().mult(startingRotation);
 
-                    bodyToBeGrabbed.setKinematic(false);
-
                     for(PhysicsRigidBody fingerPart : existingFingerParts.values()){
                         bodyToBeGrabbed.addToIgnoreList(fingerPart);
                     }
@@ -193,11 +189,7 @@ public class KinematicHandPhysics implements BoundHandFunction{
             }else if (gripPressure<minimumGripToTrigger && currentlyGrabbed.isPresent()){
                 //drop current item
                 PhysicsRigidBody physicsRigidBody = currentlyGrabbed.get().getGrippedObject();
-                physicsRigidBody.setKinematic(false);
-
-
                 fingerInteractionImmunity.put(physicsRigidBody, 1f);
-
                 currentlyGrabbed = Optional.empty();
 
             }
