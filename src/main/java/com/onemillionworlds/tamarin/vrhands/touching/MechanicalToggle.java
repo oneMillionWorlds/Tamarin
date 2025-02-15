@@ -18,9 +18,6 @@ import com.onemillionworlds.tamarin.observable.TerminateListener;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.Haptic;
 import com.simsilica.lemur.event.MouseEventControl;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -28,7 +25,6 @@ import java.util.function.Supplier;
 
 public class MechanicalToggle extends Node{
 
-    @Getter
     private float currentTravel = 0;
 
     private final ObservableValue<ToggleState> pressEvents = new ObservableValue<>(ToggleState.FULLY_OFF);
@@ -49,7 +45,6 @@ public class MechanicalToggle extends Node{
 
     private Optional<Haptic> hapticOnFullDepress = Optional.empty();
 
-    @Setter
     private boolean useFullBoundingBoxBasedCollisions = true;
 
     /**
@@ -63,25 +58,23 @@ public class MechanicalToggle extends Node{
 
     private final float toggleInTravel;
 
-    @Getter
     private ToggleState currentState = ToggleState.FULLY_OFF;
 
     /**
      * If true then the button can be untoggled by pressing it again. If false then the button can only be untoggled
      * programmatically
      */
-    @Setter
     private boolean allowedToBeUntoggled = true;
 
     private Supplier<EnablementState> enablementState = () -> EnablementState.ENABLED;
 
     public MechanicalToggle(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravelPoint, float toggleInTravel, float resetTime){
-        assert toggleInTravel<maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
+        assert toggleInTravel < maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
 
         this.toggleInTravel = toggleInTravel;
 
         representativeGeometry = findGeometry(buttonGeometry);
-        assert  representativeGeometry != null : "Couldn't find a geometry in the spatial";
+        assert representativeGeometry != null : "Couldn't find a geometry in the spatial";
         overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
 
         geometrySurfaceDistanceFromOrigin = Math.min(
@@ -90,17 +83,17 @@ public class MechanicalToggle extends Node{
         );
 
         this.movementAxis = movementAxis;
-        movingNode= new Node("MechanicalButton_MovingNode"){
+        movingNode = new Node("MechanicalButton_MovingNode"){
             @Override
             public int collideWith(Collidable other, CollisionResults results){
                 if(useFullBoundingBoxBasedCollisions){
                     //this isn't a performance optimisation (although it may also be that) it is to give more stable
                     //collisions with the button if the player plunges their hand into it
-                    if (other instanceof BoundingSphere boundingSphere){
+                    if(other instanceof BoundingSphere boundingSphere){
                         BoundingSphere localSphere = new BoundingSphere(boundingSphere.getRadius(), this.worldToLocal(boundingSphere.getCenter(), null));
                         CollisionResults newResults = new CollisionResults();
                         overallBoundsLocalisedToSpatialOrigin.collideWith(localSphere, newResults);
-                        for(int i=0;i<newResults.size();i++){
+                        for(int i = 0; i < newResults.size(); i++){
                             CollisionResult collisionResult = newResults.getCollisionDirect(i);
                             collisionResult.setGeometry(representativeGeometry);
                             results.addCollision(collisionResult);
@@ -151,7 +144,7 @@ public class MechanicalToggle extends Node{
                     protected void controlUpdate(float tpf){
                         EnablementState enablementState = getEnablementState();
                         getTouchingHand().ifPresent(hand -> {
-                            if (enablementState == EnablementState.DISABLED_LOCKED){
+                            if(enablementState == EnablementState.DISABLED_LOCKED){
                                 return;
                             }
 
@@ -162,9 +155,9 @@ public class MechanicalToggle extends Node{
 
                             pressDistance = Math.min(maximumButtonTravelPoint, pressDistance);
                             pressDistance = Math.max(0, pressDistance);
-                            if(pressDistance>currentTravel){
+                            if(pressDistance > currentTravel){
 
-                                if (pressDistance == maximumButtonTravelPoint){
+                                if(pressDistance == maximumButtonTravelPoint){
                                     hapticOnFullDepress.ifPresent(hand::triggerHapticAction);
                                 }
                                 setTravel(pressDistance);
@@ -172,40 +165,40 @@ public class MechanicalToggle extends Node{
                         });
 
                         // Reset button position over time
-                        if (getTouchingHand().isEmpty()) {
+                        if(getTouchingHand().isEmpty()){
 
-                            if (currentTravel>toggleInTravel){
+                            if(currentTravel > toggleInTravel){
                                 if(enablementState == EnablementState.ENABLED){
                                     if(currentState == ToggleState.FULLY_OFF){
                                         updateAndNotifyState(ToggleState.TRANSITIONING_ON);
                                     } else if(currentState == ToggleState.TOGGLED_ON && allowedToBeUntoggled){
                                         updateAndNotifyState(ToggleState.TRANSITIONING_OFF);
                                     }
-                                } else if (enablementState == EnablementState.TUTORIAL_MODE && tutorialResetReadyToFire){
+                                } else if(enablementState == EnablementState.TUTORIAL_MODE && tutorialResetReadyToFire){
                                     tutorialModePressListeners.forEach(Runnable::run);
                                     tutorialResetReadyToFire = false;
                                 }
                             }
-                            float distanceInThisTick = maximumButtonTravelPoint * tpf/resetTime;
+                            float distanceInThisTick = maximumButtonTravelPoint * tpf / resetTime;
                             float newTravel = currentTravel;
-                            if (currentState == ToggleState.TRANSITIONING_ON){
-                                if (currentTravel>toggleInTravel){
-                                    newTravel-=distanceInThisTick;
-                                    if (newTravel<toggleInTravel){
+                            if(currentState == ToggleState.TRANSITIONING_ON){
+                                if(currentTravel > toggleInTravel){
+                                    newTravel -= distanceInThisTick;
+                                    if(newTravel < toggleInTravel){
                                         newTravel = toggleInTravel;
                                         updateAndNotifyState(ToggleState.TOGGLED_ON);
                                     }
                                 }
                             }
 
-                            if(currentTravel<=0){
+                            if(currentTravel <= 0){
                                 tutorialResetReadyToFire = true;
                             }
 
-                            if (currentState == ToggleState.TRANSITIONING_OFF || currentState == ToggleState.FULLY_OFF){
-                                if (currentTravel>0){
-                                    newTravel-=distanceInThisTick;
-                                    if (newTravel<0){
+                            if(currentState == ToggleState.TRANSITIONING_OFF || currentState == ToggleState.FULLY_OFF){
+                                if(currentTravel > 0){
+                                    newTravel -= distanceInThisTick;
+                                    if(newTravel < 0){
                                         newTravel = 0;
                                         updateAndNotifyState(ToggleState.FULLY_OFF);
                                     }
@@ -232,6 +225,7 @@ public class MechanicalToggle extends Node{
      * Allows the enablement state to be dynamically determined. This is useful if the enablement state is dependent on
      * some wider state in the application (and you don't want to have to be called setEnablementState every time that
      * changes)
+     *
      * @param enablementState a supplier that will be called to determine the enablement state of the button
      */
     public void setDynamicEnablementState(Supplier<EnablementState> enablementState){
@@ -242,12 +236,12 @@ public class MechanicalToggle extends Node{
      * Returns the first geometry it can recursively find in the spatial
      */
     private Geometry findGeometry(Spatial item){
-        if (item instanceof Geometry buttonGeometry){
+        if(item instanceof Geometry buttonGeometry){
             return buttonGeometry;
-        }else if (item instanceof Node node){
+        } else if(item instanceof Node node){
             for(Spatial child : node.getChildren()){
                 Geometry found = findGeometry(child);
-                if (found != null){
+                if(found != null){
                     return found;
                 }
             }
@@ -260,7 +254,7 @@ public class MechanicalToggle extends Node{
     }
 
     private void setTravel(float buttonTravel){
-        if (currentTravel == buttonTravel){
+        if(currentTravel == buttonTravel){
             return;
         }
         this.currentTravel = buttonTravel;
@@ -273,8 +267,9 @@ public class MechanicalToggle extends Node{
      * Note that multiple events could be consolidated together if not checked regularly.
      *
      * <p>
-     *     This is an ALTERNATIVE to adding a listener to the press event.
+     * This is an ALTERNATIVE to adding a listener to the press event.
      * </p>
+     *
      * @return an object that can be queried to determine if the button has been pressed
      */
     @SuppressWarnings("unused")
@@ -287,13 +282,14 @@ public class MechanicalToggle extends Node{
      * Note that multiple events could be consolidated together if not checked regularly.
      *
      * <p>
-     *     Unlike {@link MechanicalToggle#subscribeToPressEvents()} this only subscribes to the major change from on to
-     *     off, not the minor {@link ToggleState#TRANSITIONING_OFF} to {@link ToggleState#FULLY_OFF} and similar
+     * Unlike {@link MechanicalToggle#subscribeToPressEvents()} this only subscribes to the major change from on to
+     * off, not the minor {@link ToggleState#TRANSITIONING_OFF} to {@link ToggleState#FULLY_OFF} and similar
      * </p>
      *
      * <p>
-     *     This is an ALTERNATIVE to adding a listener to the press event.
+     * This is an ALTERNATIVE to adding a listener to the press event.
      * </p>
+     *
      * @return an object that can be queried to determine if the button has been pressed
      */
     @SuppressWarnings("unused")
@@ -302,14 +298,14 @@ public class MechanicalToggle extends Node{
     }
 
     /**
-     *
      * Adds a listener to the press event. The listener will be called every time the button is pressed.
      * <p>
-     *     A TerminateListener is returned, calling this de-registers the listener.
+     * A TerminateListener is returned, calling this de-registers the listener.
      * </p>
      * <p>
-     *     This is an ALTERNATIVE to subscribing to the press event.
+     * This is an ALTERNATIVE to subscribing to the press event.
      * </p>
+     *
      * @param listener a listerner that will be called immediately if the button is pressed.
      * @return a TerminateListener to de register the listener.
      */
@@ -324,11 +320,11 @@ public class MechanicalToggle extends Node{
      * want to explain what the button does when it is pressed in tutorial mode.
      *
      * <p>
-     *     see {@link EnablementState#TUTORIAL_MODE} and {@link MechanicalToggle#setEnablementState(EnablementState)}
+     * see {@link EnablementState#TUTORIAL_MODE} and {@link MechanicalToggle#setEnablementState(EnablementState)}
      * </p>
      *
      * @param listener the listener that will be called when the button is fully depressed in tutorial mode.
-     * @return  A TerminateListener is returned, calling this de-registers the listener.
+     * @return A TerminateListener is returned, calling this de-registers the listener.
      */
     public TerminateListener addTutorialModePressListener(Runnable listener){
         tutorialModePressListeners.add(listener);
@@ -347,27 +343,27 @@ public class MechanicalToggle extends Node{
      */
     public void setState(ToggleState state){
 
-        if (currentState == state){
+        if(currentState == state){
             return;
         }
-        if (currentState == ToggleState.FULLY_OFF && state == ToggleState.TRANSITIONING_OFF){
+        if(currentState == ToggleState.FULLY_OFF && state == ToggleState.TRANSITIONING_OFF){
             return;
         }
 
-        if (state == ToggleState.FULLY_OFF){
+        if(state == ToggleState.FULLY_OFF){
             setTravel(0);
-        }else if (state == ToggleState.TOGGLED_ON){
+        } else if(state == ToggleState.TOGGLED_ON){
             setTravel(toggleInTravel);
         }
         updateAndNotifyState(state);
     }
 
     private void updateAndNotifyState(ToggleState state){
-        if (currentState == state){
+        if(currentState == state){
             return;
         }
         EnablementState enablementState = getEnablementState();
-        if (enablementState != EnablementState.ENABLED){
+        if(enablementState != EnablementState.ENABLED){
             return;
         }
 
@@ -377,9 +373,25 @@ public class MechanicalToggle extends Node{
         for(Consumer<ToggleState> listener : pressListeners){
             listener.accept(state);
         }
-        if (previousState.isAKindOfOn() != currentState.isAKindOfOn()){
+        if(previousState.isAKindOfOn() != currentState.isAKindOfOn()){
             majorPressEvents.set(currentState.isAKindOfOn());
         }
+    }
+
+    public float getCurrentTravel(){
+        return this.currentTravel;
+    }
+
+    public ToggleState getCurrentState(){
+        return this.currentState;
+    }
+
+    public void setUseFullBoundingBoxBasedCollisions(boolean useFullBoundingBoxBasedCollisions){
+        this.useFullBoundingBoxBasedCollisions = useFullBoundingBoxBasedCollisions;
+    }
+
+    public void setAllowedToBeUntoggled(boolean allowedToBeUntoggled){
+        this.allowedToBeUntoggled = allowedToBeUntoggled;
     }
 
     public enum ToggleState{
@@ -403,7 +415,7 @@ public class MechanicalToggle extends Node{
     }
 
     @SuppressWarnings("unchecked") // Suppresses unchecked conversion warning
-    private static <T> Class<T> castClass(Class<?> clazz) {
+    private static <T> Class<T> castClass(Class<?> clazz){
         return (Class<T>) clazz;
     }
 
@@ -428,9 +440,8 @@ public class MechanicalToggle extends Node{
          * must be hooked up by the application).
          *
          * <p>
-         *     See {@link MechanicalToggle#addTutorialModePressListener(Runnable)}
+         * See {@link MechanicalToggle#addTutorialModePressListener(Runnable)}
          * </p>
-         *
          */
         TUTORIAL_MODE
     }

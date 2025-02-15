@@ -16,7 +16,6 @@ import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.event.MouseListener;
-import lombok.Getter;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -38,7 +37,6 @@ public class LemurKeyboard extends BaseAppState{
     private final BiConsumer<KeyboardEvent,Object> eventConsumer;
     private final KeyboardStyle keyboardStyle;
 
-    @Getter
     private ShiftMode shiftMode = ShiftMode.UPPER;
 
     private final Vector3f ownerPosition;
@@ -84,6 +82,10 @@ public class LemurKeyboard extends BaseAppState{
         keyboardNode.setLocalRotation(this.ownerRotation);
         refreshKeyboard();
 
+    }
+
+    public ShiftMode getShiftMode(){
+        return shiftMode;
     }
 
     public void setShiftMode(ShiftMode shiftMode){

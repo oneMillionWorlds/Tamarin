@@ -1,9 +1,7 @@
 package com.onemillionworlds.tamarin.actions;
 
-import lombok.Getter;
 import org.lwjgl.openxr.XR10;
 
-@Getter
 public enum ActionType{
     BOOLEAN(XR10.XR_ACTION_TYPE_BOOLEAN_INPUT),
     FLOAT(XR10.XR_ACTION_TYPE_FLOAT_INPUT),
@@ -28,4 +26,7 @@ public enum ActionType{
         this.openXrOption = openXrOption;
     }
 
+    public int getOpenXrOption(){
+        return openXrOption;
+    }
 }

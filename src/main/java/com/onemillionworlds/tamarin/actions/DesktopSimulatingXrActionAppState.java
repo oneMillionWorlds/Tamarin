@@ -32,7 +32,6 @@ import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -68,7 +67,6 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     /**
      * Sets the hand position to be in a sensible position based on the head position and direction.
      */
-    @Setter
     private boolean simulateHandPose = true;
 
     private XrBaseAppState xrAppState;
@@ -124,6 +122,10 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     @Override
     public void doNotSuppressRepeatedErrors(){
         // doesn't mean anything in this context
+    }
+
+    public void setSimulateHandPose(boolean simulateHandPose){
+        this.simulateHandPose = simulateHandPose;
     }
 
     @Override

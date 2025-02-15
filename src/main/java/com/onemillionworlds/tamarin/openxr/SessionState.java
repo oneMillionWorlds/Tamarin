@@ -1,9 +1,7 @@
 package com.onemillionworlds.tamarin.openxr;
 
-import lombok.AllArgsConstructor;
 import org.lwjgl.openxr.XR10;
 
-@AllArgsConstructor
 public enum SessionState{
     /**
      * UNKNOWN: An unknown state. The runtime must not return this value in an XrEventDataSessionStateChanged event.
@@ -60,6 +58,10 @@ public enum SessionState{
     EXITING(XR10.XR_SESSION_STATE_EXITING);
 
     private final int xrValue;
+
+    SessionState(int xrValue){
+        this.xrValue = xrValue;
+    }
 
     public static SessionState fromXRValue(int xrValue) {
         for (SessionState state : values()) {

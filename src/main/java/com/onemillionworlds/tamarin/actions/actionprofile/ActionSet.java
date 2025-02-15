@@ -1,13 +1,10 @@
 package com.onemillionworlds.tamarin.actions.actionprofile;
 
-import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
-@Getter
 public class ActionSet{
     /**
      * This is the action sets programmatic name.
@@ -32,6 +29,32 @@ public class ActionSet{
         this.translatedName = translatedName;
         this.priority = priority;
         this.actions = actions;
+    }
+
+    /**
+     * This is the action sets programmatic name.
+     */
+    public String getName(){
+        return name;
+    }
+
+    /**
+     * This is presented to the user as a description of the action set. This string should be presented in the system’s current active locale.
+     */
+    public String getTranslatedName(){
+        return translatedName;
+    }
+
+    /**
+     * Defines which action sets' actions are active on a given input source when actions on multiple active action sets are bound to the same input source.
+     * Larger priority numbers take precedence over smaller priority numbers.
+     */
+    public int getPriority(){
+        return priority;
+    }
+
+    public List<Action> getActions(){
+        return actions;
     }
 
     public static ActionSetBuilder builder(){

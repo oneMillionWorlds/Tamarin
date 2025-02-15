@@ -18,17 +18,14 @@ import com.onemillionworlds.tamarin.observable.TerminateListener;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.Haptic;
 import com.simsilica.lemur.event.MouseEventControl;
-import lombok.Getter;
-import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class MechanicalButton extends Node{
 
-    @Getter
     private float currentTravel = 0;
+
 
     /**
      * This boolean ensures that the button can only be pressed once without releasing.
@@ -47,7 +44,6 @@ public class MechanicalButton extends Node{
 
     private Optional<Haptic> hapticOnFullDepress = Optional.empty();
 
-    @Setter
     private boolean useFullBoundingBoxBasedCollisions = true;
 
     /**
@@ -61,7 +57,7 @@ public class MechanicalButton extends Node{
 
     public MechanicalButton(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravel, float resetTime){
         representativeGeometry = findGeometry(buttonGeometry);
-        assert  representativeGeometry != null : "Couldn't find a geometry in the spatial";
+        assert representativeGeometry != null : "Couldn't find a geometry in the spatial";
         overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
 
         geometrySurfaceDistanceFromOrigin = Math.min(
@@ -72,17 +68,17 @@ public class MechanicalButton extends Node{
         //we want the top surface of the bounding box
 
         this.movementAxis = movementAxis;
-        movingNode= new Node("MechanicalButton_MovingNode"){
+        movingNode = new Node("MechanicalButton_MovingNode"){
             @Override
             public int collideWith(Collidable other, CollisionResults results){
                 if(useFullBoundingBoxBasedCollisions){
                     //this isn't a performance optimisation (although it may also be that) it is to give more stable
                     //collisions with the button if the player plunges their hand into it
-                    if (other instanceof BoundingSphere boundingSphere){
+                    if(other instanceof BoundingSphere boundingSphere){
                         BoundingSphere localSphere = new BoundingSphere(boundingSphere.getRadius(), this.worldToLocal(boundingSphere.getCenter(), null));
                         CollisionResults newResults = new CollisionResults();
                         overallBoundsLocalisedToSpatialOrigin.collideWith(localSphere, newResults);
-                        for(int i=0;i<newResults.size();i++){
+                        for(int i = 0; i < newResults.size(); i++){
                             CollisionResult collisionResult = newResults.getCollisionDirect(i);
                             collisionResult.setGeometry(representativeGeometry);
                             results.addCollision(collisionResult);
@@ -125,9 +121,9 @@ public class MechanicalButton extends Node{
 
                             pressDistance = Math.min(maximumButtonTravel, pressDistance);
                             pressDistance = Math.max(0, pressDistance);
-                            if(pressDistance>currentTravel){
+                            if(pressDistance > currentTravel){
                                 setTravel(pressDistance);
-                                if (pressDistance>=maximumButtonTravel && availableForPress){
+                                if(pressDistance >= maximumButtonTravel && availableForPress){
                                     recordPressed();
                                     hapticOnFullDepress.ifPresent(hand::triggerHapticAction);
                                 }
@@ -135,10 +131,10 @@ public class MechanicalButton extends Node{
                         });
 
                         // Reset button position over time
-                        if (getTouchingHand().isEmpty()) {
+                        if(getTouchingHand().isEmpty()){
 
-                            if (currentTravel > 0) {
-                                float distanceInThisTick = maximumButtonTravel * tpf/resetTime;
+                            if(currentTravel > 0){
+                                float distanceInThisTick = maximumButtonTravel * tpf / resetTime;
                                 float newTravel = Math.max(0, currentTravel - distanceInThisTick);
                                 setTravel(newTravel);
                             }
@@ -149,16 +145,18 @@ public class MechanicalButton extends Node{
         );
     }
 
+
+
     /**
      * Returns the first geometry it can recursively find in the spatial
      */
     private Geometry findGeometry(Spatial buttonGeometry){
-        if (buttonGeometry instanceof Geometry){
+        if(buttonGeometry instanceof Geometry){
             return (Geometry) buttonGeometry;
-        }else if (buttonGeometry instanceof Node node){
+        } else if(buttonGeometry instanceof Node node){
             for(Spatial child : node.getChildren()){
                 Geometry found = findGeometry(child);
-                if (found != null){
+                if(found != null){
                     return found;
                 }
             }
@@ -173,7 +171,7 @@ public class MechanicalButton extends Node{
     private void setTravel(float buttonTravel){
         this.currentTravel = buttonTravel;
         movingNode.setLocalTranslation(movementAxis.axisVector.mult(currentTravel));
-        if (buttonTravel == 0){
+        if(buttonTravel == 0){
             availableForPress = true;
         }
     }
@@ -191,8 +189,9 @@ public class MechanicalButton extends Node{
      * Note that multiple events could be consolidated together if not checked regularly.
      *
      * <p>
-     *     This is an ALTERNATIVE to adding a listener to the press event.
+     * This is an ALTERNATIVE to adding a listener to the press event.
      * </p>
+     *
      * @return an object that can be queried to determine if the button has been pressed
      */
     @SuppressWarnings("unused")
@@ -203,11 +202,12 @@ public class MechanicalButton extends Node{
     /**
      * Adds a listener to the press event. The listener will be called every time the button is pressed.
      * <p>
-     *     A TerminateListener is returned, calling this de-registers the listener.
+     * A TerminateListener is returned, calling this de-registers the listener.
      * </p>
      * <p>
-     *     This is an ALTERNATIVE to subscribing to the press event.
+     * This is an ALTERNATIVE to subscribing to the press event.
      * </p>
+     *
      * @param listener a listerner that will be called immediately if the button is pressed.
      * @return a TerminateListener to de register the listener.
      */
@@ -217,4 +217,11 @@ public class MechanicalButton extends Node{
     }
 
 
+    public float getCurrentTravel(){
+        return this.currentTravel;
+    }
+
+    public void setUseFullBoundingBoxBasedCollisions(boolean useFullBoundingBoxBasedCollisions){
+        this.useFullBoundingBoxBasedCollisions = useFullBoundingBoxBasedCollisions;
+    }
 }

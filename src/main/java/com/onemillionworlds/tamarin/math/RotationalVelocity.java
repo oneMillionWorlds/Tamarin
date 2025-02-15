@@ -1,9 +1,7 @@
 package com.onemillionworlds.tamarin.math;
 
 import com.jme3.math.Vector3f;
-import lombok.Getter;
 
-@Getter
 public class RotationalVelocity{
 
     /**
@@ -33,5 +31,17 @@ public class RotationalVelocity{
         }else{
             axis = rotationAsSingleVector.normalize();
         }
+    }
+
+    public Vector3f getRotationAsSingleVector(){
+        return rotationAsSingleVector;
+    }
+
+    public Vector3f getAxis(){
+        return axis;
+    }
+
+    public float getAngularVelocity(){
+        return angularVelocity;
     }
 }

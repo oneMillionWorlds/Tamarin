@@ -1,9 +1,8 @@
 package com.onemillionworlds.tamarin.handskeleton;
 
-import lombok.Getter;
+
 import org.lwjgl.openxr.EXTHandTracking;
 
-@Getter
 public enum HandJoint {
     /**
      * The palm is the central area of the hand, between the fingers and the wrist. This is the root of the hand skeleton.
@@ -141,4 +140,7 @@ public enum HandJoint {
         this.jointIndex = jointIndex;
     }
 
+    public int getJointIndex(){
+        return jointIndex;
+    }
 }

@@ -1,7 +1,5 @@
 package com.onemillionworlds.tamarin.actions.actionprofile;
 
-import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -15,7 +13,6 @@ import java.util.stream.Stream;
  * will use as well as suggested bindings to actual buttons etc for known controllers. It is fine if you don't supply
  * suggested bindings for all controller types (as the runtime will try to guess) but the more you can provide the better
  */
-@Getter
 public class ActionManifest{
 
     List<ActionSet> actionSets;
@@ -69,6 +66,10 @@ public class ActionManifest{
         }
     }
 
+    public List<ActionSet> getActionSets(){
+        return actionSets;
+    }
+
     @SuppressWarnings("unused")
     public static ActionProfileBuilder builder(){
         return new ActionProfileBuilder();
@@ -95,12 +96,15 @@ public class ActionManifest{
         }
     }
 
-    @Getter
     public static class ValidationException extends RuntimeException{
         Collection<ValidationProblem> problems;
         public ValidationException(Collection<ValidationProblem> problems){
             super(problems.stream().map(ValidationProblem::issue).collect(Collectors.joining(", ")));
             this.problems = problems;
+        }
+
+        public Collection<ValidationProblem> getProblems(){
+            return problems;
         }
     }
 

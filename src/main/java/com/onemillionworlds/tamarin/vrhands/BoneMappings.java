@@ -2,7 +2,6 @@ package com.onemillionworlds.tamarin.vrhands;
 
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
-import lombok.Getter;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,13 +9,19 @@ import java.util.Map;
 
 public class BoneMappings{
 
-    @Getter
     private static Map<HandJoint, String> boneMappingsLeft = Collections.unmodifiableMap(defaultMappings());
-    @Getter
     private static Map<HandJoint, String> boneMappingsRight= boneMappingsLeft;
 
     public static Map<HandJoint, String> getBoneMappings(HandSide handSide) {
         return handSide == HandSide.LEFT ? boneMappingsLeft : boneMappingsRight;
+    }
+
+    public static Map<HandJoint, String> getBoneMappingsLeft(){
+        return boneMappingsLeft;
+    }
+
+    public static Map<HandJoint, String> getBoneMappingsRight(){
+        return boneMappingsRight;
     }
 
     /**

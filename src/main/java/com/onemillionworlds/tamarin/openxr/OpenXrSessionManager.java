@@ -5,8 +5,6 @@ import com.jme3.system.AppSettings;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
-import lombok.Getter;
-import lombok.Setter;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.openxr.EXTDebugUtils;
@@ -100,12 +98,10 @@ public class OpenXrSessionManager{
     /**
      * In pixels the width of the swapchain (aka the width of the eye-screen)
      */
-    @Getter
     int swapchainWidth;
     /**
      * In pixels the height of the swapchain (aka the width of the eye-screen)
      */
-    @Getter
     int swapchainHeight;
 
     private static final Logger LOGGER = Logger.getLogger(OpenXrSessionManager.class.getName());
@@ -126,7 +122,6 @@ public class OpenXrSessionManager{
     long window;
     int glColorFormat;
 
-    @Getter
     XrSession xrSession;
     XrDebugUtilsMessengerEXT xrDebugMessenger;
     XrSpace xrAppSpace;
@@ -141,7 +136,6 @@ public class OpenXrSessionManager{
     XrView.Buffer views; //Each view represents an eye in the headset with views[0] being left and views[1] being right
     Swapchain[] swapchains;  //One swapchain per view
 
-    @Getter
     SessionState sessionState;
 
     XrEventDataBuffer eventDataBuffer = XrEventDataBuffer.calloc()
@@ -151,7 +145,6 @@ public class OpenXrSessionManager{
 
     private final AppSettings regularSettings;
 
-    @Getter
     private long predictedFrameTime;
 
     /**
@@ -159,7 +152,6 @@ public class OpenXrSessionManager{
      * it was successfully loaded. This is provided for library clients to check if the requested extensions were
      * available before using optional features (or giving a user-friendly error message if they aren't optional.
      */
-    @Getter
     private Map<String, Boolean> extensionsLoaded = new HashMap<>();
 
     /**
@@ -178,7 +170,6 @@ public class OpenXrSessionManager{
 
     private final Renderer renderer;
 
-    @Setter
     private XrVrMode xrVrBlendMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
     static {
@@ -206,6 +197,42 @@ public class OpenXrSessionManager{
         return openXrSessionManager;
     }
 
+
+    private OpenXrSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
+        this.xrSettings = xrSettings;
+        this.regularSettings = regularSettings;
+        this.renderer = renderer;
+    }
+
+    public int getSwapchainWidth(){
+        return swapchainWidth;
+    }
+
+    public int getSwapchainHeight(){
+        return swapchainHeight;
+    }
+
+    public SessionState getSessionState(){
+        return sessionState;
+    }
+
+    public XrSession getXrSession(){
+        return xrSession;
+    }
+
+    public long getPredictedFrameTime(){
+        return predictedFrameTime;
+    }
+
+    /**
+     * The data on the  extensions that were secured by the OpenXR instance. A map of the extension name and if
+     * it was successfully loaded. This is provided for library clients to check if the requested extensions were
+     * available before using optional features (or giving a user-friendly error message if they aren't optional.
+     */
+    public Map<String, Boolean> getExtensionsLoaded(){
+        return extensionsLoaded;
+    }
+
     public boolean isSessionRunning(){
         return sessionState.isAtLeastReady();
     }
@@ -214,10 +241,8 @@ public class OpenXrSessionManager{
         return sessionState == SessionState.FOCUSED;
     }
 
-    private OpenXrSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
-        this.xrSettings = xrSettings;
-        this.regularSettings = regularSettings;
-        this.renderer = renderer;
+    public void setXrVrBlendMode(XrVrMode xrVrBlendMode){
+        this.xrVrBlendMode = xrVrBlendMode;
     }
 
     private void createOpenXRInstance() {
@@ -985,12 +1010,15 @@ public class OpenXrSessionManager{
     }
 
     public static class OpenXrException extends RuntimeException {
-        @Getter
         private final int errorCode;
 
         public OpenXrException(String s, int errorCode) {
             super(s);
             this.errorCode = errorCode;
+        }
+
+        public int getErrorCode(){
+            return errorCode;
         }
     }
 

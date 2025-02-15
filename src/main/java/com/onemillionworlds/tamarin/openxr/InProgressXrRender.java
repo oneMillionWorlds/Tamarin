@@ -4,15 +4,11 @@ import com.jme3.math.Matrix4f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.texture.FrameBuffer;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 /**
  * We start a frame before the JME render and finish it after. This is a "continuation" that allows Xr to finish its
  * work and also gives us the camera positions required to position the players eyes in the virtual world.
  */
-@AllArgsConstructor
-@Getter
 public class InProgressXrRender{
     public static EyePositionData NO_EYE_POSITION = new EyePositionData(
             new Vector3f(),
@@ -34,6 +30,54 @@ public class InProgressXrRender{
 
     int leftSwapchainImageIndex;
     int rightSwapchainImageIndex;
+
+    public InProgressXrRender(boolean inProgressXr, boolean shouldRender, long predictedDisplayTime, EyePositionData leftEye, EyePositionData rightEye, FrameBuffer leftBufferToRenderTo, FrameBuffer rightBufferToRenderTo, int leftSwapchainImageIndex, int rightSwapchainImageIndex){
+        this.inProgressXr = inProgressXr;
+        this.shouldRender = shouldRender;
+        this.predictedDisplayTime = predictedDisplayTime;
+        this.leftEye = leftEye;
+        this.rightEye = rightEye;
+        this.leftBufferToRenderTo = leftBufferToRenderTo;
+        this.rightBufferToRenderTo = rightBufferToRenderTo;
+        this.leftSwapchainImageIndex = leftSwapchainImageIndex;
+        this.rightSwapchainImageIndex = rightSwapchainImageIndex;
+    }
+
+    public boolean isInProgressXr(){
+        return inProgressXr;
+    }
+
+    public boolean isShouldRender(){
+        return shouldRender;
+    }
+
+    public long getPredictedDisplayTime(){
+        return predictedDisplayTime;
+    }
+
+    public EyePositionData getLeftEye(){
+        return leftEye;
+    }
+
+    public EyePositionData getRightEye(){
+        return rightEye;
+    }
+
+    public FrameBuffer getLeftBufferToRenderTo(){
+        return leftBufferToRenderTo;
+    }
+
+    public int getLeftSwapchainImageIndex(){
+        return leftSwapchainImageIndex;
+    }
+
+    public FrameBuffer getRightBufferToRenderTo(){
+        return rightBufferToRenderTo;
+    }
+
+    public int getRightSwapchainImageIndex(){
+        return rightSwapchainImageIndex;
+    }
 
     public record EyePositionData(
             Vector3f eyePosition,

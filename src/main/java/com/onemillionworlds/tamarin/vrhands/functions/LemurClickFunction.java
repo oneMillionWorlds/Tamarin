@@ -7,22 +7,20 @@ import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
-import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
-import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
-import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.LemurSupport;
+import com.onemillionworlds.tamarin.lemursupport.SelectorPopUp;
+import com.onemillionworlds.tamarin.lemursupport.SpecialHandlingClickThroughResult;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
 import com.simsilica.lemur.event.LemurProtectedSupport;
 import com.simsilica.lemur.event.PickEventSession;
-import lombok.Setter;
-import lombok.SneakyThrows;
 
 import java.util.Arrays;
 import java.util.List;
@@ -49,7 +47,6 @@ public class LemurClickFunction implements BoundHandFunction{
     /**
      * When an analog action is being used then this is its minimum value to actually cause a trigger event
      */
-    @Setter
     private float minTriggerToClick = 0.5f;
 
     private float lastTriggerPressure = 0;
@@ -58,7 +55,6 @@ public class LemurClickFunction implements BoundHandFunction{
     private XrActionBaseAppState actionBasedOpenVrState;
     private VRHandsAppState vrHandsAppState;
 
-    @Setter
     private boolean clickActionIsAnalog = true;
 
     private AppStateManager stateManager;
@@ -73,7 +69,8 @@ public class LemurClickFunction implements BoundHandFunction{
     Optional<LemurKeyboard> openKeyboard = Optional.empty();
     Optional<SelectorPopUp<?>> openDropdown = Optional.empty();
 
-    private Consumer<HandSide> clickOnNothingConsumer = (handSide) -> {};
+    private Consumer<HandSide> clickOnNothingConsumer = (handSide) -> {
+    };
 
     public LemurClickFunction(ActionHandle clickAction, Node... pickAgainstNodes){
         this.pickAgainstNodes = Arrays.asList(pickAgainstNodes);
@@ -100,7 +97,7 @@ public class LemurClickFunction implements BoundHandFunction{
 
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
-        this.boundHand= boundHand;
+        this.boundHand = boundHand;
         this.actionBasedOpenVrState = stateManager.getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
         this.stateManager = stateManager;
         this.mouseAppState = this.stateManager.getState(VrLemurAppState.class);
@@ -111,26 +108,25 @@ public class LemurClickFunction implements BoundHandFunction{
 
     @Override
     public void onUnbind(BoundHand boundHand, AppStateManager stateManager){
-        if (syntheticViewport!=null){
+        if(syntheticViewport != null){
             mouseAppState.removeCollisionRoot(syntheticViewport);
         }
     }
 
-    @SneakyThrows
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
         float triggerPressure = getClickActionPressure(clickAction);
-        if (triggerPressure>minTriggerToClick && lastTriggerPressure<minTriggerToClick){
-            if (!dominant){
+        if(triggerPressure > minTriggerToClick && lastTriggerPressure < minTriggerToClick){
+            if(!dominant){
                 becomeDominant();
             }
         }
 
-        if (dominant){
+        if(dominant){
 
             syntheticCamera.setLocation(boundHand.getHandNode_zPointing().getWorldTranslation());
             syntheticCamera.setRotation(boundHand.getHandNode_zPointing().getWorldRotation());
-            lemurSession.cursorMoved(500,500);//the exact middle of the 1000 by 1000 synthetic camera
+            lemurSession.cursorMoved(500, 500);//the exact middle of the 1000 by 1000 synthetic camera
 
             //left and right hands represented as left and right mouse buttons
             int btnIndex = boundHand.getHandSide() == HandSide.LEFT ? MouseInput.BUTTON_LEFT : MouseInput.BUTTON_RIGHT;
@@ -139,12 +135,12 @@ public class LemurClickFunction implements BoundHandFunction{
                 mouseAppState.dispatch(event);
                 boolean anySpecialAction = clickSpecialSupport();
 
-                if (!event.isConsumed() && !anySpecialAction){
+                if(!event.isConsumed() && !anySpecialAction){
                     clickOnNothingConsumer.accept(boundHand.getHandSide());
                 }
             }
             if(triggerPressure < minTriggerToClick && lastTriggerPressure > minTriggerToClick){
-                mouseAppState.dispatch( new MouseButtonEvent(btnIndex, false, 500, 500) );
+                mouseAppState.dispatch(new MouseButtonEvent(btnIndex, false, 500, 500));
             }
         }
         lastTriggerPressure = triggerPressure;
@@ -183,12 +179,12 @@ public class LemurClickFunction implements BoundHandFunction{
     }
 
     private float getClickActionPressure(ActionHandle action){
-        if (clickActionIsAnalog){
+        if(clickActionIsAnalog){
             FloatActionState grabActionState = actionBasedOpenVrState.getFloatActionState(action, boundHand.getHandSide().restrictToInputString);
             return grabActionState.getState();
-        }else{
+        } else{
             BooleanActionState grabActionState = actionBasedOpenVrState.getBooleanActionState(action, boundHand.getHandSide().restrictToInputString);
-            return grabActionState.getState()?1:0;
+            return grabActionState.getState() ? 1 : 0;
         }
     }
 
@@ -200,17 +196,17 @@ public class LemurClickFunction implements BoundHandFunction{
         List<PickEventSession.RootEntry> pickRoots = LemurProtectedSupport.getPickRoots(lemurSession);
 
         pickRoots.forEach(root ->
-            mouseAppState.removeCollisionRoot(root.viewport)
+                mouseAppState.removeCollisionRoot(root.viewport)
         );
 
         this.vrHandsAppState.getHandControls().forEach(h -> {
             LemurClickFunction lemurClick = h.getFunction(LemurClickFunction.class);
-            if (lemurClick!=null){
+            if(lemurClick != null){
                 lemurClick.dominant = false;
             }
         });
 
-        syntheticCamera = new Camera(1000,1000);
+        syntheticCamera = new Camera(1000, 1000);
         syntheticCamera.setFrustumNear(PICK_MINIMUM);
         syntheticCamera.setFrustumFar(PICK_MAXIMUM);
         syntheticViewport = new ViewPort("tamarinHandSyntheticViewport", syntheticCamera);
@@ -220,5 +216,13 @@ public class LemurClickFunction implements BoundHandFunction{
         mouseAppState.addCollisionRoot(syntheticViewport);
 
         dominant = true;
+    }
+
+    public void setMinTriggerToClick(float minTriggerToClick){
+        this.minTriggerToClick = minTriggerToClick;
+    }
+
+    public void setClickActionIsAnalog(boolean clickActionIsAnalog){
+        this.clickActionIsAnalog = clickActionIsAnalog;
     }
 }

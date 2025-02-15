@@ -23,7 +23,6 @@ import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.BoxLayout;
-import lombok.AllArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -399,9 +398,12 @@ public class DebugWindowState extends BaseAppState{
     }
 
 
-    @AllArgsConstructor
     private abstract static class LineItem{
         String label;
+
+        public LineItem(String label){
+            this.label = label;
+        }
 
         public abstract Node render();
 

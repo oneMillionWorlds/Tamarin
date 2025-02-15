@@ -36,8 +36,6 @@ import com.onemillionworlds.tamarin.vrhands.functions.PickMarkerFunction;
 import com.onemillionworlds.tamarin.vrhands.functions.PressFunction;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
 import com.onemillionworlds.tamarin.vrhands.touching.AbstractTouchControl;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,37 +74,10 @@ public abstract class BoundHand{
 
     private final Node geometryNode = new Node();
 
-    /**
-     * Returns a node that will update with the hands position and rotation.
-     * <p>
-     * The exact position and rotation of this node depends on the pose type specified for the hand:
-     *  <p>
-     * If the pose is AIM them it will be just in front and above the hand with +X pointing in the direction a held weapon
-     * would fire with Y pointing upwards and Z pointing to the right (when the hands are held with the palms
-     * facing each other)
-     *  <p>
-     * If the pose is GRIP them it will be away from the palm, with +X pointing in the direction a held weapon
-     * would fire with Y pointing upwards and Z pointing to the right (when the hands are held with the palms
-     * facing each other)
-     * <p>
-     * This node has an orientation such that x aligns with the grip direction (like you are holding a sword, and Z
-     * pointing to the right (when the hands are held with the palms facing each other).
-     * <p>
-     * This is an ideal node for things like picking lines, which can be put in the x direction
-     * <p>
-     * Note that the (0,0,0) position is just in front of the thumb, not the centre of the hand.
-     * <p>
-     * This node is primarily used for picking, but if you want a node to attach to that only cares about the bulk
-     * hand position
-     *
-     */
-    @Getter
+
     private final Node handNode_xPointing = new Node();
 
-    /**
-     * A hand node, with +z pointing in the direction of the bulk hand (if an AIM pose). This is used primarily for direct lemur interactions
-     */
-    @Getter
+
     private final Node handNode_zPointing = new Node();
 
     private final Node pickLineNode = new Node();
@@ -119,22 +90,9 @@ public abstract class BoundHand{
      */
     private final Node palmNode_xPointing = new Node();
 
-    /**
-     * This is a node that sits near on the tip of the index finger whose +x points out way from the index
-     * finger (and Y point up and Z points right if the hands are held with palms facing each other. This node sits inside
-     * the finger such that a sphere would touch the skin of the finger in 5 directions.
-     * The exact distance from the skin can vary (it is reported by OpenXr) but for bound hand's perspective it is considered
-     * to be {@link BoundHand#FINGER_PICK_SPHERE_RADIUS} away from the skin.
-     */
-    @Getter
     private final Node indexFingerTip_xPointing = new Node();
 
-    /**
-     * A node at the wrist.
-     * <p>
-     * <b>With hands held flat with thumbs facing each other</b> +x going to the right, +y goes upwards and +z goes towards the player
-     */
-    @Getter
+
     private final Node wristNode = new Node();
 
     /**
@@ -142,22 +100,15 @@ public abstract class BoundHand{
      */
     public abstract void unbindHand();
 
-    @Getter
     private final ActionHandle handPoseActionName;
 
-    @Getter
     private final ActionHandle skeletonActionName;
 
-    @Getter
     private Armature armature;
 
-    @Getter
     private final AssetManager assetManager;
 
-    /**
-     * Left or right hand
-     */
-    @Getter
+
     private final HandSide handSide;
 
     private final XrActionBaseAppState xrActionState;
@@ -165,41 +116,23 @@ public abstract class BoundHand{
 
     private float baseSkinDepth = 0.02f;
 
-    /**
-     * The velocity (in world coordinates) that the hand is currently moving at
-     */
-    @Getter
+
     private Vector3f velocity_world = new Vector3f();
 
-    /**
-     * The rotational velocity (in world coordinates) that the hand is currently rotating at
-     */
-    @Getter
+
     private RotationalVelocity rotationalVelocity_world = new RotationalVelocity(new Vector3f());
 
     /**
      * When doing a palm pick spheres of this radius are created above the palm
      */
-    @Getter
-    @Setter
     private float palmPickSphereRadius = 0.02f;
 
-    /**
-     * When doing a palm pick these are the points where spheres are formed to detect if the palm is against anything.
-     * They are relative to the palm node (in the {@link BoundHand#getPalmNode}'s coordinate system)
-     */
-    @Setter
-    @Getter
+
     private List<Vector3f> palmPickPoints;
 
     private final List<BoundHandFunction> functions = new CopyOnWriteArrayList<>();
 
-    /**
-     * A pointing arrangement is when the index finger is mostly straight and the ring ringer is not.
-     * <p>
-     * This is the sort of hand position that indicates pressing buttons with the index finger
-     */
-    @Getter
+
     public boolean handPointing = false;
 
     private final HandJoint middleProximalName = HandJoint.MIDDLE_PROXIMAL_EXT;
@@ -218,7 +151,7 @@ public abstract class BoundHand{
 
     private final HandJoint wristName = HandJoint.WRIST_EXT;
 
-    private Map<HandJoint, BonePose> boneStances = new HashMap<>();
+    private final Map<HandJoint, BonePose> boneStances = new HashMap<>();
 
     public BoundHand(XrActionBaseAppState xrActionState, ActionHandle handPoseActionName, ActionHandle skeletonActionName, Spatial handGeometry, Armature armature, AssetManager assetManager, HandSide handSide){
         this.xrActionState = Objects.requireNonNull(xrActionState);
@@ -886,5 +819,140 @@ public abstract class BoundHand{
      */
     public BooleanActionState getBooleanActionState(ActionHandle actionHandle){
         return xrActionState.getBooleanActionState(actionHandle, getHandSide().restrictToInputString);
+    }
+
+    /**
+     * This is a node that sits near on the tip of the index finger whose +x points out way from the index
+     * finger (and Y point up and Z points right if the hands are held with palms facing each other. This node sits inside
+     * the finger such that a sphere would touch the skin of the finger in 5 directions.
+     * The exact distance from the skin can vary (it is reported by OpenXr) but for bound hand's perspective it is considered
+     * to be {@link BoundHand#FINGER_PICK_SPHERE_RADIUS} away from the skin.
+     */
+    public Node getIndexFingerTip_xPointing(){
+        return indexFingerTip_xPointing;
+    }
+
+    /**
+     * A hand node, with +z pointing in the direction of the bulk hand (if an AIM pose). This is used primarily for direct lemur interactions
+     */
+    public Node getHandNode_zPointing(){
+        return handNode_zPointing;
+    }
+
+    /**
+     * Returns a node that will update with the hands position and rotation.
+     * <p>
+     * The exact position and rotation of this node depends on the pose type specified for the hand:
+     *  <p>
+     * If the pose is AIM them it will be just in front and above the hand with +X pointing in the direction a held weapon
+     * would fire with Y pointing upwards and Z pointing to the right (when the hands are held with the palms
+     * facing each other)
+     *  <p>
+     * If the pose is GRIP them it will be away from the palm, with +X pointing in the direction a held weapon
+     * would fire with Y pointing upwards and Z pointing to the right (when the hands are held with the palms
+     * facing each other)
+     * <p>
+     * This node has an orientation such that x aligns with the grip direction (like you are holding a sword, and Z
+     * pointing to the right (when the hands are held with the palms facing each other).
+     * <p>
+     * This is an ideal node for things like picking lines, which can be put in the x direction
+     * <p>
+     * Note that the (0,0,0) position is just in front of the thumb, not the centre of the hand.
+     * <p>
+     * This node is primarily used for picking, but if you want a node to attach to that only cares about the bulk
+     * hand position
+     *
+     */
+    public Node getHandNode_xPointing(){
+        return handNode_xPointing;
+    }
+
+    /**
+     * A node at the wrist.
+     * <p>
+     * <b>With hands held flat with thumbs facing each other</b> +x going to the right, +y goes upwards and +z goes towards the player
+     */
+    public Node getWristNode(){
+        return wristNode;
+    }
+
+    public ActionHandle getHandPoseActionName(){
+        return handPoseActionName;
+    }
+
+    public ActionHandle getSkeletonActionName(){
+        return skeletonActionName;
+    }
+
+    public AssetManager getAssetManager(){
+        return assetManager;
+    }
+
+    /**
+     * Left or right hand
+     */
+    public HandSide getHandSide(){
+        return handSide;
+    }
+
+    /**
+     * The velocity (in world coordinates) that the hand is currently moving at
+     */
+    public Vector3f getVelocity_world(){
+        return velocity_world;
+    }
+
+    /**
+     * The rotational velocity (in world coordinates) that the hand is currently rotating at
+     */
+    public void setRotationalVelocity_world(RotationalVelocity rotationalVelocity_world){
+        this.rotationalVelocity_world = rotationalVelocity_world;
+    }
+
+    /**
+     * When doing a palm pick spheres of this radius are created above the palm
+     */
+    public float getPalmPickSphereRadius(){
+        return palmPickSphereRadius;
+    }
+
+    /**
+     * When doing a palm pick spheres of this radius are created above the palm
+     */
+    public void setPalmPickSphereRadius(float palmPickSphereRadius){
+        this.palmPickSphereRadius = palmPickSphereRadius;
+    }
+
+    /**
+     * When doing a palm pick these are the points where spheres are formed to detect if the palm is against anything.
+     * They are relative to the palm node (in the {@link BoundHand#getPalmNode}'s coordinate system)
+     */
+    public List<Vector3f> getPalmPickPoints(){
+        return palmPickPoints;
+    }
+
+    /**
+     * When doing a palm pick these are the points where spheres are formed to detect if the palm is against anything.
+     * They are relative to the palm node (in the {@link BoundHand#getPalmNode}'s coordinate system)
+     */
+    public void setPalmPickPoints(List<Vector3f> palmPickPoints){
+        this.palmPickPoints = palmPickPoints;
+    }
+
+    /**
+     * A pointing arrangement is when the index finger is mostly straight and the ring ringer is not.
+     * <p>
+     * This is the sort of hand position that indicates pressing buttons with the index finger
+     */
+    public boolean isHandPointing(){
+        return handPointing;
+    }
+
+    public Armature getArmature(){
+        return armature;
+    }
+
+    public RotationalVelocity getRotationalVelocity_world(){
+        return rotationalVelocity_world;
     }
 }

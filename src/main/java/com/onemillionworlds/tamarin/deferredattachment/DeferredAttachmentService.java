@@ -7,8 +7,6 @@ import com.jme3.collision.CollisionResults;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import lombok.Setter;
-import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -283,14 +281,13 @@ public class DeferredAttachmentService extends BaseAppState{
 
     }
 
-    @Value
     private static class NodeData{
-        Future<Spatial> nodePreparationFuture;
-        Node nodeToAttachTo;
-        Object lock = new Object();
-        List<Node> nodeToCloneAttachTo = new ArrayList<>();
-        List<Node> nodeToCloneAttachToCloningMaterials = new ArrayList<>();
-        Consumer<Spatial> onAttachCallback;
+        private final Future<Spatial> nodePreparationFuture;
+        private final Node nodeToAttachTo;
+        private final Object lock = new Object();
+        private final List<Node> nodeToCloneAttachTo = new ArrayList<>();
+        private final List<Node> nodeToCloneAttachToCloningMaterials = new ArrayList<>();
+        private final Consumer<Spatial> onAttachCallback;
 
         public NodeData(Future<Spatial> nodePreparationFuture, Node nodeToAttachTo, Consumer<Spatial> onAttachCallback){
             this.nodePreparationFuture = nodePreparationFuture;
@@ -317,13 +314,20 @@ public class DeferredAttachmentService extends BaseAppState{
                 onAttachCallback.accept(getNodePreparationFuture().get());
             }
         }
+
+        public Future<Spatial> getNodePreparationFuture(){
+            return nodePreparationFuture;
+        }
+
+        public Node getNodeToAttachTo(){
+            return nodeToAttachTo;
+        }
     }
 
     /**
      * This node is aware its contents may be attached later and clones those contents when attached
      */
     public static class NodeWithSafeClone extends Node{
-        @Setter
         private NodeData nodeData;
         private NodeWithSafeClone(String name){
             super(name);
@@ -333,6 +337,10 @@ public class DeferredAttachmentService extends BaseAppState{
         @Override
         public Spatial clone(){
             return clone(true);
+        }
+
+        private void setNodeData(NodeData nodeData){
+            this.nodeData = nodeData;
         }
 
         @Override

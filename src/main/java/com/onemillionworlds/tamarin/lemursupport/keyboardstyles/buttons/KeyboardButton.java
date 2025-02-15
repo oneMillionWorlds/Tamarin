@@ -2,10 +2,8 @@ package com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons;
 
 import com.onemillionworlds.tamarin.lemursupport.LemurKeyboard;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardEvent;
-import lombok.Getter;
 
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public interface KeyboardButton{
 

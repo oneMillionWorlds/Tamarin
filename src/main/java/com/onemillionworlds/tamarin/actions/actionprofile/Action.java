@@ -11,7 +11,6 @@ import com.onemillionworlds.tamarin.actions.controllerprofile.MixedRealityMotion
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusGoController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusTouchController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.ValveIndexController;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,27 +29,21 @@ public class Action{
         DEFAULT_SUB_ACTIONS.add(HandSide.RIGHT.restrictToInputString);
     }
 
-    @Getter
     private final ActionHandle actionHandle;
 
     /**
      * This is presented to the user as a description of the action. This string should be presented in the system’s current active locale.
      */
-    @Getter
     private final String translatedName;
 
-    @Getter
     private final ActionType actionType;
     /**
      * These are physical bindings to specific devices for this action.
      */
-    @Getter
     private final List<SuggestedBinding> suggestedBindings;
 
-    @Getter
     private final List<String> supportedSubActionPaths;
 
-    @Getter
     private final Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding;
 
     public Action(ActionHandle actionHandle, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings){
@@ -86,6 +79,36 @@ public class Action{
 
     public String getActionSetName(){
         return actionHandle.actionSetName();
+    }
+
+    public ActionHandle getActionHandle(){
+        return actionHandle;
+    }
+
+    /**
+     * This is presented to the user as a description of the action. This string should be presented in the system’s current active locale.
+     */
+    public String getTranslatedName(){
+        return translatedName;
+    }
+
+    public ActionType getActionType(){
+        return actionType;
+    }
+
+    /**
+     * These are physical bindings to specific devices for this action.
+     */
+    public List<SuggestedBinding> getSuggestedBindings(){
+        return suggestedBindings;
+    }
+
+    public List<String> getSupportedSubActionPaths(){
+        return supportedSubActionPaths;
+    }
+
+    public Map<String, DesktopSimulationKeybinding> getDesktopSimulationKeybinding(){
+        return desktopSimulationKeybinding;
     }
 
     @SuppressWarnings("unused")

@@ -3,7 +3,6 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-    id "io.freefair.lombok" version "8.4"
 }
 
 repositories {
@@ -13,19 +12,10 @@ repositories {
 
 java {
     withJavadocJar()
-    //withSourcesJar()
+    withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
-
-tasks.register('sourcesJar', Jar) {
-    // Replace the source set with the delomboked files
-    from sourceSets.main.delombokTask
-    archiveClassifier.set('sources')
-
-}
-
-tasks.sourcesJar.dependsOn delombok
 
 group = 'com.onemillionworlds'
 version = '2.7.1'
@@ -68,11 +58,6 @@ dependencies {
      */
     compileOnly 'com.github.stephengold:Minie:8.2.0'
 
-    /*
-     * Lombok is only required during compile (it's an annotation processor)
-     */
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.30'
-
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
     testImplementation "${jme3.g}:jme3-core:${jme3.v}"
     testImplementation 'org.mockito:mockito-core:5.4.0'
@@ -110,8 +95,6 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
                     }
                 }
             }
-
-            artifact sourcesJar
         }
     }
     repositories {

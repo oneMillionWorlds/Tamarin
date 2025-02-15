@@ -18,7 +18,6 @@ import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportData;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,11 +33,8 @@ public class XrAppState extends XrBaseAppState{
 
     public static String ID = XrBaseAppState.ID;
 
-    @Getter
     OpenXrSessionManager xrSession;
-    @Getter
     Camera leftCamera;
-    @Getter
     Camera rightCamera;
 
     /**
@@ -60,7 +56,6 @@ public class XrAppState extends XrBaseAppState{
      *
      * The observer's position in the virtual world maps to the VR origin in the real world.
      */
-    @Getter
     Node observer = new Node("Xr Observer");
 
     InProgressXrRender inProgressXrRender;
@@ -152,6 +147,23 @@ public class XrAppState extends XrBaseAppState{
                 getStateManager().attach(new VrAudioListenerState());
             }
         }
+    }
+
+    public OpenXrSessionManager getXrSession(){
+        return xrSession;
+    }
+
+    public Camera getLeftCamera(){
+        return leftCamera;
+    }
+
+    public Camera getRightCamera(){
+        return rightCamera;
+    }
+
+    @Override
+    public Node getObserver(){
+        return observer;
     }
 
     private ViewPort newViewPort(EyeSide eyeSide){

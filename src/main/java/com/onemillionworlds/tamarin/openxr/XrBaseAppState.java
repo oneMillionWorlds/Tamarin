@@ -202,6 +202,14 @@ public abstract class XrBaseAppState extends BaseAppState{
 
     public abstract Vector3f getPlayerFeetPosition();
 
+    /**
+     * The observer's position in the virtual world maps to the VR origin in the real world.
+     *
+     * <p>
+     *     Note the observer IS NOT the VR camera position.
+     *     See {@link <a href="https://github.com/oneMillionWorlds/Tamarin/wiki/Understanding-the-observer">Understanding the observer</a>}
+     * </p>
+     */
     public abstract Node getObserver();
 
     public abstract Quaternion getVrCameraRotation();

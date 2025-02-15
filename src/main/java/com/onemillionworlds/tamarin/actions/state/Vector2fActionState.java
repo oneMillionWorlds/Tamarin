@@ -1,9 +1,7 @@
 package com.onemillionworlds.tamarin.actions.state;
 
 import com.jme3.math.Vector2f;
-import lombok.Getter;
 
-@Getter
 public class Vector2fActionState{
 
     /**
@@ -34,5 +32,36 @@ public class Vector2fActionState{
         this.y = y;
         this.state = new Vector2f(x, y);
         this.changed = changed;
+    }
+
+    /**
+     * The current state of the action, will be between (-1,-1) and (1, 1)
+     */
+    public Vector2f getState(){
+        return state;
+    }
+
+    /**
+     * The X coordinate of the analog data (typically between -1 and 1 for joystick coordinates or 0 and 1 for
+     * trigger pulls)
+     */
+    public float getX(){
+        return x;
+    }
+
+    /**
+     * The Y coordinate of the analog data (typically between -1 and 1)
+     * <p>
+     * Will be zero if the analog action doesn't have at least 2 dimensions
+     */
+    public float getY(){
+        return y;
+    }
+
+    /**
+     * If this action has changed since the last update
+     */
+    public boolean isChanged(){
+        return changed;
     }
 }

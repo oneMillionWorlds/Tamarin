@@ -9,9 +9,9 @@ import com.jme3.asset.AssetManager;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.XrActionAppState;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
-import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -25,7 +25,6 @@ import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SyntheticBonePositions;
 import com.simsilica.lemur.event.BasePickState;
-import lombok.Getter;
 import org.lwjgl.openxr.EXTHandTracking;
 
 import java.util.ArrayList;
@@ -61,7 +60,6 @@ public class VRHandsAppState extends BaseAppState{
      * <p>
      * Available as convenience data to calling application
      */
-    @Getter
     private boolean currentlyClimbing = false;
 
     /**
@@ -86,17 +84,17 @@ public class VRHandsAppState extends BaseAppState{
         this.assetManager = app.getAssetManager();
         actionState = app.getStateManager().getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);
         xrAppState = app.getStateManager().getState(XrBaseAppState.ID, XrBaseAppState.class);
-        if (actionState == null){
+        if(actionState == null){
             throw new IllegalStateException("VRHandsAppState requires ActionBasedOpenVr to have already been bound");
         }
 
-        ((SimpleApplication)getApplication()).getRootNode().attachChild(rootNodeDelegate);
+        ((SimpleApplication) getApplication()).getRootNode().attachChild(rootNodeDelegate);
 
-        if (pendingHandSpec!=null){
+        if(pendingHandSpec != null){
             updateHandsForHandSpec(pendingHandSpec);
             pendingHandSpec = null;
         }
-        if (BoundHand.isLemurAvailable()){
+        if(BoundHand.isLemurAvailable()){
             if(!(xrAppState instanceof DesktopSimulatingXrAppState)){ //if it is desktop simulating let the mouse remain in charge
                 BasePickState basePickState = getStateManager().getState(BasePickState.class);
                 if(basePickState != null){
@@ -137,7 +135,7 @@ public class VRHandsAppState extends BaseAppState{
     public void update(float tpf){
         super.update(tpf);
 
-        if (isEnabled()){
+        if(isEnabled()){
 
             List<BoundHand> handControlsWithActiveClimbs = new ArrayList<>();
 
@@ -154,16 +152,16 @@ public class VRHandsAppState extends BaseAppState{
                 boneStancesOpt.ifPresent(boneStances -> {
                     boundHand.update(tpf, boneStances);
                     XrActionAppState.updateHandSkeletonPositions(boundHand.getArmature(), boneStances, BoneMappings.getBoneMappings(boundHand.getHandSide()));
-                    if (boundHand.getFunctionOpt(ClimbSupport.class).filter(cs -> cs.getGrabStartPosition() !=null).isPresent()){
+                    if(boundHand.getFunctionOpt(ClimbSupport.class).filter(cs -> cs.getGrabStartPosition() != null).isPresent()){
                         handControlsWithActiveClimbs.add(boundHand);
                     }
                 });
             }
 
-            if (!handControlsWithActiveClimbs.isEmpty()){
+            if(!handControlsWithActiveClimbs.isEmpty()){
                 handleClimbing(handControlsWithActiveClimbs);
                 currentlyClimbing = true;
-            }else{
+            } else{
                 currentlyClimbing = false;
             }
 
@@ -171,9 +169,9 @@ public class VRHandsAppState extends BaseAppState{
     }
 
     public Optional<Map<HandJoint, BonePose>> getOrSynthesisBonePositions(BoundHand boundHand){
-        if (xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+        if(xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
             return actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
-        }else{
+        } else{
             //real hand tracking is not available, so we need to synthesise it
             float grabStrength = boundHand.getFunctionOpt(GrabPickingFunction.class)
                     .map(GrabPickingFunction::getGrabAction)
@@ -194,7 +192,7 @@ public class VRHandsAppState extends BaseAppState{
      */
     @SuppressWarnings("unused")
     public void forceTerminateClimbing(){
-        for(BoundHand hand  : handControls){
+        for(BoundHand hand : handControls){
             hand.getFunctionOpt(ClimbSupport.class).ifPresent(cs -> cs.setGrabStartPosition(null));
         }
     }
@@ -208,7 +206,7 @@ public class VRHandsAppState extends BaseAppState{
             Vector3f currentGrabPosition = boundHand.getHandNode_xPointing().getWorldTranslation();
             climbingErrorSum.addLocal(currentGrabPosition.subtract(startGrabPosition));
         }
-        climbingErrorSum.multLocal(1f/handControlsWithActiveClimbs.size());
+        climbingErrorSum.multLocal(1f / handControlsWithActiveClimbs.size());
         Spatial observer = xrAppState.getObserver();
         observer.setLocalTranslation(observer.getLocalTranslation().subtract(climbingErrorSum));
     }
@@ -218,13 +216,14 @@ public class VRHandsAppState extends BaseAppState{
     }
 
     @SuppressWarnings("unused")
-    public Optional<BoundHand> getHandControl(HandSide handSide ){
+    public Optional<BoundHand> getHandControl(HandSide handSide){
         return handControls.stream().filter(h -> h.getHandSide() == handSide).findAny();
     }
 
     /**
      * Updates both hands simultaneously based on a spec. Really intended to be used via the {@link VRHandsAppState}
      * constructor, but can be used directly as well to swap hands mid-game
+     *
      * @param handSpec the handSpec
      */
     public void updateHandsForHandSpec(HandSpec handSpec){
@@ -259,13 +258,13 @@ public class VRHandsAppState extends BaseAppState{
      * Note that the unbind object should only be used on the main thread as it will update the scene graph. Similarly,
      * this method should only be called on the main thread.
      *
-     * @param poseToBindTo the pose action name (as found within the action manifest) controls the hands bulk movement
+     * @param poseToBindTo           the pose action name (as found within the action manifest) controls the hands bulk movement
      * @param skeletonActionToBindTo the skeleton action name (as found within the action manifest) controls the hand fine movement
-     * @param spatial the geometry of the hand (which must have a skinning control which must have an armature)
-     * @param leftOrRight either {@link HandSide#LEFT} or {@link HandSide#RIGHT} to tell tamarin which side hand this is (which tamarin can use to make sure the palms are set up right)
+     * @param spatial                the geometry of the hand (which must have a skinning control which must have an armature)
+     * @param leftOrRight            either {@link HandSide#LEFT} or {@link HandSide#RIGHT} to tell tamarin which side hand this is (which tamarin can use to make sure the palms are set up right)
      */
-    public BoundHand bindHandModel(ActionHandle poseToBindTo, ActionHandle skeletonActionToBindTo, Spatial spatial, HandSide leftOrRight ){
-        if (assetManager == null){
+    public BoundHand bindHandModel(ActionHandle poseToBindTo, ActionHandle skeletonActionToBindTo, Spatial spatial, HandSide leftOrRight){
+        if(assetManager == null){
             throw new IllegalStateException("Attempted to bind hands before " + this.getClass().getSimpleName() + " was initialised. Either bind hands later or use a hand spec to ensure binding occurs at the right time");
         }
 
@@ -288,20 +287,23 @@ public class VRHandsAppState extends BaseAppState{
     }
 
     public static Spatial searchForArmatured(Spatial spatial){
-        if (spatial.getControl(SkinningControl.class) !=null){
+        if(spatial.getControl(SkinningControl.class) != null){
             spatial.removeFromParent();
             return spatial;
-        }else if (spatial instanceof Node node){
-            if (node.getChildren().size() > 1){
+        } else if(spatial instanceof Node node){
+            if(node.getChildren().size() > 1){
                 throw new RuntimeException("Could not find skinnable model due to branched world or no skinning control");
             }
-            if (node.getChildren().isEmpty()){
+            if(node.getChildren().isEmpty()){
                 throw new RuntimeException("Could not find skinnable model due to no model");
             }
             return searchForArmatured(node.getChildren().get(0));
-        }else{
+        } else{
             throw new RuntimeException("Could not find skinnable model");
         }
     }
 
+    public boolean isCurrentlyClimbing(){
+        return this.currentlyClimbing;
+    }
 }

@@ -9,7 +9,6 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
-import lombok.Getter;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -29,7 +28,6 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
      * In this simulated mode the most important thing the observer does is define the height of the
      * floor.
      */
-    @Getter
     Node observer = new Node("Xr Observer");
 
     @Override
@@ -68,6 +66,11 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
                 getApplication().getRenderManager().removeMainView(overlay);
             }
         };
+    }
+
+    @Override
+    public Node getObserver(){
+        return observer;
     }
 
     @Override

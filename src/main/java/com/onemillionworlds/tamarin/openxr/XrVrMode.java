@@ -1,7 +1,5 @@
 package com.onemillionworlds.tamarin.openxr;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import org.lwjgl.openxr.XR10;
 
 /**
@@ -9,8 +7,6 @@ import org.lwjgl.openxr.XR10;
  * <p>
  * AKA it controls if the application is VR (virtual reality) or AR (Augmented Reality)
  */
-@Getter
-@AllArgsConstructor
 public enum XrVrMode{
 
     /**
@@ -39,4 +35,12 @@ public enum XrVrMode{
     ENVIRONMENT_BLEND_MODE_ALPHA_BLEND(XR10.XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND);
 
     final int xrValue;
+
+    XrVrMode(int xrValue){
+        this.xrValue = xrValue;
+    }
+
+    public int getXrValue(){
+        return xrValue;
+    }
 }

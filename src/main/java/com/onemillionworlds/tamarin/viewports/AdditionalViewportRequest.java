@@ -3,12 +3,10 @@ package com.onemillionworlds.tamarin.viewports;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
-import lombok.Getter;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 
-@Getter
 public class AdditionalViewportRequest{
 
     private final ViewportType type;
@@ -27,6 +25,34 @@ public class AdditionalViewportRequest{
         this.clearFlags_depth = clearFlags_depth;
         this.clearFlags_stencil = clearFlags_stencil;
         this.cameraOverride = cameraOverride;
+    }
+
+    public ViewportType getType(){
+        return type;
+    }
+
+    public Node getAdditionalRootNode(){
+        return additionalRootNode;
+    }
+
+    public Consumer<ViewPort> getConfigureViewport(){
+        return configureViewport;
+    }
+
+    public boolean isClearFlags_color(){
+        return clearFlags_color;
+    }
+
+    public boolean isClearFlags_depth(){
+        return clearFlags_depth;
+    }
+
+    public boolean isClearFlags_stencil(){
+        return clearFlags_stencil;
+    }
+
+    public Optional<Camera> getCameraOverride(){
+        return cameraOverride;
     }
 
     /**

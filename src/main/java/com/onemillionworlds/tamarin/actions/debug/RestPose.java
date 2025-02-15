@@ -4,8 +4,6 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,12 +18,28 @@ import java.util.stream.Collectors;
  *
  * It is what I (Tamarin author) used to create the original bones in the Tamarin hand
  */
-@Getter
-@AllArgsConstructor
 public class RestPose{
     private final String boneName;
     private final Vector3f position;
     private final Quaternion rotation;
+
+    public RestPose(String boneName, Vector3f position, Quaternion rotation){
+        this.boneName = boneName;
+        this.position = position;
+        this.rotation = rotation;
+    }
+
+    public Quaternion getRotation(){
+        return rotation;
+    }
+
+    public Vector3f getPosition(){
+        return position;
+    }
+
+    public String getBoneName(){
+        return boneName;
+    }
 
     /**
      * A function that builds the bones in a structure useful for blenders python script

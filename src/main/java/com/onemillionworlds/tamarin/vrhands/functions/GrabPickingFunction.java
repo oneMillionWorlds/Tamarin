@@ -7,14 +7,11 @@ import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.grabbing.AbstractGrabControl;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.Optional;
 
 public class GrabPickingFunction implements BoundHandFunction{
 
-    @Getter
     private final ActionHandle grabAction;
 
     private final Node nodeToGrabPickAgainst;
@@ -24,14 +21,12 @@ public class GrabPickingFunction implements BoundHandFunction{
     /**
      * How much time to let pass between the picking events that trigger grabs (and releases). In seconds
      */
-    @Setter
     private float grabEvery;
 
     /**
      * Allows the amount of pressure required to pick something up to be changed.
      * A value between 0 and 1
      */
-    @Setter
     private float minimumGripToTrigger = 0.5f;
 
     private float lastGripPressure;
@@ -49,7 +44,7 @@ public class GrabPickingFunction implements BoundHandFunction{
 
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
-        this.boundHand= boundHand;
+        this.boundHand = boundHand;
     }
 
     @Override
@@ -63,19 +58,19 @@ public class GrabPickingFunction implements BoundHandFunction{
         // app states to pause animations)
         long timeNow = System.currentTimeMillis();
         long timeSinceLastChecked = timeNow - timeLastCheckedForGrab;
-        if (timeSinceLastChecked>(1000*grabEvery)){
+        if(timeSinceLastChecked > (1000 * grabEvery)){
             timeLastCheckedForGrab = timeNow;
-            float gripPressure =  grabActionNormaliser.getGripActionPressure(boundHand, grabAction);
+            float gripPressure = grabActionNormaliser.getGripActionPressure(boundHand, grabAction);
 
             //the lastGripPressure stuff is so that a clenched fist isn't constantly trying to grab things
-            if (gripPressure>minimumGripToTrigger && lastGripPressure<minimumGripToTrigger && currentlyGrabbed.isEmpty()){
+            if(gripPressure > minimumGripToTrigger && lastGripPressure < minimumGripToTrigger && currentlyGrabbed.isEmpty()){
                 CollisionResults results = boundHand.pickGrab(nodeToGrabPickAgainst);
                 Optional<AbstractGrabControl> grabControl = TamarinUtilities.findAllControlsInResults(AbstractGrabControl.class, results).stream().findFirst();
                 if(grabControl.isPresent() && grabControl.get().isCurrentlyGrabbable(boundHand)){
                     currentlyGrabbed = grabControl;
                     grabControl.get().onGrab(boundHand);
                 }
-            }else if (gripPressure<minimumGripToTrigger && currentlyGrabbed.isPresent()){
+            } else if(gripPressure < minimumGripToTrigger && currentlyGrabbed.isPresent()){
                 //drop current item
                 currentlyGrabbed.get().onRelease(boundHand);
                 currentlyGrabbed = Optional.empty();
@@ -102,4 +97,15 @@ public class GrabPickingFunction implements BoundHandFunction{
     }
 
 
+    public ActionHandle getGrabAction(){
+        return this.grabAction;
+    }
+
+    public void setGrabEvery(float grabEvery){
+        this.grabEvery = grabEvery;
+    }
+
+    public void setMinimumGripToTrigger(float minimumGripToTrigger){
+        this.minimumGripToTrigger = minimumGripToTrigger;
+    }
 }
