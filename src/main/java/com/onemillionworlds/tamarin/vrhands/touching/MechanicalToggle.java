@@ -6,6 +6,7 @@ import com.jme3.collision.Collidable;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.material.Material;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -67,6 +68,10 @@ public class MechanicalToggle extends Node{
     private boolean allowedToBeUntoggled = true;
 
     private Supplier<EnablementState> enablementState = () -> EnablementState.ENABLED;
+
+    private Optional<Material> toggledOnMaterial = Optional.empty();
+    private Optional<Material> toggledOffMaterial = Optional.empty();
+    private Optional<Material> disabledMaterial = Optional.empty();
 
     public MechanicalToggle(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravelPoint, float toggleInTravel, float resetTime){
         assert toggleInTravel < maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
@@ -143,6 +148,19 @@ public class MechanicalToggle extends Node{
                     @Override
                     protected void controlUpdate(float tpf){
                         EnablementState enablementState = getEnablementState();
+
+                        if(enablementState == EnablementState.DISABLED_MOVABLE || enablementState == EnablementState.DISABLED_LOCKED){
+                            if(disabledMaterial.isPresent()){
+                                if(representativeGeometry.getMaterial() != disabledMaterial.get()){
+                                    representativeGeometry.setMaterial(disabledMaterial.get());
+                                }
+                            }
+                        }else {
+                            if (disabledMaterial.isPresent() && toggledOffMaterial.isPresent() && representativeGeometry.getMaterial() == disabledMaterial.get()) {
+                                representativeGeometry.setMaterial(toggledOffMaterial.get());
+                            }
+                        }
+
                         getTouchingHand().ifPresent(hand -> {
                             if(enablementState == EnablementState.DISABLED_LOCKED){
                                 return;
@@ -316,6 +334,29 @@ public class MechanicalToggle extends Node{
     }
 
     /**
+     * This will change the material applied to the toggle automatically based on its state.
+     *
+     * <p>
+     *     Any unwanted states can have null passed
+     * </p>
+     *
+     * <p>
+     *     NB; this requires that the toggle have exactly 1 geometry in it (can have nodes in the tree, but ultimately
+     *     goes to 1 geometry)
+     * </p>
+     *
+     *
+     * @param toggledOnMaterial the material to apply to the geometry when the toggle is on (including "toggling on")
+     * @param toggledOffMaterial the material to apply to the geometry when the toggle is off (including "toggling off")
+     * @param disabledMaterial the material to apply to the geometry when the toggle is disabled
+     */
+    public void manageMaterialsBasedOnState(Material toggledOnMaterial, Material toggledOffMaterial, Material disabledMaterial){
+        this.toggledOnMaterial = Optional.ofNullable(toggledOnMaterial);
+        this.toggledOffMaterial = Optional.ofNullable(toggledOffMaterial);
+        this.disabledMaterial = Optional.ofNullable(disabledMaterial);
+    }
+
+    /**
      * Adds a listener that will be called when the button is fully depressed in tutorial mode. This is useful if you
      * want to explain what the button does when it is pressed in tutorial mode.
      *
@@ -375,6 +416,12 @@ public class MechanicalToggle extends Node{
         }
         if(previousState.isAKindOfOn() != currentState.isAKindOfOn()){
             majorPressEvents.set(currentState.isAKindOfOn());
+        }
+
+        if(currentState.isAKindOfOn()){
+            toggledOnMaterial.ifPresent(representativeGeometry::setMaterial);
+        } else{
+            toggledOffMaterial.ifPresent(representativeGeometry::setMaterial);
         }
     }
 
