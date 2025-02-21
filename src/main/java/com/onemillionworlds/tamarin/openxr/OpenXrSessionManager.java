@@ -73,7 +73,6 @@ import java.util.logging.Logger;
 import static org.lwjgl.openxr.EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
 import static org.lwjgl.openxr.KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME;
 import static org.lwjgl.openxr.MNDXEGLEnable.XR_MNDX_EGL_ENABLE_EXTENSION_NAME;
-import static org.lwjgl.openxr.XR10.XR_CURRENT_API_VERSION;
 import static org.lwjgl.openxr.XR10.XR_MAX_RESULT_STRING_SIZE;
 import static org.lwjgl.openxr.XR10.XR_SUCCEEDED;
 import static org.lwjgl.openxr.XR10.XR_VERSION_MAJOR;
@@ -273,7 +272,7 @@ public class OpenXrSessionManager{
                     .createFlags(0)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.UTF8(xrSettings.getApplicationName()))
-                            .apiVersion(XR_CURRENT_API_VERSION))
+                            .apiVersion(XR10.XR_API_VERSION_1_0))
                     .enabledApiLayerNames(layerCheckResult.wantedLayers())
                     .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer());
 
