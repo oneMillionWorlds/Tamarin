@@ -272,7 +272,7 @@ public class OpenXrSessionManager{
                     .createFlags(0)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.UTF8(xrSettings.getApplicationName()))
-                            .apiVersion(XR10.XR_API_VERSION_1_0))
+                            .apiVersion(XR10.XR_CURRENT_API_VERSION))
                     .enabledApiLayerNames(layerCheckResult.wantedLayers())
                     .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer());
 
