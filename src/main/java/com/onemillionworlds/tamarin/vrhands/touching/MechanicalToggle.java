@@ -354,6 +354,15 @@ public class MechanicalToggle extends Node{
         this.toggledOnMaterial = Optional.ofNullable(toggledOnMaterial);
         this.toggledOffMaterial = Optional.ofNullable(toggledOffMaterial);
         this.disabledMaterial = Optional.ofNullable(disabledMaterial);
+
+        if(currentState.isAKindOfOn()){
+            this.toggledOnMaterial.ifPresent(representativeGeometry::setMaterial);
+        } else{
+            this.toggledOffMaterial.ifPresent(representativeGeometry::setMaterial);
+        }
+        if(enablementState.get().isAKindOfDisabled()){
+            this.disabledMaterial.ifPresent(representativeGeometry::setMaterial);
+        }
     }
 
     /**
@@ -490,7 +499,17 @@ public class MechanicalToggle extends Node{
          * See {@link MechanicalToggle#addTutorialModePressListener(Runnable)}
          * </p>
          */
-        TUTORIAL_MODE
+        TUTORIAL_MODE;
+
+        /**
+         * Returns true if the state is one of the disabled states.
+         *
+         * @return true if DISABLED_MOVABLE, DISABLED_LOCKED, or TUTORIAL_MODE; false otherwise.
+         */
+        public boolean isAKindOfDisabled(){
+            return this == DISABLED_MOVABLE || this == DISABLED_LOCKED;
+        }
+
     }
 
 }
