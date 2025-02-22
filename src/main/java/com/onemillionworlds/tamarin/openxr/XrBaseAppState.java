@@ -207,8 +207,8 @@ public abstract class XrBaseAppState extends BaseAppState{
      *
      * <p>
      *     Note the observer IS NOT the VR camera position.
-     *     See {@link <a href="https://github.com/oneMillionWorlds/Tamarin/wiki/Understanding-the-observer">Understanding the observer</a>}
      * </p>
+     * @see <a href="https://github.com/oneMillionWorlds/Tamarin/wiki/Understanding-the-observer">Understanding the observer</a>
      */
     public abstract Node getObserver();
 
