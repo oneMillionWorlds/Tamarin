@@ -355,7 +355,7 @@ public class OpenXrSessionManager{
             }
 
             //Bind the OpenGL context to the OpenXR instance and create the session
-            Struct graphicsBinding = XrUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
+            Struct<?> graphicsBinding = XrUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
             PointerBuffer sessionPointerBuffer = stack.mallocPointer(1);
             checkResponseCode(XR10.xrCreateSession(
                     xrInstance,
