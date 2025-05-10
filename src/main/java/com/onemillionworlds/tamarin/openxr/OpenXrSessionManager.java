@@ -266,13 +266,15 @@ public class OpenXrSessionManager{
             }
             missingHandTracking = extensionsCheckResult.missingHandTracking();
 
+            XrSettings.XRVersion xrVersion = xrSettings.xrApiVersion;
+
             XrInstanceCreateInfo createInfo = XrInstanceCreateInfo.malloc(stack)
                     .type$Default()
                     .next(NULL)
                     .createFlags(0)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.UTF8(xrSettings.getApplicationName()))
-                            .apiVersion(XR10.XR_CURRENT_API_VERSION))
+                            .apiVersion(XR10.XR_MAKE_VERSION(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
                     .enabledApiLayerNames(layerCheckResult.wantedLayers())
                     .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer());
 
@@ -985,11 +987,11 @@ public class OpenXrSessionManager{
         }else{
             if (result == XR10.XR_ERROR_FORM_FACTOR_UNAVAILABLE){
                 throw new OpenXrDeviceNotAvailableException("Open XR returned an error code " + result + contextString, result);
+            } else if (result == XR10.XR_ERROR_API_VERSION_UNSUPPORTED) {
+                throw new RuntimeException("Open XR API version not supported " + result + contextString);
             }
             throw new OpenXrException("Open XR returned an error code " + result + contextString, result);
         }
-        throw new RuntimeException("Open XR returned an error code " + result + contextString); //I don't think it should ever actually get here
-
     }
 
     public void destroy(){

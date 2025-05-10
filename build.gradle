@@ -21,14 +21,14 @@ group = 'com.onemillionworlds'
 version = '2.7.1'
 
 ext{
-    lwjgl3Version = '3.3.3' //it is important that this is the same as JME which provides the rest of LWJGL
+    lwjgl3Version = '3.3.6' //it is important that this is the same as JME which provides the rest of LWJGL
 }
 test {
     useJUnitPlatform()
 }
 
 
-def jme3 = [v:'3.7.0-stable', g:'org.jmonkeyengine']
+def jme3 = [v:'3.8.0-stable', g:'org.jmonkeyengine']
 
 dependencies {
 

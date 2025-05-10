@@ -1,10 +1,6 @@
 package com.onemillionworlds.tamarin.openxr;
 
-import org.lwjgl.openxr.EXTDebugUtils;
-import org.lwjgl.openxr.EXTHandTracking;
-import org.lwjgl.openxr.KHRBindingModification;
-import org.lwjgl.openxr.KHROpenGLEnable;
-import org.lwjgl.openxr.MNDXEGLEnable;
+import org.lwjgl.openxr.*;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -57,6 +53,8 @@ public class XrSettings{
      */
     boolean mainCameraFollowsVrCamera = true;
 
+    XRVersion xrApiVersion = new XRVersion(1, 0, 43);
+
     public XrSettings(){
         requiredXrExtensions.add(KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME); //openGL support
         requiredXrExtensions.add(EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -96,6 +94,13 @@ public class XrSettings{
 
     public void setDrawMode(DrawMode drawMode){
         this.drawMode = drawMode;
+    }
+
+    /**
+     * The version of the OpenXR Runtime that is being requested to be used
+     */
+    public void setXrApiVersion(int major, int minor, int patch){
+        xrApiVersion = new XRVersion(major, minor, patch);
     }
 
     /**
@@ -225,5 +230,29 @@ public class XrSettings{
     @Deprecated(forRemoval = true)
     public void setXrVrMode(XrVrMode initialXrVrMode){
         this.initialXrVrMode = initialXrVrMode;
+    }
+
+    public static class XRVersion{
+        private final int major;
+        private final int minor;
+        private final int patch;
+
+        public XRVersion(int major, int minor, int patch){
+            this.major = major;
+            this.minor = minor;
+            this.patch = patch;
+        }
+
+        public int getMajor() {
+            return major;
+        }
+
+        public int getMinor() {
+            return minor;
+        }
+
+        public int getPatch() {
+            return patch;
+        }
     }
 }
