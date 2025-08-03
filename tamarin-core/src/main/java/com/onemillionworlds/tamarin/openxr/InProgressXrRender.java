@@ -1,5 +1,6 @@
 package com.onemillionworlds.tamarin.openxr;
 
+import com.jme3.math.FastMath;
 import com.jme3.math.Matrix4f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -85,7 +86,7 @@ public class InProgressXrRender{
             FieldOfViewData fieldOfView
     ){
         public Matrix4f calculateProjectionMatrix(float nearClip, float farClip){
-            return XrUtils.createProjectionMatrix(fieldOfView, nearClip, farClip);
+            return createProjectionMatrix(fieldOfView, nearClip, farClip);
         }
     }
 
@@ -104,4 +105,46 @@ public class InProgressXrRender{
             float angleUp,
             float angleDown
     ){}
+
+    /**
+     * Creates and returns a Matrix4f that can be used as a projection matrix
+     * with the given fov, nearZ, and farZ.
+     *
+     * @param fov   The desired Field of View for the projection matrix.
+     * @param nearZ The nearest Z value that the user should see (also known as the near plane)
+     * @param farZ  The furthest Z value that the user should see (also known as far plane)
+     * @return A Matrix4f that contains the projection matrix.
+     */
+    public static Matrix4f createProjectionMatrix(InProgressXrRender.FieldOfViewData fov, float nearZ, float farZ) {
+        float tanLeft = FastMath.tan(fov.angleLeft());
+        float tanRight = FastMath.tan(fov.angleRight());
+        float tanDown = FastMath.tan(fov.angleDown());
+        float tanUp = FastMath.tan(fov.angleUp());
+        float tanAngleWidth = tanRight - tanLeft;
+        float tanAngleHeight = tanUp - tanDown;
+
+        Matrix4f m = new Matrix4f();
+
+        m.m00 = 2.0f / tanAngleWidth;
+        m.m01 = 0.0f;
+        m.m02 = (tanRight + tanLeft) / tanAngleWidth;
+        m.m03 = 0.0f;
+
+        m.m10 = 0.0f;
+        m.m11 = 2.0f / tanAngleHeight;
+        m.m12 = (tanUp + tanDown) / tanAngleHeight;
+        m.m13 = 0.0f;
+
+        m.m20 = 0.0f;
+        m.m21 = 0.0f;
+        m.m22 = -(farZ + nearZ) / (farZ - nearZ);
+        m.m23 = -(farZ * (nearZ + nearZ)) / (farZ - nearZ);
+
+        m.m30 = 0.0f;
+        m.m31 = 0.0f;
+        m.m32 = -1.0f;
+        m.m33 = 0.0f;
+
+        return m;
+    }
 }

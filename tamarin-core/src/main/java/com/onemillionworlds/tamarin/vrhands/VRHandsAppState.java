@@ -10,7 +10,6 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.XrActionAppState;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
@@ -25,7 +24,6 @@ import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
 import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SyntheticBonePositions;
 import com.simsilica.lemur.event.BasePickState;
-import org.lwjgl.openxr.EXTHandTracking;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -151,7 +149,7 @@ public class VRHandsAppState extends BaseAppState{
 
                 boneStancesOpt.ifPresent(boneStances -> {
                     boundHand.update(tpf, boneStances);
-                    XrActionAppState.updateHandSkeletonPositions(boundHand.getArmature(), boneStances, BoneMappings.getBoneMappings(boundHand.getHandSide()));
+                    XrActionBaseAppState.updateHandSkeletonPositions(boundHand.getArmature(), boneStances, BoneMappings.getBoneMappings(boundHand.getHandSide()));
                     if(boundHand.getFunctionOpt(ClimbSupport.class).filter(cs -> cs.getGrabStartPosition() != null).isPresent()){
                         handControlsWithActiveClimbs.add(boundHand);
                     }
@@ -169,7 +167,7 @@ public class VRHandsAppState extends BaseAppState{
     }
 
     public Optional<Map<HandJoint, BonePose>> getOrSynthesisBonePositions(BoundHand boundHand){
-        if(xrAppState.checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+        if(xrAppState.checkExtensionLoaded("XR_EXT_hand_tracking")){ // EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
             return actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
         } else{
             //real hand tracking is not available, so we need to synthesise it

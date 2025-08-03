@@ -11,6 +11,7 @@ import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.function.Consumer;
 
@@ -259,5 +260,10 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
     public CameraResolution getCameraResolution(){
         Camera camera = getApplication().getCamera();
         return new CameraResolution(camera.getWidth(), camera.getWidth());
+    }
+
+    @Override
+    public Map<String, Boolean> getExtensionsLoaded() {
+        return Map.of();
     }
 }

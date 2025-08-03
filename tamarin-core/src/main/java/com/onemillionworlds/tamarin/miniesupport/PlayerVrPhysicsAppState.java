@@ -16,7 +16,7 @@ import com.jme3.math.Transform;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
-import com.onemillionworlds.tamarin.openxr.XrAppState;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vinette.VrVignetteState;
 
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ public class PlayerVrPhysicsAppState extends BaseAppState{
     private PhysicsSpace physicsSpace;
     private final VrVignetteState vignette = new VrVignetteState();
     private boolean playerIsFalling = false;
-    private XrAppState vrAppState;
+    private XrBaseAppState vrAppState;
 
     private HeadOcclusionMode headOcclusionMode = HeadOcclusionMode.DEFAULT_RIGID_BODIES_CAUSE_OCCLUSION;
     private float headPenetrationAtMaxOcclusion = 0.10f;
@@ -71,7 +71,7 @@ public class PlayerVrPhysicsAppState extends BaseAppState{
     @Override
     protected void initialize(Application app){
 
-        vrAppState = getState(XrAppState.ID, XrAppState.class);
+        vrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
 
         vignette.setVignetteAmount(0);
         getStateManager().attach(vignette);

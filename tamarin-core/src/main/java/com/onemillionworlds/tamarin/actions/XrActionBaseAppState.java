@@ -1,5 +1,7 @@
 package com.onemillionworlds.tamarin.actions;
 
+import com.jme3.anim.Armature;
+import com.jme3.anim.Joint;
 import com.jme3.app.state.BaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
@@ -243,5 +245,36 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      */
     @SuppressWarnings("unused")
     public abstract void runAfterNextActionsSync(Runnable runnable);
+
+    /**
+     *
+     * Given a hand armature with names as defined in the passed boneNameMappings
+     * it will use the bone stances (presumably from an ealier call to get the actions) to set the armature positions.
+     * <p>
+     * See <a href="https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#XR_EXT_hand_tracking">Hand tracking spec</a>
+     * <p>
+     * NOTE: the bone orientation is surprising and non-natural. If you build a hand model, and it appears
+     * distorted try importing the bones from Tamarin's starter blender file
+     *
+     * @param armature a JMonkey armature (aka set of bones)
+     * @param boneStances the bone positions (as reported by OpenXR)
+     * @param boneNameMappings the bone names to use. This is a map from the HandJoint enum to the bone name
+     */
+    public static void updateHandSkeletonPositions(Armature armature, Map<HandJoint, BonePose> boneStances, Map<HandJoint, String> boneNameMappings){
+        for(Map.Entry<HandJoint, BonePose> bonePose : boneStances.entrySet()){
+            String boneName = boneNameMappings.get(bonePose.getKey());
+            Joint joint = armature.getJoint(boneName);
+            if (joint!=null){
+                joint.setLocalTranslation(bonePose.getValue().position());
+                joint.setLocalRotation(bonePose.getValue().orientation());
+            }
+        }
+    }
+
+    public static class IncorrectActionTypeException extends RuntimeException{
+        public IncorrectActionTypeException(String message){
+            super(message);
+        }
+    }
 
 }

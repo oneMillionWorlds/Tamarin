@@ -8,6 +8,7 @@ import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -78,12 +79,16 @@ public abstract class XrBaseAppState extends BaseAppState{
      */
     public abstract String getSystemName();
 
+    public abstract Map<String, Boolean> getExtensionsLoaded();
+
     /**
      * If you've requested extra extensions in {@link XrSettings} this method can be used to check if they really
      * were loaded. Extensions are things like "XR_KHR_binding_modification"
      */
-    public abstract boolean checkExtensionLoaded(String extensionName);
-
+    public boolean checkExtensionLoaded(String extensionName){
+        //the below converts nulls to false
+        return getExtensionsLoaded().get(extensionName) == Boolean.TRUE;
+    }
     /**
      * Sets the near clip plane for the cameras (will trigger a refresh of the projection matrix).
      * <p>
@@ -105,7 +110,7 @@ public abstract class XrBaseAppState extends BaseAppState{
      * Sets the observer position. The observer is the point in the virtual world that maps to the VR origin in the real world.
      * <strong>NOTE: the observer is only indirectly related to the players head position</strong>. This is a highly technical method you
      * probably don't want to use, if you want to move the player directly (for example to support a teleport-style movement)
-     * use {@link XrAppState#movePlayersFeetToPosition(Vector3f)}.
+     * use {@link XrBaseAppState#movePlayersFeetToPosition(Vector3f)}.
      *
      * @param observerPosition observer position
      */
@@ -115,7 +120,7 @@ public abstract class XrBaseAppState extends BaseAppState{
      * Gets the observer position. The observer is the point in the virtual world that maps to the VR origin in the real world.
      * <strong>NOTE: the observer is only indirectly related to the players head position</strong>. This is a highly technical method you
      * probably don't want to use, if you want to move the player directly (for example to support a teleport-style movement)
-     * use {@link XrAppState#movePlayersFeetToPosition(Vector3f)}.
+     * use {@link XrBaseAppState#movePlayersFeetToPosition(Vector3f)}.
      *
      * @return  observerPosition observer position
      */
@@ -147,9 +152,9 @@ public abstract class XrBaseAppState extends BaseAppState{
      * </p>
      * This is a highly technical method, and you're more likely to want one of these methods:
      * <ul>
-     *     <li>{@link XrAppState#rotateObserverWithoutMovingPlayer}</li>
-     *     <li>{@link XrAppState#playerLookInDirection}</li>
-     *     <li>{@link XrAppState#playerLookAtPosition}</li>
+     *     <li>{@link XrBaseAppState#rotateObserverWithoutMovingPlayer}</li>
+     *     <li>{@link XrBaseAppState#playerLookInDirection}</li>
+     *     <li>{@link XrBaseAppState#playerLookAtPosition}</li>
      * </ul>
      * @param observerRotation observer rotation
      */

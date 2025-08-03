@@ -310,7 +310,7 @@ public class OpenXrSessionManager{
     }
 
     public String getSystemName(){
-        try (MemoryStack stack = MemoryStack.stackPush()){
+        try (MemoryStack stack = stackPush()){
             XrSystemProperties systemProperties = XrSystemProperties.malloc(stack)
                     .type(XR10.XR_TYPE_SYSTEM_PROPERTIES);
             checkResponseCode(XR10.xrGetSystemProperties(xrInstance, systemID, systemProperties));

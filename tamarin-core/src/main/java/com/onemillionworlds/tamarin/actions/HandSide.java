@@ -1,7 +1,5 @@
 package com.onemillionworlds.tamarin.actions;
 
-import org.lwjgl.openxr.EXTHandTracking;
-
 public enum HandSide{
     LEFT("/user/hand/left", 1), // EXTHandTracking.XR_HAND_LEFT_EXT
     RIGHT("/user/hand/right", 2); // EXTHandTracking.XR_HAND_RIGHT_EXT

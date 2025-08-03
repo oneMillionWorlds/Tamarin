@@ -11,7 +11,6 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.system.AppSettings;
-import com.jme3.system.lwjgl.LwjglWindow;
 import com.jme3.texture.FrameBuffer;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
@@ -28,12 +27,12 @@ import java.util.Queue;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-public class XrAppState extends XrBaseAppState{
-    private static final Logger LOGGER = Logger.getLogger(XrAppState.class.getName());
+/**
+ * contains functionality that is common to both desktop and android VR apps
+ */
+public abstract class XrVrAppState extends XrBaseAppState{
+    private static final Logger LOGGER = Logger.getLogger(XrVrAppState.class.getName());
 
-    public static String ID = XrBaseAppState.ID;
-
-    OpenXrSessionManager xrSession;
     Camera leftCamera;
     Camera rightCamera;
 
@@ -46,6 +45,7 @@ public class XrAppState extends XrBaseAppState{
      * else to mess with it. If we were to change the output framebuffer we get flickering if a scene processor is added.
      */
     Map<FrameBuffer, ViewPort> viewPorts = new HashMap<>(6);
+
 
     /**
      * These are extra viewports that are used to render overlays (e.g. debug shapes).
@@ -70,31 +70,18 @@ public class XrAppState extends XrBaseAppState{
 
     private float farClip = 500;
 
-    private final XrSettings xrSettings;
+    protected final XrSettings xrSettings;
 
     private final Queue<Runnable> runOnceHaveCameraPositions = new LinkedList<>();
 
     private Consumer<ViewPort> newViewportConfiguration = viewPort -> {};
 
-    @SuppressWarnings("unused")
-    public XrAppState(){
-        this(new XrSettings());
-    }
-    public XrAppState(XrSettings xrSettings){
-        super();
+    public XrVrAppState(XrSettings xrSettings){
         this.xrSettings = xrSettings;
     }
 
     @Override
     protected void initialize(Application app){
-        long windowHandle;
-        if (app.getContext() instanceof LwjglWindow lwjglWindow) {
-            windowHandle = lwjglWindow.getWindowHandle();
-        }else{
-            //maybe something like this on android? (and then using the XrGraphicsBindingEGLMNDX binding)
-            //EGL14.eglGetCurrentContext()
-            throw new RuntimeException("Only LwjglWindow is supported (need to get the window handle)");
-        }
         AppSettings settings = app.getContext().getSettings();
         if (xrSettings.getApplicationName().isEmpty()){
             xrSettings.setApplicationName(settings.getTitle());
@@ -113,11 +100,18 @@ public class XrAppState extends XrBaseAppState{
             LOGGER.warning("VSync is enabled. This will cause stuttering in VR. Please disable it. Frame rate should be controlled by the headset, not the monitor");
         }
 
-        xrSession = OpenXrSessionManager.createOpenXrSession(windowHandle, xrSettings, settings, app.getRenderer());
-        xrSession.setXrVrBlendMode(xrSettings.getInitialXrVrMode());
-        int width = xrSession.getSwapchainWidth();
-        int height = xrSession.getSwapchainHeight();
+        if (xrSettings.isEarsFollowVrCamera()){
+            AudioListenerState audioListenerState = getStateManager().getState(AudioListenerState.class);
+            if (audioListenerState!=null){
+                getStateManager().detach(audioListenerState);
+            }
+            if (getStateManager().getState(VrAudioListenerState.class) == null){
+                getStateManager().attach(new VrAudioListenerState());
+            }
+        }
+    }
 
+    protected void initialiseCameras(int width, int height){
         leftCamera = new Camera(width, height);
         rightCamera = new Camera(width, height);
 
@@ -137,20 +131,6 @@ public class XrAppState extends XrBaseAppState{
                 getStateManager().detach(flyCam);
             }
         }
-
-        if (xrSettings.isEarsFollowVrCamera()){
-            AudioListenerState audioListenerState = getStateManager().getState(AudioListenerState.class);
-            if (audioListenerState!=null){
-                getStateManager().detach(audioListenerState);
-            }
-            if (getStateManager().getState(VrAudioListenerState.class) == null){
-                getStateManager().attach(new VrAudioListenerState());
-            }
-        }
-    }
-
-    public OpenXrSessionManager getXrSession(){
-        return xrSession;
     }
 
     public Camera getLeftCamera(){
@@ -207,14 +187,8 @@ public class XrAppState extends XrBaseAppState{
     }
 
     @Override
-    public String getSystemName(){
-        return xrSession.getSystemName();
-    }
-
-    @Override
     protected void cleanup(Application app){
         LOGGER.info("Cleaning up OpenXR for shutdown");
-        xrSession.destroy();
         viewPorts.values().forEach(app.getRenderManager()::removePreView);
         this.additionalViewports.forEach(AdditionalViewportData::cleanup);
     }
@@ -225,64 +199,46 @@ public class XrAppState extends XrBaseAppState{
     @Override
     protected void onDisable(){}
 
+    protected void render(){
+        updateEyePositions(inProgressXrRender);
 
-
-    @Override
-    public void update(float tpf){
-        super.update(tpf);
-        inProgressXrRender = xrSession.startXrFrame();
-        if (inProgressXrRender.shouldRender){
+        while (!runOnceHaveCameraPositions.isEmpty()) {
+            runOnceHaveCameraPositions.poll().run();
             updateEyePositions(inProgressXrRender);
-
-            while (!runOnceHaveCameraPositions.isEmpty()) {
-                runOnceHaveCameraPositions.poll().run();
-                updateEyePositions(inProgressXrRender);
-            }
-            viewPorts.values().forEach(vp -> vp.setEnabled(false));
-
-            //must set every frame due to OpenXR buffering to multiple images
-            ViewPort leftViewPort = viewPorts.computeIfAbsent(inProgressXrRender.getLeftBufferToRenderTo(), (fb) -> {
-                ViewPort viewPort = newViewPort(EyeSide.LEFT);
-                viewPort.setOutputFrameBuffer(fb);
-                return viewPort;
-            });
-            leftViewPort.setEnabled(true);
-
-            ViewPort rightViewPort = viewPorts.computeIfAbsent(inProgressXrRender.getRightBufferToRenderTo(), (fb) -> {
-                ViewPort viewPort = newViewPort(EyeSide.RIGHT);
-                viewPort.setOutputFrameBuffer(fb);
-                return viewPort;
-            });
-            rightViewPort.setEnabled(true);
-
-            for(AdditionalViewportData additionalViewportData : additionalViewports){
-                additionalViewportData.setActiveViewports(inProgressXrRender.getLeftBufferToRenderTo(), inProgressXrRender.getRightBufferToRenderTo());
-            }
-
-            if (refreshProjectionMatrix || !inProgressXrRender.leftEye.fieldOfView().equals(leftFovLastRendered) || !inProgressXrRender.rightEye.fieldOfView().equals(rightFovLastRendered)){
-                leftCamera.setProjectionMatrix(inProgressXrRender.leftEye.calculateProjectionMatrix(nearClip, farClip));
-                setCameraFrustum(leftCamera, inProgressXrRender.getLeftEye().fieldOfView(), nearClip, farClip);
-                rightCamera.setProjectionMatrix(inProgressXrRender.rightEye.calculateProjectionMatrix(nearClip, farClip));
-                setCameraFrustum(rightCamera, inProgressXrRender.getRightEye().fieldOfView(), nearClip, farClip);
-                refreshProjectionMatrix = false;
-            }
-
-            if (xrSettings.isMainCameraFollowsVrCamera()){
-                getApplication().getCamera().setLocation(getVrCameraPosition());
-                getApplication().getCamera().setRotation(getLeftCamera().getRotation());
-            }
         }
-    }
+        viewPorts.values().forEach(vp -> vp.setEnabled(false));
 
-    public Map<String, Boolean> getExtensionsLoaded(){
-        return xrSession.getExtensionsLoaded();
-    }
+        //must set every frame due to OpenXR buffering to multiple images
+        ViewPort leftViewPort = viewPorts.computeIfAbsent(inProgressXrRender.getLeftBufferToRenderTo(), (fb) -> {
+            ViewPort viewPort = newViewPort(EyeSide.LEFT);
+            viewPort.setOutputFrameBuffer(fb);
+            return viewPort;
+        });
+        leftViewPort.setEnabled(true);
 
-    @SuppressWarnings("unused")
-    @Override
-    public boolean checkExtensionLoaded(String extensionName){
-        //the below converts nulls to false
-        return getExtensionsLoaded().get(extensionName) == Boolean.TRUE;
+        ViewPort rightViewPort = viewPorts.computeIfAbsent(inProgressXrRender.getRightBufferToRenderTo(), (fb) -> {
+            ViewPort viewPort = newViewPort(EyeSide.RIGHT);
+            viewPort.setOutputFrameBuffer(fb);
+            return viewPort;
+        });
+        rightViewPort.setEnabled(true);
+
+        for(AdditionalViewportData additionalViewportData : additionalViewports){
+            additionalViewportData.setActiveViewports(inProgressXrRender.getLeftBufferToRenderTo(), inProgressXrRender.getRightBufferToRenderTo());
+        }
+
+        if (refreshProjectionMatrix || !inProgressXrRender.leftEye.fieldOfView().equals(leftFovLastRendered) || !inProgressXrRender.rightEye.fieldOfView().equals(rightFovLastRendered)){
+            leftCamera.setProjectionMatrix(inProgressXrRender.leftEye.calculateProjectionMatrix(nearClip, farClip));
+            setCameraFrustum(leftCamera, inProgressXrRender.getLeftEye().fieldOfView(), nearClip, farClip);
+            rightCamera.setProjectionMatrix(inProgressXrRender.rightEye.calculateProjectionMatrix(nearClip, farClip));
+            setCameraFrustum(rightCamera, inProgressXrRender.getRightEye().fieldOfView(), nearClip, farClip);
+            refreshProjectionMatrix = false;
+        }
+
+        if (xrSettings.isMainCameraFollowsVrCamera()){
+            getApplication().getCamera().setLocation(getVrCameraPosition());
+            getApplication().getCamera().setRotation(getLeftCamera().getRotation());
+        }
     }
 
     private void updateEyePositions(InProgressXrRender inProgressXrRender){
@@ -321,14 +277,6 @@ public class XrAppState extends XrBaseAppState{
         this.refreshProjectionMatrix = true;
     }
 
-    @Override
-    public void postRender(){
-        super.postRender();
-        if (inProgressXrRender !=null){
-            xrSession.presentFrameBuffersToOpenXr(inProgressXrRender);
-            inProgressXrRender = null;
-        }
-    }
 
     @Override
     public void setObserverPosition(Vector3f observerPosition){
@@ -339,7 +287,7 @@ public class XrAppState extends XrBaseAppState{
      * Gets the observer position. The observer is the point in the virtual world that maps to the VR origin in the real world.
      * <strong>NOTE: the observer is only indirectly related to the players head position</strong>. This is a highly technical method you
      * probably don't want to use, if you want to move the player directly (for example to support a teleport-style movement)
-     * use {@link XrAppState#movePlayersFeetToPosition(Vector3f)}.
+     * use {@link XrBaseAppState#movePlayersFeetToPosition(Vector3f)}.
      *
      * @return  observerPosition observer position
      */
@@ -411,11 +359,6 @@ public class XrAppState extends XrBaseAppState{
     @Override
     public Quaternion getVrCameraRotation(){
         return getLeftCamera().getRotation();
-    }
-
-    @Override
-    public void setXrVrMode(XrVrMode xrVrMode){
-        xrSession.setXrVrBlendMode(xrVrMode);
     }
 
     @Override
