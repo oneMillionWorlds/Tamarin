@@ -22,7 +22,6 @@ import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.onemillionworlds.tamarin.vrhands.VRHandsAppState;
-import org.lwjgl.openxr.EXTHandTracking;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +30,8 @@ import java.util.Optional;
 import java.util.Set;
 
 public class TamarinDebugOverlayState extends BaseAppState{
+
+    private static final String XR_EXT_HAND_TRACKING_EXTENSION_NAME = "XR_EXT_hand_tracking";
 
     public static final String ID = "TamarinDebugOverlayState";
 
@@ -61,7 +62,7 @@ public class TamarinDebugOverlayState extends BaseAppState{
     public void update(float tpf){
         super.update(tpf);
 
-        boolean skeletonAvailable = getState(XrBaseAppState.ID, XrBaseAppState.class).checkExtensionLoaded(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+        boolean skeletonAvailable = getState(XrBaseAppState.ID, XrBaseAppState.class).checkExtensionLoaded(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
 
         VRHandsAppState vrHandsAppState = getState(VRHandsAppState.ID, VRHandsAppState.class);
         XrActionBaseAppState openXrActionState = getState(XrActionBaseAppState.ID, XrActionBaseAppState.class);

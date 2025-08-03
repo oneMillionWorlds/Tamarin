@@ -1,7 +1,5 @@
 package com.onemillionworlds.tamarin.openxr;
 
-import org.lwjgl.openxr.XR10;
-
 /**
  * This determines how the composited image will be blended with the real world behind the display (if at all).
  * <p>
@@ -9,13 +7,14 @@ import org.lwjgl.openxr.XR10;
  */
 public enum XrVrMode{
 
+
     /**
      * The composition layers will be displayed with no view of the physical world behind them.
      * The composited image will be interpreted as an RGB image, ignoring the composited alpha channel.
      * This is the typical mode for VR experiences, although this mode can also be supported on
      * devices that support video passthrough.
      */
-    ENVIRONMENT_BLEND_MODE_OPAQUE(XR10.XR_ENVIRONMENT_BLEND_MODE_OPAQUE),
+    ENVIRONMENT_BLEND_MODE_OPAQUE(1), // aka XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
 
     /**
      * The composition layers will be additively blended with the real world behind the display.
@@ -24,7 +23,7 @@ public enum XrVrMode{
      * mode for an AR experience on a see-through headset with an additive display, although this mode can also be
      * supported on devices that support video passthrough.
      */
-    ENVIRONMENT_BLEND_MODE_ADDITIVE(XR10.XR_ENVIRONMENT_BLEND_MODE_ADDITIVE),
+    ENVIRONMENT_BLEND_MODE_ADDITIVE(2), // aka XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
 
     /**
      * The composition layers will be alpha-blended with the real world behind the display. The composited image will be
@@ -32,7 +31,7 @@ public enum XrVrMode{
      * the real world behind the display. This is the typical mode for an AR experience on a phone or headset that
      * supports video passthrough.
      */
-    ENVIRONMENT_BLEND_MODE_ALPHA_BLEND(XR10.XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND);
+    ENVIRONMENT_BLEND_MODE_ALPHA_BLEND(3); // aka XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND
 
     final int xrValue;
 
@@ -43,4 +42,6 @@ public enum XrVrMode{
     public int getXrValue(){
         return xrValue;
     }
+
+
 }

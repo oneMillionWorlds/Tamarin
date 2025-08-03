@@ -1,0 +1,113 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+ext{
+    lwjgl3Version = '3.3.6' //it is important that this is the same as JME which provides the rest of LWJGL
+}
+
+test {
+    useJUnitPlatform()
+}
+
+
+def jme3 = [v:'3.8.0-stable', g:'org.jmonkeyengine']
+
+dependencies {
+
+    api project(':tamarin-core')
+
+    api "org.lwjgl:lwjgl-openxr:${lwjgl3Version}"
+
+    runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-windows"
+    runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-linux"
+    api "org.lwjgl:lwjgl-egl:${lwjgl3Version}" // Necessary for the cross platform XrGraphicsBindingEGLMNDX binding
+
+    implementation 'com.google.code.findbugs:jsr305:3.0.2' //for the OverridingMethodsMustInvokeSuper annotation
+
+    /*
+     * It is presumed any user of Tamarin will already be using JMonkey but we don't want to force a version on them.
+     * That is why this is a compileOnly dependency
+     */
+    compileOnly "${jme3.g}:jme3-core:${jme3.v}"
+    compileOnly "${jme3.g}:jme3-lwjgl3:${jme3.v}"
+    compileOnly "${jme3.g}:jme3-desktop:${jme3.v}"
+    /*
+     * Lemur is an optional dependency
+     */
+    compileOnly ("com.simsilica:lemur:1.16.0")
+    compileOnly ("com.simsilica:lemur-proto:1.13.0")
+
+    /*
+     * Minie is an optional dependency
+     */
+    compileOnly 'com.github.stephengold:Minie:8.2.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+    testImplementation "${jme3.g}:jme3-core:${jme3.v}"
+    testImplementation 'org.mockito:mockito-core:5.4.0'
+}
+
+publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.html
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = "${group}"
+            artifactId = 'tamarin-core'
+            version = "${version}"
+
+            from components.java
+
+            pom {
+                name = project.name
+                description = 'A VR utilities library that extends the functionality in JMonkeyEngine'
+                url = 'https://github.com/oneMillionWorlds/Tamarin'
+                licenses {
+                    license {
+                        name = 'New BSD (3-clause) License'
+                        url = 'http://opensource.org/licenses/BSD-3-Clause'
+                    }
+                }
+                scm {
+                    connection = 'git@github.com:oneMillionWorlds/Tamarin.git'
+                    developerConnection = 'git@github.com:oneMillionWorlds/Tamarin.git'
+                    url = 'https://github.com/oneMillionWorlds/Tamarin'
+                }
+                developers {
+                    developer {
+                        id = 'RichardTingle'
+                        name = 'Richard Tingle (aka richtea)'
+                        email = 'support@oneMillionWorlds.com'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name 'sonatype'
+            url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+            //url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+            credentials {
+                username findProperty('ossrhUsername') ?: ''
+                password findProperty('ossrhPassword') ?: ''
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}

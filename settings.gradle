@@ -8,3 +8,6 @@
  */
 
 rootProject.name = 'tamarin'
+
+include 'tamarin-core'
+include 'tamarin-desktop'
