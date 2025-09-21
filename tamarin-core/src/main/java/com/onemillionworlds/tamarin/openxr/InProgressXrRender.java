@@ -19,8 +19,8 @@ public class InProgressXrRender{
 
     public static InProgressXrRender NO_XR_FRAME = new InProgressXrRender(false, false, 0, NO_EYE_POSITION, NO_EYE_POSITION, null, null, -1, -1);
 
-    boolean inProgressXr;
-    boolean shouldRender;
+    public boolean inProgressXr;
+    public boolean shouldRender;
     long predictedDisplayTime;
 
     EyePositionData leftEye;

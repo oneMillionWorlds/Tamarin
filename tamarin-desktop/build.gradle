@@ -24,8 +24,6 @@ test {
 }
 
 
-def jme3 = [v:'3.8.0-stable', g:'org.jmonkeyengine']
-
 dependencies {
 
     api project(':tamarin-core')
@@ -42,9 +40,9 @@ dependencies {
      * It is presumed any user of Tamarin will already be using JMonkey but we don't want to force a version on them.
      * That is why this is a compileOnly dependency
      */
-    compileOnly "${jme3.g}:jme3-core:${jme3.v}"
-    compileOnly "${jme3.g}:jme3-lwjgl3:${jme3.v}"
-    compileOnly "${jme3.g}:jme3-desktop:${jme3.v}"
+    compileOnly libs.jme3.core
+    compileOnly libs.jme3.lwjgl3
+    compileOnly libs.jme3.desktop
     /*
      * Lemur is an optional dependency
      */
@@ -57,7 +55,7 @@ dependencies {
     compileOnly 'com.github.stephengold:Minie:8.2.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
-    testImplementation "${jme3.g}:jme3-core:${jme3.v}"
+    testImplementation libs.jme3.core
     testImplementation 'org.mockito:mockito-core:5.4.0'
 }
 

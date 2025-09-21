@@ -86,6 +86,10 @@ public class ActionSet{
             if (!ActionHandle.VALID_ACTION_NAMES.matcher(name).matches()){
                 throw new IllegalArgumentException("Action set name must be lower case and only contain letters and underscores but was "+name);
             }
+            if(name.length()>32){
+                // See XR_MAX_ACTION_SET_NAME_SIZE
+                throw new IllegalArgumentException("Action set name cannot be longer than 32 characters but was "+name);
+            }
             this.name = name;
             return this;
         }

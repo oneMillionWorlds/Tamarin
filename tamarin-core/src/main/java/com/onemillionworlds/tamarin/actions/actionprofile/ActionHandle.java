@@ -30,5 +30,12 @@ public record ActionHandle(
         if (!VALID_ACTION_NAMES.matcher(actionName).matches()){
             throw new IllegalArgumentException("Action name must be lower case and only contain letters and underscores but was "+actionName);
         }
+
+        if (actionName.length() > 32){
+            throw new IllegalArgumentException("Action name must be less than 32 characters but was "+actionName);
+        }
+        if (actionSetName.length() > 32){
+            throw new IllegalArgumentException("Action set name must be less than 32 characters but was "+actionSetName);
+        }
     }
 }

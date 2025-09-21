@@ -51,7 +51,7 @@ public class XrSettings{
      */
     boolean mainCameraFollowsVrCamera = true;
 
-    XRVersion xrApiVersion = new XRVersion(1, 0, 43);
+    public XRVersion xrApiVersion = new XRVersion(1, 0, 43);
 
     public XrSettings(){
         requiredXrExtensions.add("XR_KHR_opengl_enable"); //openGL support see KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME

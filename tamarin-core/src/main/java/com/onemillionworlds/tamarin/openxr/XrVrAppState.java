@@ -31,6 +31,7 @@ import java.util.logging.Logger;
  * contains functionality that is common to both desktop and android VR apps
  */
 public abstract class XrVrAppState extends XrBaseAppState{
+
     private static final Logger LOGGER = Logger.getLogger(XrVrAppState.class.getName());
 
     Camera leftCamera;
@@ -58,7 +59,7 @@ public abstract class XrVrAppState extends XrBaseAppState{
      */
     Node observer = new Node("Xr Observer");
 
-    InProgressXrRender inProgressXrRender;
+    protected InProgressXrRender inProgressXrRender;
 
     private boolean refreshProjectionMatrix = true;
 

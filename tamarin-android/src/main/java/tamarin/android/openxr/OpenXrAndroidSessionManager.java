@@ -1,65 +1,81 @@
-package com.onemillionworlds.tamarin.openxr;
+package tamarin.android.openxr;
 
 import com.jme3.renderer.Renderer;
 import com.jme3.system.AppSettings;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
-import org.lwjgl.PointerBuffer;
-import org.lwjgl.opengl.GL31;
-import org.lwjgl.openxr.EXTDebugUtils;
-import org.lwjgl.openxr.EXTHandTracking;
-import org.lwjgl.openxr.KHROpenGLEnable;
-import org.lwjgl.openxr.XR10;
-import org.lwjgl.openxr.XrApiLayerProperties;
-import org.lwjgl.openxr.XrApplicationInfo;
-import org.lwjgl.openxr.XrCompositionLayerProjection;
-import org.lwjgl.openxr.XrCompositionLayerProjectionView;
-import org.lwjgl.openxr.XrDebugUtilsMessengerCallbackDataEXT;
-import org.lwjgl.openxr.XrDebugUtilsMessengerCreateInfoEXT;
-import org.lwjgl.openxr.XrDebugUtilsMessengerEXT;
-import org.lwjgl.openxr.XrEventDataBaseHeader;
-import org.lwjgl.openxr.XrEventDataBuffer;
-import org.lwjgl.openxr.XrEventDataEventsLost;
-import org.lwjgl.openxr.XrEventDataInstanceLossPending;
-import org.lwjgl.openxr.XrEventDataSessionStateChanged;
-import org.lwjgl.openxr.XrExtensionProperties;
-import org.lwjgl.openxr.XrFovf;
-import org.lwjgl.openxr.XrFrameBeginInfo;
-import org.lwjgl.openxr.XrFrameEndInfo;
-import org.lwjgl.openxr.XrFrameState;
-import org.lwjgl.openxr.XrFrameWaitInfo;
-import org.lwjgl.openxr.XrGraphicsRequirementsOpenGLKHR;
-import org.lwjgl.openxr.XrInstance;
-import org.lwjgl.openxr.XrInstanceCreateInfo;
-import org.lwjgl.openxr.XrPosef;
-import org.lwjgl.openxr.XrQuaternionf;
-import org.lwjgl.openxr.XrReferenceSpaceCreateInfo;
-import org.lwjgl.openxr.XrSession;
-import org.lwjgl.openxr.XrSessionBeginInfo;
-import org.lwjgl.openxr.XrSessionCreateInfo;
-import org.lwjgl.openxr.XrSpace;
-import org.lwjgl.openxr.XrSwapchain;
-import org.lwjgl.openxr.XrSwapchainCreateInfo;
-import org.lwjgl.openxr.XrSwapchainImageAcquireInfo;
-import org.lwjgl.openxr.XrSwapchainImageBaseHeader;
-import org.lwjgl.openxr.XrSwapchainImageOpenGLKHR;
-import org.lwjgl.openxr.XrSwapchainImageReleaseInfo;
-import org.lwjgl.openxr.XrSwapchainImageWaitInfo;
-import org.lwjgl.openxr.XrSystemGetInfo;
-import org.lwjgl.openxr.XrSystemGraphicsProperties;
-import org.lwjgl.openxr.XrSystemProperties;
-import org.lwjgl.openxr.XrSystemTrackingProperties;
-import org.lwjgl.openxr.XrVector3f;
-import org.lwjgl.openxr.XrView;
-import org.lwjgl.openxr.XrViewConfigurationView;
-import org.lwjgl.openxr.XrViewLocateInfo;
-import org.lwjgl.openxr.XrViewState;
-import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.MemoryUtil;
+import com.onemillionworlds.tamarin.openxr.DrawMode;
+import com.onemillionworlds.tamarin.openxr.EyeSide;
+import com.onemillionworlds.tamarin.openxr.InProgressXrRender;
+import com.onemillionworlds.tamarin.openxr.OpenXrDeviceNotAvailableException;
+import com.onemillionworlds.tamarin.openxr.SessionState;
+import com.onemillionworlds.tamarin.openxr.SwapchainImage;
+import com.onemillionworlds.tamarin.openxr.XrSettings;
+import com.onemillionworlds.tamarin.openxr.XrVrMode;
+import com.onemillionworlds.tamarin.openxrbindings.XR10;
+import com.onemillionworlds.tamarin.openxrbindings.XR10Constants;
+import com.onemillionworlds.tamarin.openxrbindings.XR10Utils;
+import com.onemillionworlds.tamarin.openxrbindings.XrApiLayerProperties;
+import com.onemillionworlds.tamarin.openxrbindings.XrApplicationInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjection;
+import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjectionView;
+import com.onemillionworlds.tamarin.openxrbindings.XrDebugUtilsMessengerCreateInfoEXT;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBaseHeader;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBuffer;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataEventsLost;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataInstanceLossPending;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataSessionStateChanged;
+import com.onemillionworlds.tamarin.openxrbindings.XrExtensionProperties;
+import com.onemillionworlds.tamarin.openxrbindings.XrFovf;
+import com.onemillionworlds.tamarin.openxrbindings.XrFrameBeginInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrFrameEndInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrFrameState;
+import com.onemillionworlds.tamarin.openxrbindings.XrFrameWaitInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrGraphicsRequirementsOpenGLESKHR;
+import com.onemillionworlds.tamarin.openxrbindings.XrInstanceCreateInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrPosef;
+import com.onemillionworlds.tamarin.openxrbindings.XrQuaternionf;
+import com.onemillionworlds.tamarin.openxrbindings.XrRect2Di;
+import com.onemillionworlds.tamarin.openxrbindings.XrReferenceSpaceCreateInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSessionBeginInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSessionCreateInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainCreateInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageAcquireInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageReleaseInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageWaitInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainSubImage;
+import com.onemillionworlds.tamarin.openxrbindings.XrSystemGetInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSystemGraphicsProperties;
+import com.onemillionworlds.tamarin.openxrbindings.XrSystemProperties;
+import com.onemillionworlds.tamarin.openxrbindings.XrSystemTrackingProperties;
+import com.onemillionworlds.tamarin.openxrbindings.XrVector3f;
+import com.onemillionworlds.tamarin.openxrbindings.XrView;
+import com.onemillionworlds.tamarin.openxrbindings.XrViewConfigurationView;
+import com.onemillionworlds.tamarin.openxrbindings.XrViewLocateInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrViewState;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrEnvironmentBlendMode;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrFormFactor;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrReferenceSpaceType;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrResult;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrStructureType;
+import com.onemillionworlds.tamarin.openxrbindings.handles.XrDebugUtilsMessengerEXT;
+import com.onemillionworlds.tamarin.openxrbindings.handles.XrInstance;
+import com.onemillionworlds.tamarin.openxrbindings.handles.XrSession;
+import com.onemillionworlds.tamarin.openxrbindings.handles.XrSpace;
+import com.onemillionworlds.tamarin.openxrbindings.handles.XrSwapchain;
+import com.onemillionworlds.tamarin.openxrbindings.memory.ByteBufferView;
+import com.onemillionworlds.tamarin.openxrbindings.memory.IntBufferView;
+import com.onemillionworlds.tamarin.openxrbindings.memory.LongBufferView;
+import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryStack;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrViewConfigurationType;
+import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil;
+import com.onemillionworlds.tamarin.openxrbindings.memory.PointerBufferView;
+
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -70,29 +86,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-import static org.lwjgl.openxr.EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
-import static org.lwjgl.openxr.KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME;
-import static org.lwjgl.openxr.MNDXEGLEnable.XR_MNDX_EGL_ENABLE_EXTENSION_NAME;
-import static org.lwjgl.openxr.XR10.XR_MAX_RESULT_STRING_SIZE;
-import static org.lwjgl.openxr.XR10.XR_SUCCEEDED;
-import static org.lwjgl.openxr.XR10.XR_VERSION_MAJOR;
-import static org.lwjgl.openxr.XR10.XR_VERSION_MINOR;
-import static org.lwjgl.openxr.XR10.xrCreateInstance;
-import static org.lwjgl.openxr.XR10.xrEnumerateApiLayerProperties;
-import static org.lwjgl.openxr.XR10.xrEnumerateInstanceExtensionProperties;
-import static org.lwjgl.system.MemoryStack.stackMalloc;
-import static org.lwjgl.system.MemoryStack.stackPush;
-import static org.lwjgl.system.MemoryUtil.NULL;
-import static org.lwjgl.system.MemoryUtil.memLengthNT1;
+import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateApiLayerProperties;
+import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateInstanceExtensionProperties;
+import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
+import static com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil.NULL;
 
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
-import org.lwjgl.system.Struct;
 
-import java.nio.LongBuffer;
+public class OpenXrAndroidSessionManager {
 
-public class OpenXrSessionManager{
+    public static final String XR_KHR_OPENGL_ENABLE_EXTENSION_NAME = "XR_KHR_opengl_enable";
 
     /**
      * In pixels the width of the swapchain (aka the width of the eye-screen)
@@ -103,7 +105,7 @@ public class OpenXrSessionManager{
      */
     int swapchainHeight;
 
-    private static final Logger LOGGER = Logger.getLogger(OpenXrSessionManager.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(OpenXrAndroidSessionManager.class.getName());
 
     XrInstance xrInstance;
     boolean missingXrDebug;
@@ -129,7 +131,7 @@ public class OpenXrSessionManager{
      * This configuration requires two views in XrViewConfigurationProperties and two views in each XrCompositionLayerProjection layer.
      * View index 0 must represent the left eye and view index 1 must represent the right eye.
      */
-    int viewConfigType = XR10.XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+    XrViewConfigurationType viewConfigType = XrViewConfigurationType.VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
     XrViewConfigurationView.Buffer viewConfigs;
     XrView.Buffer views; //Each view represents an eye in the headset with views[0] being left and views[1] being right
@@ -171,20 +173,17 @@ public class OpenXrSessionManager{
 
     private XrVrMode xrVrBlendMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
-    static {
-        DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
-        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB10_A2, Image.Format.RGB10A2);
+    public static final int
+            GL_RGBA16F = 0x881A,
+            GL_RGB10_A2 = 0x8059;
 
-        //fall backs with not enough bits for color; expect banding
-        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGBA8, Image.Format.RGBA8);
-        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGBA8_SNORM, Image.Format.RGBA8I); //not sure if this is right
-        //other formats that were not mentioned in the helloOpenXRGL example
-        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB8, Image.Format.RGB8);
-        DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB5_A1, Image.Format.RGB5A1);
+    static {
+        DESIRED_SWAPCHAIN_FORMATS.put(GL_RGBA16F, Image.Format.RGBA16F);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL_RGB10_A2, Image.Format.RGB10A2);
     }
 
-    public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings,  Renderer renderer){
-        OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings, regularSettings, renderer);
+    public static OpenXrAndroidSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
+        OpenXrAndroidSessionManager openXrSessionManager = new OpenXrAndroidSessionManager(xrSettings, regularSettings, renderer);
         openXrSessionManager.window = windowHandle;
         openXrSessionManager.createOpenXRInstance();
         openXrSessionManager.determineOpenXRSystem();
@@ -197,7 +196,7 @@ public class OpenXrSessionManager{
     }
 
 
-    private OpenXrSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
+    private OpenXrAndroidSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
         this.xrSettings = xrSettings;
         this.regularSettings = regularSettings;
         this.renderer = renderer;
@@ -245,8 +244,8 @@ public class OpenXrSessionManager{
     }
 
     private void createOpenXRInstance() {
-        try (MemoryStack stack = stackPush()) {
-            LayerCheckResult layerCheckResult = makeLayersCheck(stack);
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
+            // skip the layers check as android doesn't provide any debugging layers
             ExtensionsCheckResult extensionsCheckResult = makeExtensionsCheck(stack, xrSettings.getRequiredXrExtensions());
             this.extensionsLoaded = extensionsCheckResult.extensionsLoaded();
 
@@ -268,19 +267,18 @@ public class OpenXrSessionManager{
 
             XrSettings.XRVersion xrVersion = xrSettings.xrApiVersion;
 
-            XrInstanceCreateInfo createInfo = XrInstanceCreateInfo.malloc(stack)
+            XrInstanceCreateInfo createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type$Default()
                     .next(NULL)
                     .createFlags(0)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
-                            .applicationName(stack.UTF8(xrSettings.getApplicationName()))
-                            .apiVersion(XR10.XR_MAKE_VERSION(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
-                    .enabledApiLayerNames(layerCheckResult.wantedLayers())
-                    .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer());
+                            .applicationName(stack.utf8(xrSettings.getApplicationName()))
+                            .apiVersion(XR10Utils.XR_MAKE_VERSION(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
+                    .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer().address());
 
-            PointerBuffer pp = stack.mallocPointer(1);
-            checkResponseCode(xrCreateInstance(createInfo, pp));
-            xrInstance = new XrInstance(pp.get(0), createInfo);
+            XrInstance.HandleBuffer pp = XrInstance.create(1,stack);
+            checkResponseCode(XR10.xrCreateInstance(createInfo, pp));
+            xrInstance = new XrInstance(pp.get(0));
         }
     }
 
@@ -288,16 +286,16 @@ public class OpenXrSessionManager{
      * Determine what the system type (e.g. Oculus quest) of the XR device is
      */
     public void determineOpenXRSystem() {
-        try (MemoryStack stack = stackPush()) {
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
             //Get headset type
-            LongBuffer systemIdBuffer = stack.longs(0);
-
+            LongBufferView systemIdBuffer = stack.mallocLong(1);
+            
             checkResponseCode(XR10.xrGetSystem(
                     xrInstance,
                     XrSystemGetInfo.malloc(stack)
                             .type$Default()
                             .next(NULL)
-                            .formFactor(XR10.XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY),
+                            .formFactor(XrFormFactor.FORM_FACTOR_HEAD_MOUNTED_DISPLAY),
                     systemIdBuffer
             ));
 
@@ -310,9 +308,9 @@ public class OpenXrSessionManager{
     }
 
     public String getSystemName(){
-        try (MemoryStack stack = stackPush()){
+        try (MemoryStack stack = MemoryStack.stackGet().push()){
             XrSystemProperties systemProperties = XrSystemProperties.malloc(stack)
-                    .type(XR10.XR_TYPE_SYSTEM_PROPERTIES);
+                    .type(XrStructureType.XR_TYPE_SYSTEM_PROPERTIES);
             checkResponseCode(XR10.xrGetSystemProperties(xrInstance, systemID, systemProperties));
             return systemProperties.systemNameString();
         }
@@ -320,20 +318,20 @@ public class OpenXrSessionManager{
 
 
     public void initializeAndBindOpenGL() {
-        try (MemoryStack stack = stackPush()) {
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
             //Initialize OpenXR's OpenGL compatability
-            XrGraphicsRequirementsOpenGLKHR graphicsRequirements = XrGraphicsRequirementsOpenGLKHR.malloc(stack)
-                    .type$Default()
+            XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = XrGraphicsRequirementsOpenGLESKHR.malloc(stack)
+                    .type(XrStructureType.XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR)
                     .next(NULL)
                     .minApiVersionSupported(0)
                     .maxApiVersionSupported(0);
-            KHROpenGLEnable.xrGetOpenGLGraphicsRequirementsKHR(xrInstance, systemID, graphicsRequirements);
+            checkResponseCode(XR10.xrGetOpenGLESGraphicsRequirementsKHR(xrInstance, systemID, graphicsRequirements));
 
-            int minMajorVersion = XR_VERSION_MAJOR(graphicsRequirements.minApiVersionSupported());
-            int minMinorVersion = XR_VERSION_MINOR(graphicsRequirements.minApiVersionSupported());
+            int minMajorVersion = XR10Utils.xrExtractMajorVersion(graphicsRequirements.minApiVersionSupported());
+            int minMinorVersion = XR10Utils.xrExtractMinorVersion(graphicsRequirements.minApiVersionSupported());
 
-            int maxMajorVersion = XR_VERSION_MAJOR(graphicsRequirements.maxApiVersionSupported());
-            int maxMinorVersion = XR_VERSION_MINOR(graphicsRequirements.maxApiVersionSupported());
+            int maxMajorVersion = XR10Utils.xrExtractMajorVersion(graphicsRequirements.maxApiVersionSupported());
+            int maxMinorVersion = XR10Utils.xrExtractMinorVersion(graphicsRequirements.maxApiVersionSupported());
             LOGGER.info("The OpenXR runtime supports OpenGL " + minMajorVersion + "." + minMinorVersion
                     + " to OpenGL " + maxMajorVersion + "." + maxMinorVersion);
             // Check if OpenGL version is supported by OpenXR runtime
@@ -355,8 +353,8 @@ public class OpenXrSessionManager{
             }
 
             //Bind the OpenGL context to the OpenXR instance and create the session
-            Struct<?> graphicsBinding = XrUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
-            PointerBuffer sessionPointerBuffer = stack.mallocPointer(1);
+            Struct<?> graphicsBinding = XrAndroidUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
+            XrSession.HandleBuffer sessionPointerBuffer = XrSession.create(1,stack);
             checkResponseCode(XR10.xrCreateSession(
                     xrInstance,
                     XrSessionCreateInfo.malloc(stack)
@@ -402,15 +400,15 @@ public class OpenXrSessionManager{
      * bounding rectangle, with +Y up, and the X and Z axes aligned with the rectangle edges
      */
     public void createXRReferenceSpace() {
-        try (MemoryStack stack = stackPush()) {
-            PointerBuffer pp = stack.mallocPointer(1);
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
+            XrSpace.HandleBuffer pp = XrSpace.create(1, stack);
 
             checkResponseCode(XR10.xrCreateReferenceSpace(
                     xrSession,
                     XrReferenceSpaceCreateInfo.malloc(stack)
                             .type$Default()
                             .next(NULL)
-                            .referenceSpaceType(XR10.XR_REFERENCE_SPACE_TYPE_STAGE)
+                            .referenceSpaceType(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE)
                             .poseInReferenceSpace(XrPosef.malloc(stack)
                                     .orientation(XrQuaternionf.malloc(stack)
                                             .x(0)
@@ -421,7 +419,7 @@ public class OpenXrSessionManager{
                     pp
             ));
 
-            xrAppSpace = new XrSpace(pp.get(0), xrSession);
+            xrAppSpace = new XrSpace(pp.get(0));
         }
     }
 
@@ -429,12 +427,12 @@ public class OpenXrSessionManager{
      * Swapchains are for double buffering or triple buffering, techniques used to reduce screen tearing and improve visual performance in XR environments.
      */
     public void createXRSwapchains() {
-        try (MemoryStack stack = stackPush()) {
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
             XrSystemProperties systemProperties = XrSystemProperties.calloc(stack);
-            MemoryUtil.memPutInt(systemProperties.address(), XR10.XR_TYPE_SYSTEM_PROPERTIES);
+            systemProperties.type(XrStructureType.XR_TYPE_SYSTEM_PROPERTIES);
             checkResponseCode(XR10.xrGetSystemProperties(xrInstance, systemID, systemProperties));
 
-            String headsetName = MemoryUtil.memUTF8(MemoryUtil.memAddress(systemProperties.systemName()));
+            String headsetName = systemProperties.systemNameString();
             int vendor = systemProperties.vendorId();
             LOGGER.info("Headset name:"+ headsetName + " vendor: " + vendor);
 
@@ -446,36 +444,42 @@ public class OpenXrSessionManager{
                     + " MaxHeight: " + graphicsProperties.maxSwapchainImageHeight()
                     + "MaxLayerCount: " + graphicsProperties.maxLayerCount());
 
-            IntBuffer viewCountPointer = stack.mallocInt(1);
+            IntBufferView viewCountPointer = stack.mallocInt(1);
 
-            checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType, viewCountPointer, null));
-            viewConfigs = XrUtils.fill(
-                    XrViewConfigurationView.calloc(viewCountPointer.get(0)), // use calloc() rather than malloc() to ensure the next field is correctly initialized
-                    XrViewConfigurationView.TYPE,
-                    XR10.XR_TYPE_VIEW_CONFIGURATION_VIEW
-            );
+            checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType, 0, viewCountPointer, null));
 
-            checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType, viewCountPointer, viewConfigs));
+            int numberOfViews = viewCountPointer.get(0);
+
+            viewConfigs = XrViewConfigurationView.calloc(numberOfViews);
+
+            for(int i = 0; i < numberOfViews; i++){
+                XrViewConfigurationView xrViewConfigurationView = viewConfigs.get(i);
+                xrViewConfigurationView.type(XrStructureType.XR_TYPE_VIEW_CONFIGURATION_VIEW);
+                xrViewConfigurationView.next(NULL);
+            }
+
+
+            checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType,0, viewCountPointer, viewConfigs));
             int viewCountNumber = viewCountPointer.get(0);
 
-            views = XrUtils.fill(
-                    XrView.calloc(viewCountNumber),
-                    XrView.TYPE,
-                    XR10.XR_TYPE_VIEW
-            );
+            views = XrView.calloc(viewCountNumber);
+
+            for(int i=0;i<viewCountNumber;i++){
+                xrViewBuffer.get(i).type(XrStructureType.XR_TYPE_VIEW);
+            }
 
             if (viewCountNumber != 2){
                 throw new IllegalStateException("Expected 2 views, got " + viewCountNumber);
             }
 
-            IntBuffer formatCountPointer = stack.mallocInt(1);
+            IntBufferView formatCountPointer = stack.mallocInt(1);
 
-            checkResponseCode(XR10.xrEnumerateSwapchainFormats(xrSession, formatCountPointer, null));
-            LongBuffer swapchainFormats = stack.mallocLong(formatCountPointer.get(0));
-            checkResponseCode(XR10.xrEnumerateSwapchainFormats(xrSession, formatCountPointer, swapchainFormats));
+            checkResponseCode(XR10.xrEnumerateSwapchainFormats(xrSession, 0, formatCountPointer, null));
+            LongBufferView swapchainFormats = stack.mallocLong(formatCountPointer.get(0));
+            checkResponseCode(XR10.xrEnumerateSwapchainFormats(xrSession, formatCountPointer.get(0),formatCountPointer, swapchainFormats));
 
             List<Integer> availableFormats = new ArrayList<>();
-            for (int i = 0; i < swapchainFormats.limit(); i++) {
+            for (int i = 0; i < swapchainFormats.getBufferView().capacity(); i++) {
                 availableFormats.add((int) swapchainFormats.get(i));
             }
 
@@ -500,7 +504,7 @@ public class OpenXrSessionManager{
                         .type$Default()
                         .next(NULL)
                         .createFlags(0)
-                        .usageFlags(XR10.XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR10.XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT)
+                        .usageFlags(XR10Constants.XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR10Constants.XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT)
                         .format(glColorFormat)
                         .sampleCount(viewConfig.recommendedSwapchainSampleCount())
                         .width(viewConfig.recommendedImageRectWidth())
@@ -512,12 +516,12 @@ public class OpenXrSessionManager{
                 this.swapchainHeight = viewConfig.recommendedImageRectHeight();
                 this.swapchainWidth = viewConfig.recommendedImageRectWidth();
 
-                PointerBuffer swapchainHanglePointerBuffer = stack.mallocPointer(1);
+                XrSwapchain.HandleBuffer swapchainHanglePointerBuffer = XrSwapchain.create(1,stack);
                 checkResponseCode(XR10.xrCreateSwapchain(xrSession, swapchainCreateInfo, swapchainHanglePointerBuffer));
 
-                XrSwapchain swapchainHandle = new XrSwapchain(swapchainHanglePointerBuffer.get(0), xrSession);
+                XrSwapchain swapchainHandle = new XrSwapchain(swapchainHanglePointerBuffer.get(0));
 
-                checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, viewCountPointer, null));
+                checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, 0, viewCountPointer, null));
                 int imageCount = viewCountPointer.get(0);
 
                 XrSwapchainImageOpenGLKHR.Buffer swapchainImageBuffer = XrUtils.fill(
@@ -526,7 +530,7 @@ public class OpenXrSessionManager{
                         KHROpenGLEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR
                 );
 
-                checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, viewCountPointer, XrSwapchainImageBaseHeader.create(swapchainImageBuffer.address(), swapchainImageBuffer.capacity())));
+                checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, imageCount, viewCountPointer, XrSwapchainImageBaseHeader.create(swapchainImageBuffer.address(), swapchainImageBuffer.capacity())));
 
                 swapchains[i] = new Swapchain(swapchainHandle, swapchainCreateInfo.width(), swapchainCreateInfo.height(), swapchainImageBuffer);
             }
@@ -547,19 +551,19 @@ public class OpenXrSessionManager{
 
         do {
             switch (event.type()) {
-                case XR10.XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
+                case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
                     XrEventDataInstanceLossPending instanceLossPending = XrEventDataInstanceLossPending.create(event.address());
                     LOGGER.severe("XrEventDataInstanceLossPending by " + instanceLossPending.lossTime());
 
                     return true;
                 }
-                case XR10.XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+                case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
                     XrEventDataSessionStateChanged sessionStateChangedEvent = XrEventDataSessionStateChanged.create(event.address());
                     return handleSessionStateChangedEvent(sessionStateChangedEvent);
                 }
-                case XR10.XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+                case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
                     break;
-                case XR10.XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
+                case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
                 default: {
                     LOGGER.info("Ignoring event type: " + event.type());
                     break;
@@ -577,26 +581,26 @@ public class OpenXrSessionManager{
         // XR_TYPE_EVENT_DATA_BUFFER rather than recreate it every time
         eventDataBuffer.clear();
         eventDataBuffer.type$Default();
-        int result = XR10.xrPollEvent(xrInstance, eventDataBuffer);
-        if (result == XR10.XR_SUCCESS) {
-            if (eventDataBuffer.type() == XR10.XR_TYPE_EVENT_DATA_EVENTS_LOST) {
+        XrResult result = XR10.xrPollEvent(xrInstance, eventDataBuffer);
+        if (result == XrResult.SUCCESS) {
+            if (eventDataBuffer.type() == XrStructureType.XR_TYPE_EVENT_DATA_EVENTS_LOST) {
                 XrEventDataEventsLost dataEventsLost = XrEventDataEventsLost.create(eventDataBuffer.address());
                 LOGGER.info(dataEventsLost.lostEventCount() + " events lost");
             }
             return XrEventDataBaseHeader.create(eventDataBuffer.address());
         }
-        if (result == XR10.XR_EVENT_UNAVAILABLE) {
+        if (result == XrResult.EVENT_UNAVAILABLE) {
             return null;
         }
-        throw new IllegalStateException(String.format("[XrResult failure %d in xrPollEvent]", result));
+        throw new IllegalStateException("[XrResult failure in xrPollEvent]:" +  result.toString());
     }
 
     boolean handleSessionStateChangedEvent(XrEventDataSessionStateChanged stateChangedEvent) {
         SessionState oldState = sessionState;
-        sessionState = SessionState.fromXRValue(stateChangedEvent.state());
+        sessionState = SessionState.fromXRValue(stateChangedEvent.state().getValue());
 
         LOGGER.info("XrEventDataSessionStateChanged: state " + oldState + "->" + sessionState + " session=" + stateChangedEvent.session() + " time=" + stateChangedEvent.time());
-        if ((stateChangedEvent.session() != NULL) && (stateChangedEvent.session() != xrSession.address())) {
+        if ((stateChangedEvent.session().isNullHandle()) && (!stateChangedEvent.session().equals(xrSession))) {
             System.err.println("XrEventDataSessionStateChanged for unknown session");
             return false;
         }
@@ -604,7 +608,7 @@ public class OpenXrSessionManager{
         switch (sessionState) {
             case READY: {
                 assert (xrSession != null);
-                try (MemoryStack stack = stackPush()) {
+                try (MemoryStack stack = MemoryStack.stackGet().push()) {
                     checkResponseCode(XR10.xrBeginSession(
                             xrSession,
                             XrSessionBeginInfo.malloc(stack)
@@ -646,7 +650,7 @@ public class OpenXrSessionManager{
             return InProgressXrRender.NO_XR_FRAME;
         }
 
-        try (MemoryStack stack = stackPush()) {
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
             XrFrameState frameState = XrFrameState.calloc(stack)
                     .type$Default();
 
@@ -666,7 +670,7 @@ public class OpenXrSessionManager{
             XrViewState viewState = XrViewState.calloc(stack)
                     .type$Default();
 
-            IntBuffer pi = stack.mallocInt(1);
+            IntBufferView pi = stack.mallocInt(1);
             checkResponseCode(XR10.xrLocateViews(
                     xrSession,
                     XrViewLocateInfo.malloc(stack)
@@ -676,14 +680,15 @@ public class OpenXrSessionManager{
                             .displayTime(frameState.predictedDisplayTime())
                             .space(xrAppSpace),
                     viewState,
+                    views.capacity(),
                     pi,
                     views
             ));
 
             this.predictedFrameTime = frameState.predictedDisplayTime();
 
-            if ((viewState.viewStateFlags() & XR10.XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
-                    (viewState.viewStateFlags() & XR10.XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
+            if ((viewState.viewStateFlags() & XR10Constants.XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
+                    (viewState.viewStateFlags() & XR10Constants.XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
                 return InProgressXrRender.NO_XR_FRAME;  // There is no valid tracking poses for the views.
             }
 
@@ -700,8 +705,8 @@ public class OpenXrSessionManager{
                 XrVector3f position = pose.position$();
                 XrQuaternionf orientation = pose.orientation();
                 InProgressXrRender.EyePositionData eyePositionData = new InProgressXrRender.EyePositionData(
-                        XrUtils.convertOpenXRToJme(position),
-                        XrUtils.convertOpenXRQuaternionToJme(orientation),
+                        XrAndroidUtils.convertOpenXRToJme(position),
+                        XrAndroidUtils.convertOpenXRQuaternionToJme(orientation),
                         new InProgressXrRender.FieldOfViewData(fov.angleLeft(), fov.angleRight(), fov.angleUp(), fov.angleDown())
                 );
                 if (i == 0){
@@ -716,7 +721,7 @@ public class OpenXrSessionManager{
             int leftSwapchainImageIndex = -1;
             int rightSwapchainImageIndex = -1;
 
-            if (frameState.shouldRender()){
+            if (frameState.shouldRender() == XR10Constants.XR_TRUE) {
 
                 // set up to render view to the appropriate part of the swapchain image.
                 for (int viewIndex = 0; viewIndex < 2; viewIndex++) {
@@ -738,7 +743,7 @@ public class OpenXrSessionManager{
                             XrSwapchainImageWaitInfo.malloc(stack)
                                     .type$Default()
                                     .next(NULL)
-                                    .timeout(XR10.XR_INFINITE_DURATION)
+                                    .timeout(XR10Constants.XR_INFINITE_DURATION)
                     ));
 
                     int image = viewSwapchain.images.get(swapchainImageIndex).image();
@@ -768,7 +773,7 @@ public class OpenXrSessionManager{
 
             }
 
-            return new InProgressXrRender(true, frameState.shouldRender(), frameState.predictedDisplayTime(), leftEye, rightEye, leftFrameBuffer, rightFrameBuffer, leftSwapchainImageIndex, rightSwapchainImageIndex);
+            return new InProgressXrRender(true, frameState.shouldRender() == XR10Constants.XR_TRUE, frameState.predictedDisplayTime(), leftEye, rightEye, leftFrameBuffer, rightFrameBuffer, leftSwapchainImageIndex, rightSwapchainImageIndex);
         }
     }
 
@@ -822,45 +827,41 @@ public class OpenXrSessionManager{
             return;
         }
 
-        try (MemoryStack stack = stackPush()) {
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
 
             XrCompositionLayerProjection layerProjection = XrCompositionLayerProjection.calloc(stack)
                     .type$Default();
 
-            PointerBuffer layers = stack.callocPointer(1);
+            PointerBufferView layers = stack.callocPointer(1);
             boolean didRender = false;
 
             if (continuation.isShouldRender()) {
 
-                XrCompositionLayerProjectionView.Buffer projectionLayerViews = XrUtils.fill(
-                        XrCompositionLayerProjectionView.calloc(2, stack),
-                        XrCompositionLayerProjectionView.TYPE,
-                        XR10.XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW
-                );
+                XrCompositionLayerProjectionView.Buffer projectionLayerViews = XrCompositionLayerProjectionView.calloc(2, stack);
+                for (int i = 0; i < projectionLayerViews.capacity(); i++) {
+                    projectionLayerViews.get(i).type(XrStructureType.XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW);
+                }
 
                 for(int viewIndex=0;viewIndex<2;viewIndex++){
                     Swapchain viewSwapchain = swapchains[viewIndex];
-                    if(xrSettings.drawMode == DrawMode.BLITTED){
+                    if(xrSettings.getDrawMode() == DrawMode.BLITTED){
                         // In blitted mode the JME scene has been rendered to an intermediate buffer and must be blitted
                         // into the final swapchain buffer (which resolves samples as it goes)
-                        int viewSwapchainImageIndex = viewIndex == 0 ? continuation.leftSwapchainImageIndex : continuation.rightSwapchainImageIndex;
-                        FrameBuffer viewBuffer = viewIndex == 0 ? continuation.leftBufferToRenderTo : continuation.rightBufferToRenderTo;
+                        int viewSwapchainImageIndex = viewIndex == 0 ? continuation.getLeftSwapchainImageIndex() : continuation.getRightSwapchainImageIndex();
+                        FrameBuffer viewBuffer = viewIndex == 0 ? continuation.getLeftBufferToRenderTo() : continuation.getRightBufferToRenderTo();
                         resolveDownMultiSampled(viewBuffer, getOrCreateDirectFrameBuffer(viewSwapchainImageIndex));
                     }
 
-                    XrCompositionLayerProjectionView projectionLayerView = projectionLayerViews.get(viewIndex)
-                            .pose(views.get(viewIndex).pose())
-                            .fov(views.get(viewIndex).fov())
-                            .subImage(si -> si
-                                    .swapchain(viewSwapchain.handle)
-                                    .imageRect(rect -> rect
-                                            .offset(offset -> offset
-                                                    .x(0)
-                                                    .y(0))
-                                            .extent(extent -> extent
-                                                    .width(viewSwapchain.width)
-                                                    .height(viewSwapchain.height)
-                                            )));
+                    XrCompositionLayerProjectionView projectionLayerView = projectionLayerViews.get(viewIndex);
+
+                    projectionLayerView.pose(views.get(viewIndex).pose());
+                    projectionLayerView.fov(views.get(viewIndex).fov());
+                    XrSwapchainSubImage subimage = projectionLayerView.subImage();
+
+                    subimage.swapchain(viewSwapchain.handle);
+                    XrRect2Di sumImageREct = subimage.imageRect();
+                    sumImageREct.offset().x(0).y(0);
+                    sumImageREct.extent().width(viewSwapchain.width).height(viewSwapchain.height);
 
                     checkResponseCode(XR10.xrReleaseSwapchainImage(
                             viewSwapchain.handle,
@@ -872,7 +873,7 @@ public class OpenXrSessionManager{
 
                 layerProjection.space(xrAppSpace);
                 layerProjection.views(projectionLayerViews);
-                layers.put(0, layerProjection.address());
+                layers.set(0, layerProjection.address());
                 didRender = true;
             } else {
                 LOGGER.fine("Shouldn't render");
@@ -884,50 +885,11 @@ public class OpenXrSessionManager{
                             .type$Default()
                             .next(NULL)
                             .displayTime(continuation.getPredictedDisplayTime())
-                            .environmentBlendMode(xrVrBlendMode.getXrValue())
-                            .layers(didRender ? layers : null)
-                            .layerCount(didRender ? layers.remaining() : 0)
+                            .environmentBlendMode(XrEnvironmentBlendMode.fromValue(xrVrBlendMode.getXrValue()))
+                            .layers(didRender ? layers.address() : NULL)
+                            .layerCount(didRender ? layers.capacity() : 0)
             ));
         }
-    }
-
-    /*
-     * Layers:
-     * - Optional components that add functionality or debugging features.
-     * - Act as intermediaries between the application and the OpenXR runtime.
-     * - Can validate or intercept API calls for debugging or profiling.
-     * - Examples include validation layers that check API usage for correctness.
-     */
-    private LayerCheckResult makeLayersCheck(MemoryStack stack){
-        IntBuffer numberOfLayersPointer = stack.mallocInt(1);
-
-        boolean hasCoreValidationLayer = false;
-        checkResponseCode(xrEnumerateApiLayerProperties(numberOfLayersPointer, null));
-        int numLayers = numberOfLayersPointer.get(0);
-
-        XrApiLayerProperties.Buffer pLayers = XrUtils.prepareApiLayerProperties(stack, numLayers);
-        checkResponseCode(xrEnumerateApiLayerProperties(numberOfLayersPointer, pLayers));
-        LOGGER.fine("No. of XR layers available: " + numLayers);
-        for (int index = 0; index < numLayers; index++) {
-            XrApiLayerProperties layer = pLayers.get(index);
-
-            String layerName = layer.layerNameString();
-            LOGGER.info("Layer: " + layerName);
-            if (layerName.equals("XR_APILAYER_LUNARG_core_validation")) {
-                hasCoreValidationLayer = true;
-            }
-        }
-
-        PointerBuffer wantedLayers;
-        if (hasCoreValidationLayer) {
-            wantedLayers = stack.callocPointer(1);
-            wantedLayers.put(0, stack.UTF8("XR_APILAYER_LUNARG_core_validation"));
-            LOGGER.info("Enabling XR core validation");
-        } else {
-            LOGGER.info("XR core validation not available");
-            wantedLayers = null;
-        }
-        return new LayerCheckResult(wantedLayers, hasCoreValidationLayer);
     }
 
 
@@ -939,59 +901,53 @@ public class OpenXrSessionManager{
      * - Must be explicitly enabled when creating an OpenXR instance.
      */
     private ExtensionsCheckResult makeExtensionsCheck(MemoryStack stack, Collection<String> desiredExtensions){
-        IntBuffer numberOfExtensionsPointer = stack.mallocInt(1);
+        IntBufferView numberOfExtensionsPointer = stack.mallocInt(1);
 
-        checkResponseCode(xrEnumerateInstanceExtensionProperties((ByteBuffer)null, numberOfExtensionsPointer, null));
+        checkResponseCode(xrEnumerateInstanceExtensionProperties((ByteBufferView) null, 0, numberOfExtensionsPointer, null));
         int numExtensions = numberOfExtensionsPointer.get(0);
 
-        XrExtensionProperties.Buffer properties = XrUtils.createExtensionProperties(stack, numExtensions);
+        XrExtensionProperties.Buffer properties = XrAndroidUtils.createExtensionProperties(stack, numExtensions);
 
-        checkResponseCode(xrEnumerateInstanceExtensionProperties((ByteBuffer)null, numberOfExtensionsPointer, properties));
+        checkResponseCode(xrEnumerateInstanceExtensionProperties((ByteBufferView)null, numExtensions, numberOfExtensionsPointer, properties));
 
-        PointerBuffer extensions = PointerBuffer.allocateDirect(desiredExtensions.size()); //note must have space for the max possible no. of extensions
+        PointerBufferView extensions = PointerBufferView.createPointerBufferView(desiredExtensions.size()); //note must have space for the max possible no. of extensions
 
         Map<String, Boolean> extensionsLoaded = new HashMap<>();
         desiredExtensions.forEach(e -> extensionsLoaded.put(e, false));
 
+        int extensionIndex = 0;
         for (int i = 0; i < numExtensions; i++) {
             XrExtensionProperties prop = properties.get(i);
             String extensionName = prop.extensionNameString();
 
             if (extensionsLoaded.containsKey(extensionName)) {
                 extensionsLoaded.put(extensionName, true);
-                extensions.put(prop.extensionName());
+                extensions.set(extensionIndex, prop.extensionName().address());
+                extensionIndex++;
             }
         }
-        extensions.flip();
+        extensions.getBufferView().flip();
 
         return new ExtensionsCheckResult(extensions, extensionsLoaded);
     }
 
-    public void checkResponseCode(int result) throws IllegalStateException {
+    public void checkResponseCode(XrResult result) throws IllegalStateException {
         checkResponseCode(null, result);
     }
 
-    public void checkResponseCode(String context, int result) throws IllegalStateException {
-        if (XR_SUCCEEDED(result)) {
+    public void checkResponseCode(String context, XrResult result) throws IllegalStateException {
+        if (result == XrResult.SUCCESS) {
             return;
         }
         String contextString = context == null ? "" : " Context: " + context;
-        if (xrInstance != null) {
-            ByteBuffer str = stackMalloc(XR_MAX_RESULT_STRING_SIZE);
-            if (XR10.xrResultToString(xrInstance, result, str) >= 0) {
-                if (result == XR10.XR_ERROR_FORM_FACTOR_UNAVAILABLE){
-                    throw new OpenXrDeviceNotAvailableException(MemoryUtil.memUTF8(str, memLengthNT1(str)), result);
-                }
-                throw new OpenXrException(MemoryUtil.memUTF8(str, memLengthNT1(str)) + contextString,result);
-            }
-        }else{
-            if (result == XR10.XR_ERROR_FORM_FACTOR_UNAVAILABLE){
-                throw new OpenXrDeviceNotAvailableException("Open XR returned an error code " + result + contextString, result);
-            } else if (result == XR10.XR_ERROR_API_VERSION_UNSUPPORTED) {
-                throw new RuntimeException("Open XR API version not supported " + result + contextString);
-            }
-            throw new OpenXrException("Open XR returned an error code " + result + contextString, result);
+
+        if (result == XrResult.ERROR_FORM_FACTOR_UNAVAILABLE){
+            throw new OpenXrDeviceNotAvailableException("Open XR returned an error code " + result + " " + contextString, result.getValue());
+        } else if (result == XrResult.ERROR_API_VERSION_UNSUPPORTED) {
+            throw new RuntimeException("Open XR API version not supported " + result + contextString);
         }
+        throw new OpenXrException("Open XR returned an error code " + result + " " + contextString, result.getValue());
+
     }
 
     public void destroy(){
@@ -1004,7 +960,7 @@ public class OpenXrSessionManager{
         }
         XR10.xrDestroySpace(xrAppSpace);
         if (xrDebugMessenger != null) {
-            EXTDebugUtils.xrDestroyDebugUtilsMessengerEXT(xrDebugMessenger);
+            XR10.xrDestroyDebugUtilsMessengerEXT(xrDebugMessenger);
         }
         XR10.xrDestroySession(xrSession);
         XR10.xrDestroyInstance(xrInstance);
@@ -1024,7 +980,7 @@ public class OpenXrSessionManager{
     }
 
     private record ExtensionsCheckResult(
-            PointerBuffer extensionsToLoadBuffer,
+            PointerBufferView extensionsToLoadBuffer,
             Map<String, Boolean> extensionsLoaded){
         public boolean missingOpenGL(){
             return !extensionsLoaded.get(XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
@@ -1043,8 +999,6 @@ public class OpenXrSessionManager{
             return extensionsLoaded.get(XR_MNDX_EGL_ENABLE_EXTENSION_NAME);
         }
     }
-
-    private record LayerCheckResult(PointerBuffer wantedLayers, boolean hasCoreValidationLayer){}
 
     private record Swapchain (
         XrSwapchain handle,

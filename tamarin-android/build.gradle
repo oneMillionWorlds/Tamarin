@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
+
+group = 'com.onemillionworlds'
+version = '3.0.0'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    google()
+}
+
+dependencies {
+    api 'com.onemillionworlds.tamarin:openxr-bindings-native:1.0.32-SNAPSHOT'
+    api project(':tamarin-core')
+
+    compileOnly libs.jme3.core
+    compileOnly libs.jme3.android
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+android {
+    namespace 'com.onemillionworlds.tamarin.android'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+}

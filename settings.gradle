@@ -7,7 +7,20 @@
  * in the user manual at https://docs.gradle.org/7.3.3/userguide/multi_project_builds.html
  */
 
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        id 'com.android.library' version '7.4.2'
+        id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
+    }
+}
+
 rootProject.name = 'tamarin'
 
 include 'tamarin-core'
 include 'tamarin-desktop'
+include 'tamarin-android'
