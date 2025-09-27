@@ -1,5 +1,7 @@
 package tamarin.android.openxr;
 
+import android.opengl.EGL14;
+
 import com.jme3.app.Application;
 import com.jme3.system.AppSettings;
 import com.onemillionworlds.tamarin.openxr.XrSettings;
@@ -24,14 +26,10 @@ public class XrAndroidAppState extends XrVrAppState {
     @Override
     protected void initialize(Application app){
         super.initialize(app);
-        long windowHandle;
-        if (app.getContext() instanceof LwjglWindow lwjglWindow) {
-            windowHandle = lwjglWindow.getWindowHandle();
-        }else{
-            //maybe something like this on android? (and then using the XrGraphicsBindingEGLMNDX binding)
-            //EGL14.eglGetCurrentContext()
-            throw new RuntimeException("Only LwjglWindow is supported (need to get the window handle)");
-        }
+
+        // Get the current EGL context, which is already set up by jMonkeyEngine
+        long windowHandle = EGL14.eglGetCurrentContext().getNativeHandle();
+
         AppSettings settings = app.getContext().getSettings();
 
         xrSession = OpenXrAndroidSessionManager.createOpenXrSession(windowHandle, xrSettings, settings, app.getRenderer());
