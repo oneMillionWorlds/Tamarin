@@ -20,6 +20,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrApiLayerProperties;
 import com.onemillionworlds.tamarin.openxrbindings.XrApplicationInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjection;
 import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjectionView;
+import com.onemillionworlds.tamarin.openxrbindings.XrDebugUtilsMessengerCallbackDataEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrDebugUtilsMessengerCreateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBaseHeader;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBuffer;
@@ -32,6 +33,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrFrameBeginInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrFrameEndInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrFrameState;
 import com.onemillionworlds.tamarin.openxrbindings.XrFrameWaitInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrGraphicsBindingOpenGLESAndroidKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrGraphicsRequirementsOpenGLESKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrInstanceCreateInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrPosef;
@@ -69,13 +71,8 @@ import com.onemillionworlds.tamarin.openxrbindings.memory.IntBufferView;
 import com.onemillionworlds.tamarin.openxrbindings.memory.LongBufferView;
 import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryStack;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrViewConfigurationType;
-import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil;
 import com.onemillionworlds.tamarin.openxrbindings.memory.PointerBufferView;
 
-
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -90,6 +87,8 @@ import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateApiLay
 import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateInstanceExtensionProperties;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
 import static com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil.NULL;
+
+import android.opengl.GLES20;
 
 
 public class OpenXrAndroidSessionManager {
@@ -273,7 +272,7 @@ public class OpenXrAndroidSessionManager {
                     .createFlags(0)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.utf8(xrSettings.getApplicationName()))
-                            .apiVersion(XR10Utils.XR_MAKE_VERSION(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
+                            .apiVersion(XR10Utils.xrMakeVersion(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
                     .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer().address());
 
             XrInstance.HandleBuffer pp = XrInstance.create(1,stack);
@@ -289,7 +288,7 @@ public class OpenXrAndroidSessionManager {
         try (MemoryStack stack = MemoryStack.stackGet().push()) {
             //Get headset type
             LongBufferView systemIdBuffer = stack.mallocLong(1);
-            
+
             checkResponseCode(XR10.xrGetSystem(
                     xrInstance,
                     XrSystemGetInfo.malloc(stack)
@@ -335,8 +334,33 @@ public class OpenXrAndroidSessionManager {
             LOGGER.info("The OpenXR runtime supports OpenGL " + minMajorVersion + "." + minMinorVersion
                     + " to OpenGL " + maxMajorVersion + "." + maxMinorVersion);
             // Check if OpenGL version is supported by OpenXR runtime
-            int actualMajorVersion = GL11.glGetInteger(GL30.GL_MAJOR_VERSION);
-            int actualMinorVersion = GL11.glGetInteger(GL30.GL_MINOR_VERSION);
+            // In Android, we need to parse the GL_VERSION string to get the version numbers
+            String versionString = GLES20.glGetString(GLES20.GL_VERSION);
+            LOGGER.info("OpenGL ES version: " + versionString);
+
+            int actualMajorVersion = -1;
+            int actualMinorVersion = -1;
+
+            if (versionString != null) {
+                // Extract version numbers from the string
+                // The format is typically "OpenGL ES X.Y ..."
+                String[] parts = versionString.split(" ");
+                if (parts.length >= 3) {
+                    String[] versionParts = parts[2].split("\\.");
+                    if (versionParts.length >= 2) {
+                        try {
+                            actualMajorVersion = Integer.parseInt(versionParts[0]);
+                            actualMinorVersion = Integer.parseInt(versionParts[1]);
+                        } catch (NumberFormatException e) {
+                            throw new RuntimeException("Failed to parse OpenGL ES version: " + versionString);
+                        }
+                    }
+                }
+            }
+
+            if(actualMajorVersion == -1 || actualMinorVersion == -1){
+                throw new IllegalStateException("Failed to parse OpenGL ES version: " + versionString);
+            }
 
             if (minMajorVersion > actualMajorVersion || (minMajorVersion == actualMajorVersion && minMinorVersion > actualMinorVersion)) {
                 throw new IllegalStateException(
@@ -353,7 +377,7 @@ public class OpenXrAndroidSessionManager {
             }
 
             //Bind the OpenGL context to the OpenXR instance and create the session
-            Struct<?> graphicsBinding = XrAndroidUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
+            XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding = XrAndroidUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
             XrSession.HandleBuffer sessionPointerBuffer = XrSession.create(1,stack);
             checkResponseCode(XR10.xrCreateSession(
                     xrInstance,
@@ -364,23 +388,24 @@ public class OpenXrAndroidSessionManager {
                             .systemId(systemID),
                     sessionPointerBuffer
             ));
-            xrSession = new XrSession(sessionPointerBuffer.get(0), xrInstance);
+            xrSession = new XrSession(sessionPointerBuffer.get(0));
             if (!missingXrDebug) {
                 XrDebugUtilsMessengerCreateInfoEXT ciDebugUtils = XrDebugUtilsMessengerCreateInfoEXT.calloc(stack)
                         .type$Default()
                         .messageSeverities(
-                                EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                                        EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                        EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+                                XR10Constants.XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
                         )
                         .messageTypes(
-                                EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                        EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                        EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-                                        EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT
+                                XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT
                         )
                         .userCallback((messageSeverity, messageTypes, pCallbackData, userData) -> {
                             XrDebugUtilsMessengerCallbackDataEXT callbackData = XrDebugUtilsMessengerCallbackDataEXT.create(pCallbackData);
+
                             LOGGER.warning("XR Debug Utils: " + callbackData.messageString());
                             return 0;
                         });

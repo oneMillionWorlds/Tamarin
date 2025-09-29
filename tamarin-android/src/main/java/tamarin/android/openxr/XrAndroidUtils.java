@@ -1,15 +1,20 @@
 package tamarin.android.openxr;
 
 
+import android.opengl.EGL14;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.openxrbindings.XR10;
 import com.onemillionworlds.tamarin.openxrbindings.XrApiLayerProperties;
 import com.onemillionworlds.tamarin.openxrbindings.XrExtensionProperties;
+import com.onemillionworlds.tamarin.openxrbindings.XrGraphicsBindingOpenGLESAndroidKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrQuaternionf;
 import com.onemillionworlds.tamarin.openxrbindings.XrVector3f;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrStructureType;
+import com.onemillionworlds.tamarin.openxrbindings.handles.EGLConfig;
 import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryStack;
 
 
@@ -47,7 +52,7 @@ public class XrAndroidUtils {
 
     /**
      * Allocates an {@link XrApiLayerProperties.Buffer} on the stack with the given number of layers and
-     * sets the type of each element in the buffer to {@link XR10#XR_TYPE_API_LAYER_PROPERTIES XR_TYPE_API_LAYER_PROPERTIES}.
+     * sets the type of each element in the buffer to XR_TYPE_API_LAYER_PROPERTIES.
      * <p>
      * Note that the buffer will auto free when the stack does
      *
@@ -67,77 +72,35 @@ public class XrAndroidUtils {
         return buffer;
     }
 
-    /**
-     * Appends the right <i>XrGraphicsBinding</i>** struct to the next chain of <i>sessionCreateInfo</i>.
-     * Uses the cross platform XrGraphicsBindingEGLMNDX if its available, otherwise uses the platform specific version.
-     * <p>
-     * There are 4 graphics binding structs available:
-     *
-     * <ul>
-     *     <li> XrGraphicsBindingOpenGLWin32KHR - which can only be used on Windows </li>
-     *     <li> XrGraphicsBindingOpenGLXlibKHR - Linux computers with the X11 windowing system </li>
-     *     <li> XrGraphicsBindingOpenGLWaylandKHR - theoretically Linux computers with the Wayland windowing system but actually no one </li>
-     *     <li> XrGraphicsBindingEGLMNDX - cross-platform, but also experimental and not widely supported, use with Wayland windowing system </li>
-     * </ul>
-     * @param stack The <i>MemoryStack</i> onto which this method should allocate the graphics binding struct
-     * @param window The GLFW window
-     * @param useEGL Whether this method should use XrGraphicsBindingEGLMNDX
-     * @return sessionCreateInfo (after appending a graphics binding to it)
-     * @throws IllegalStateException If the current OS and/or windowing system needs EGL, but <b>useEGL</b> is false
-     */
-    static Struct<?> createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
-        if (useEGL) {
-            long eglDisplay = XR10.glfwGetEGLDisplay();
 
-            if (eglDisplay != NULL){ //check that the egl display is actually available (even if the extension is)
-                return XrGraphicsBindingEGLMNDX.malloc(stack)
-                        .type$Default()
-                        .next(NULL)
-                        .getProcAddress(EGL.getCapabilities().eglGetProcAddress)
-                        .display(eglDisplay)
-                        .config(glfwGetEGLConfig(window))
-                        .context(glfwGetEGLContext(window));
-            }
+    static XrGraphicsBindingOpenGLESAndroidKHR createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
+        XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingOpenGLESAndroidKHR = XrGraphicsBindingOpenGLESAndroidKHR.calloc(stack);
+        graphicsBindingOpenGLESAndroidKHR.type(XrStructureType.XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR);
+        graphicsBindingOpenGLESAndroidKHR.next(NULL);
+
+        // Get the current EGL display, config, and context
+        EGLDisplay eglDisplay = EGL14.eglGetCurrentDisplay();
+        EGLContext eglContext = EGL14.eglGetCurrentContext();
+
+        graphicsBindingOpenGLESAndroidKHR.display(new com.onemillionworlds.tamarin.openxrbindings.handles.EGLDisplay(eglDisplay.getNativeHandle()));
+        graphicsBindingOpenGLESAndroidKHR.context(new com.onemillionworlds.tamarin.openxrbindings.handles.EGLContext(eglContext.getNativeHandle()));
+
+        // Get the EGL config
+        int[] configAttribs = {
+            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+            EGL14.EGL_NONE
+        };
+        android.opengl.EGLConfig[] configs = new android.opengl.EGLConfig[1];
+        int[] numConfigs = new int[1];
+        EGL14.eglChooseConfig(eglDisplay, configAttribs, 0, configs, 0, 1, numConfigs, 0);
+
+        if (numConfigs[0] <= 0 || configs[0] == null) {
+            LOGGER.warning("Failed to get EGL config");
+        } else {
+            graphicsBindingOpenGLESAndroidKHR.config(new com.onemillionworlds.tamarin.openxrbindings.handles.EGLConfig(configs[0].getNativeHandle()));
         }
-        switch (Platform.get()) {
-            case LINUX:
-                int platform = glfwGetPlatform();
-                if (platform == GLFW_PLATFORM_X11) {
-                    long display   = glfwGetX11Display();
-                    long glxConfig = glfwGetGLXFBConfig(window);
 
-                    XVisualInfo visualInfo = glXGetVisualFromFBConfig(display, glxConfig);
-                    if (visualInfo == null) {
-                        throw new IllegalStateException("Failed to get visual info");
-                    }
-                    long visualId = visualInfo.visualid();
-
-                    LOGGER.info("Using XrGraphicsBindingOpenGLXlibKHR to create the session");
-                    return XrGraphicsBindingOpenGLXlibKHR.malloc(stack)
-                                    .type$Default()
-                                    .next(NULL)
-                                    .xDisplay(display)
-                                    .visualid((int)visualId)
-                                    .glxFBConfig(glxConfig)
-                                    .glxDrawable(glXGetCurrentDrawable())
-                                    .glxContext(glfwGetGLXContext(window));
-                } else {
-                    throw new IllegalStateException(
-                            "X11 is the only Linux windowing system with explicit OpenXR support. All other Linux systems must use EGL."
-                    );
-                }
-            case WINDOWS:
-                LOGGER.info("Using XrGraphicsBindingOpenGLWin32KHR to create the session");
-                return XrGraphicsBindingOpenGLWin32KHR.malloc(stack)
-                                .type$Default()
-                                .next(NULL)
-                                .hDC(GetDC(glfwGetWin32Window(window)))
-                                .hGLRC(glfwGetWGLContext(window));
-            default:
-                throw new IllegalStateException(
-                        "Windows and Linux are the only platforms with explicit OpenXR support. All other platforms must use EGL."
-                );
-        }
+        return graphicsBindingOpenGLESAndroidKHR;
     }
 
     public static Vector3f convertOpenXRToJme(XrVector3f openxrVec) {
