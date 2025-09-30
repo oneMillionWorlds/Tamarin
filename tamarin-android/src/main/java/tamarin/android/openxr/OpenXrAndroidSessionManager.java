@@ -1,5 +1,6 @@
 package tamarin.android.openxr;
 
+import android.util.Log;
 import com.jme3.renderer.Renderer;
 import com.jme3.system.AppSettings;
 import com.jme3.texture.FrameBuffer;
@@ -44,6 +45,8 @@ import com.onemillionworlds.tamarin.openxrbindings.XrSessionBeginInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrSessionCreateInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainCreateInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageAcquireInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageBaseHeader;
+import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageOpenGLESKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageReleaseInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainImageWaitInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrSwapchainSubImage;
@@ -86,9 +89,11 @@ import java.util.logging.Logger;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateApiLayerProperties;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateInstanceExtensionProperties;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
+import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_HAND_TRACKING_EXTENSION_NAME;
 import static com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil.NULL;
 
 import android.opengl.GLES20;
+import com.onemillionworlds.tamarin.openxrbindings.thickc.ThickC;
 
 
 public class OpenXrAndroidSessionManager {
@@ -257,7 +262,6 @@ public class OpenXrAndroidSessionManager {
             }
 
             missingXrDebug = extensionsCheckResult.missingXrDebug();
-            useEglGraphicsBinding = extensionsCheckResult.useEglGraphicsBinding();
 
             if(extensionsCheckResult.missingOpenGL()) {
                 throw new IllegalStateException("OpenXR library does not provide required extension: " + XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
@@ -390,29 +394,10 @@ public class OpenXrAndroidSessionManager {
             ));
             xrSession = new XrSession(sessionPointerBuffer.get(0));
             if (!missingXrDebug) {
-                XrDebugUtilsMessengerCreateInfoEXT ciDebugUtils = XrDebugUtilsMessengerCreateInfoEXT.calloc(stack)
-                        .type$Default()
-                        .messageSeverities(
-                                XR10Constants.XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-                        )
-                        .messageTypes(
-                                XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
-                                        XR10Constants.XR_DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT
-                        )
-                        .userCallback((messageSeverity, messageTypes, pCallbackData, userData) -> {
-                            XrDebugUtilsMessengerCallbackDataEXT callbackData = XrDebugUtilsMessengerCallbackDataEXT.create(pCallbackData);
-
-                            LOGGER.warning("XR Debug Utils: " + callbackData.messageString());
-                            return 0;
-                        });
-
-                LOGGER.info("OpenXR debug utils enabled");
-                checkResponseCode(EXTDebugUtils.xrCreateDebugUtilsMessengerEXT(xrInstance, ciDebugUtils, sessionPointerBuffer));
-                xrDebugMessenger = new XrDebugUtilsMessengerEXT(sessionPointerBuffer.get(0), xrInstance);
+                // the whole java call back thing is a pain, so use thick C instead to set up the callback
+                xrDebugMessenger = ThickC.setupDebugMessenger(xrInstance, message -> {
+                    LOGGER.info("OpenXR debug message: " + message);
+                });
             }else{
                 LOGGER.info("OpenXR debug utils not available");
             }
@@ -490,7 +475,7 @@ public class OpenXrAndroidSessionManager {
             views = XrView.calloc(viewCountNumber);
 
             for(int i=0;i<viewCountNumber;i++){
-                xrViewBuffer.get(i).type(XrStructureType.XR_TYPE_VIEW);
+                views.get(i).type(XrStructureType.XR_TYPE_VIEW);
             }
 
             if (viewCountNumber != 2){
@@ -548,12 +533,10 @@ public class OpenXrAndroidSessionManager {
 
                 checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, 0, viewCountPointer, null));
                 int imageCount = viewCountPointer.get(0);
-
-                XrSwapchainImageOpenGLKHR.Buffer swapchainImageBuffer = XrUtils.fill(
-                        XrSwapchainImageOpenGLKHR.calloc(imageCount),
-                        XrSwapchainImageOpenGLKHR.TYPE,
-                        KHROpenGLEnable.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR
-                );
+                XrSwapchainImageOpenGLESKHR.Buffer swapchainImageBuffer = XrSwapchainImageOpenGLESKHR.calloc(imageCount);
+                for(int j =0; j<imageCount;j++){
+                    swapchainImageBuffer.get(j).type(XrStructureType.XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR);
+                }
 
                 checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, imageCount, viewCountPointer, XrSwapchainImageBaseHeader.create(swapchainImageBuffer.address(), swapchainImageBuffer.capacity())));
 
@@ -568,7 +551,7 @@ public class OpenXrAndroidSessionManager {
      * @return if the application should exit
      */
     private boolean pollEvents() {
-        GLFW.glfwPollEvents();
+        // android apparently doesn't require a GLFW.glfwPollEvents();
         XrEventDataBaseHeader event = readNextOpenXREvent();
         if (event == null) {
             return false;
@@ -828,10 +811,10 @@ public class OpenXrAndroidSessionManager {
         });
     }
 
-    private void glErrorCheck(String message){
-        int error = GL11.glGetError();
-        if(error != GL11.GL_NO_ERROR){
-            System.out.println("OpenGL Error: " + error + " " + message);
+    private void glErrorCheck(String contextMessage){
+        int error;
+        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
+            Log.e(OpenXrAndroidSessionManager.class.getSimpleName(), "OpenGL ES Error at " + contextMessage + ": 0x" + Integer.toHexString(error));
         }
     }
 
@@ -1014,22 +997,16 @@ public class OpenXrAndroidSessionManager {
             return !extensionsLoaded.get(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
         public boolean missingHandTracking(){
-            return !Optional.ofNullable(extensionsLoaded.get(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)).orElse(false);
+            return !Optional.ofNullable(extensionsLoaded.get(XR_EXT_HAND_TRACKING_EXTENSION_NAME)).orElse(false);
         }
 
-        /**
-         * the EGL bindings are cross-platform but not well-supported, use if available
-         */
-        public boolean useEglGraphicsBinding(){
-            return extensionsLoaded.get(XR_MNDX_EGL_ENABLE_EXTENSION_NAME);
-        }
     }
 
     private record Swapchain (
         XrSwapchain handle,
         int width,
         int height,
-        XrSwapchainImageOpenGLKHR.Buffer images
+        XrSwapchainImageOpenGLESKHR.Buffer images
     ){}
 
 }
