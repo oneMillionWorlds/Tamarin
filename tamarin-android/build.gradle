@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'maven-publish'
+    id 'org.jetbrains.dokka'
 }
 
 group = 'com.onemillionworlds'
@@ -25,11 +26,11 @@ dependencies {
 
 android {
     namespace 'com.onemillionworlds.tamarin.android'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         minSdk 24
-        targetSdk 34
+        targetSdk 35
     }
 
     compileOptions {
@@ -37,4 +38,50 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    tasks.withType(JavaCompile).configureEach {
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            // Javadoc jar is produced via Dokka (see javadocJar task below)
+        }
+    }
+}
+
+// Dokka Javadoc jar task to package HTML docs as a classifier 'javadoc'
+tasks.register('javadocJar', Jar) {
+    // Dokka V2 default task name is 'dokkaGeneratePublicationHtml'
+    def dokkaTaskName = 'dokkaGeneratePublicationHtml'
+    dependsOn tasks.named(dokkaTaskName)
+    from tasks.named(dokkaTaskName).get().outputDirectory
+    archiveClassifier.set('javadoc')
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+
+            release(MavenPublication) {
+                groupId = group
+                artifactId = 'tamarin-android'
+                version = version
+
+                from components.release
+                artifact tasks.named('javadocJar').get()
+
+                pom {
+                    name = 'Tamarin Android'
+                    description = 'VR library for JMonkeyEngine'
+                    url = 'https://github.com/oneMillionWorlds/Tamarin/wiki'
+                }
+            }
+        }
+        repositories {
+            mavenLocal()
+        }
+    }
 }
