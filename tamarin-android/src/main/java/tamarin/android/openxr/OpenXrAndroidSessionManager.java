@@ -255,10 +255,9 @@ public class OpenXrAndroidSessionManager {
         try (MemoryStack stack = MemoryStack.stackGet().push()) {
             // skip the layers check as android doesn't provide any debugging layers
             ExtensionsCheckResult extensionsCheckResult = makeExtensionsCheck(stack, xrSettings.getRequiredXrExtensions());
-            this.extensionsLoaded = extensionsCheckResult.extensionsLoaded();
-
-            for(String extension : extensionsCheckResult.extensionsLoaded().keySet()){
-                if (extensionsCheckResult.extensionsLoaded().get(extension)){
+            this.extensionsLoaded = extensionsCheckResult.getExtensionsLoaded();
+            for(String extension : extensionsCheckResult.getExtensionsLoaded().keySet()){
+                if (extensionsCheckResult.getExtensionsLoaded().get(extension)){
                     LOGGER.fine("OpenXR extension " + extension + " loaded");
                 }else{
                     LOGGER.warning("OpenXR extension " + extension + " NOT loaded");
@@ -281,7 +280,7 @@ public class OpenXrAndroidSessionManager {
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.utf8(xrSettings.getApplicationName()))
                             .apiVersion(XR10Utils.xrMakeVersion(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
-                    .enabledExtensionNames(extensionsCheckResult.extensionsToLoadBuffer().address());
+                    .enabledExtensionNames(extensionsCheckResult.getExtensionsToLoadBuffer().address());
 
             XrInstance.HandleBuffer pp = XrInstance.create(1,stack);
             checkResponseCode(XR10.xrCreateInstance(createInfo, pp));
@@ -991,12 +990,26 @@ public class OpenXrAndroidSessionManager {
         }
     }
 
-    private record ExtensionsCheckResult(
-            PointerBufferView extensionsToLoadBuffer,
-            Map<String, Boolean> extensionsLoaded){
-        public boolean missingOpenGL(){
-            return !extensionsLoaded.get(XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
+    private class ExtensionsCheckResult{
+
+        private final PointerBufferView extensionsToLoadBuffer;
+        private final Map<String, Boolean> extensionsLoaded;
+        public ExtensionsCheckResult(PointerBufferView extensionsToLoadBuffer, Map<String, Boolean> extensionsLoaded) {
+            this.extensionsToLoadBuffer = extensionsToLoadBuffer;
+            this.extensionsLoaded = extensionsLoaded;
         }
+
+        public PointerBufferView getExtensionsToLoadBuffer() {
+            return extensionsToLoadBuffer;
+        }
+
+        public Map<String, Boolean> getExtensionsLoaded() {
+            return extensionsLoaded;
+        }
+
+        public boolean missingOpenGL(){
+    return !extensionsLoaded.get(XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
+}
         public boolean missingXrDebug(){
             return !extensionsLoaded.get(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
@@ -1006,11 +1019,35 @@ public class OpenXrAndroidSessionManager {
 
     }
 
-    private record Swapchain (
-        XrSwapchain handle,
-        int width,
-        int height,
-        XrSwapchainImageOpenGLESKHR.Buffer images
-    ){}
+    private static class Swapchain{
+        private final XrSwapchain handle;
+        private final int width;
+        private final int height;
+        private final XrSwapchainImageOpenGLESKHR.Buffer images;
+
+
+        public Swapchain(XrSwapchain handle, int width, int height, XrSwapchainImageOpenGLESKHR.Buffer images) {
+            this.handle = handle;
+            this.width = width;
+            this.height = height;
+            this.images = images;
+        }
+
+        public XrSwapchain getHandle() {
+            return handle;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public int getHeight() {
+            return height;
+        }
+
+        public XrSwapchainImageOpenGLESKHR.Buffer getImages() {
+            return images;
+        }
+    }
 
 }
