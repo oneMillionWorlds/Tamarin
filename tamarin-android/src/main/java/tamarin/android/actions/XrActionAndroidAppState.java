@@ -199,7 +199,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         xrAppState = getState(XrAndroidAppState.ID, XrAndroidAppState.class);
         this.openXRGL = xrAppState.getXrSession();
         this.xrSessionHandle = openXRGL.getXrSession();
-        this.xrInstance = xrSessionHandle.getInstance();
+        this.xrInstance = openXRGL.getXrInstance();
     }
 
     @Override

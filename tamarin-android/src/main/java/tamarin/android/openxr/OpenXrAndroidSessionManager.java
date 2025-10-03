@@ -222,6 +222,10 @@ public class OpenXrAndroidSessionManager {
         return xrSession;
     }
 
+    public XrInstance getXrInstance(){
+        return xrInstance;
+    }
+
     public long getPredictedFrameTime(){
         return predictedFrameTime;
     }
