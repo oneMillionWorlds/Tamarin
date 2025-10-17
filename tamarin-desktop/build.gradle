@@ -113,6 +113,16 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
 }
 
 signing {
+    // Fallback: inject signing.keyId from environment if not provided via properties
+    if (!project.hasProperty('signing.keyId')) {
+        def envKeyId = System.getenv('SIGNING_KEY_ID')
+        if (envKeyId && envKeyId.trim()) {
+            project.ext.set('signing.keyId', envKeyId.trim())
+            logger.lifecycle("[Signing Debug] Applied signing.keyId from SIGNING_KEY_ID env var")
+        } else {
+            logger.lifecycle("[Signing Debug] No SIGNING_KEY_ID env var found")
+        }
+    }
     def ringFileProp = findProperty('signing.secretKeyRingFile')
     def keyId = findProperty('signing.keyId')
     def passSet = project.hasProperty('signing.password')
