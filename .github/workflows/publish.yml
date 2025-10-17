@@ -18,12 +18,6 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build with Gradle
-      run: ./gradlew build
-
-    - name: Prepare Central bundle
-      run: ./gradlew prepareCentralBundle
-
     - name: Decode GPG key
       run: echo "${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" | base64 --decode > ./secring.gpg
 
@@ -34,6 +28,12 @@ jobs:
         echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
         echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
         echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
+
+    - name: Build with Gradle
+      run: ./gradlew build
+
+    - name: Prepare Central bundle
+      run: ./gradlew prepareCentralBundle
     - name: Upload bundle to Central Portal
       env:
         CENTRAL_USERNAME: ${{ secrets.OSSRH_USERNAME }}
