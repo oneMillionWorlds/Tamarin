@@ -11,9 +11,6 @@ tasks.register('cleanCentralPortalStaging', Delete) {
     delete centralPortalStagingDir
 }
 
-clean.dependsOn cleanCentralPortalStaging
-
-
 // Aggregate task to publish all subproject publications to the local staging repo
 tasks.register('publishAllToCentralPortalStaging') {
     group = 'publishing'
