@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.onemillionworlds'
-version = '3.0.0'
+version = project.version
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    api 'com.onemillionworlds.tamarin:openxr-bindings-native:1.0.32-SNAPSHOT'
+    api libs.openxr.bindings.native
     api project(':tamarin-core')
 
     compileOnly libs.jme3.core
@@ -82,6 +82,10 @@ afterEvaluate {
         }
         repositories {
             mavenLocal()
+            maven {
+                name = 'CentralPortalStaging'
+                url = uri("${rootProject.buildDir}/central-portal-staging")
+            }
         }
     }
 }

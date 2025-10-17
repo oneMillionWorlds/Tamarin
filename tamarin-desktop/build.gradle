@@ -94,6 +94,12 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
         }
     }
     repositories {
+        mavenLocal()
+        maven {
+            name = 'CentralPortalStaging'
+            url = uri("${rootProject.buildDir}/central-portal-staging")
+        }
+        // Legacy Sonatype repo retained for local testing only; CI no longer uses it
         maven {
             name 'sonatype'
             url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'

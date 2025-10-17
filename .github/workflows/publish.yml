@@ -21,6 +21,9 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
+    - name: Prepare Central bundle
+      run: ./gradlew prepareCentralBundle
+
     - name: Decode GPG key
       run: echo "${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" | base64 --decode > ./secring.gpg
 
@@ -31,31 +34,35 @@ jobs:
         echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
         echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
         echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
-
-    - name: Publish package
-      run: ./gradlew publishMavenJavaPublicationToSonaTypeRepository
+    - name: Upload bundle to Central Portal
+      env:
+        CENTRAL_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        CENTRAL_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+      run: |
+        chmod +x .github/scripts/upload_central.sh
+        .github/scripts/upload_central.sh build/central-bundle.zip
 
     - name: Tag and update version
       run: |
-        # Extract current version from build.gradle
-        VERSION=$(grep "version = " build.gradle | awk -F\' '{print $2}')
+        # Extract current version from gradle.properties
+        VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2)
         echo "Current version: $VERSION"
         
         # Create and push the tag for the current version
         git tag "v$VERSION"
         git push origin "v$VERSION"
         
-        # Increment version for the next cycle
-        NEW_VERSION=$(echo $VERSION | awk -F. '{$NF = $NF + 1;} 1' OFS=.)
+        # Increment version for the next cycle (bump patch)
+        NEW_VERSION=$(echo $VERSION | awk -F. '{ $NF = $NF + 1; print $0 }' OFS='.')
         echo "New version: $NEW_VERSION"
         
-        # Update build.gradle with the new version
-        sed -i "s/version = '$VERSION'/version = '$NEW_VERSION'/" build.gradle
+        # Update gradle.properties with the new version
+        sed -i "s/^version=.*/version=$NEW_VERSION/" gradle.properties
         
         # Commit the change
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add build.gradle
+        git add gradle.properties
         git commit -m "Increment version to $NEW_VERSION [skip ci]"
         
         # Push the commit

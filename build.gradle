@@ -1,3 +1,33 @@
 
 group = 'com.onemillionworlds'
-version = '3.0.0'
+
+// --- Central Publisher API staging (no network) ---
+ext.centralPortalStagingDir = file("${buildDir}/central-portal-staging")
+
+// Aggregate task to publish all subproject publications to the local staging repo
+tasks.register('publishAllToCentralPortalStaging') {
+    group = 'publishing'
+    description = 'Publishes all module publications to the local Central Portal staging directory.'
+    dependsOn(
+        ':tamarin-core:publishMavenJavaPublicationToCentralPortalStagingRepository',
+        ':tamarin-desktop:publishMavenJavaPublicationToCentralPortalStagingRepository',
+        ':tamarin-android:publishReleasePublicationToCentralPortalStagingRepository'
+    )
+}
+
+// Zip the staging dir into a single bundle
+tasks.register('zipCentralPortalBundle', Zip) {
+    group = 'publishing'
+    description = 'Zips the Central Portal staging directory into build/central-bundle.zip'
+    dependsOn 'publishAllToCentralPortalStaging'
+    from(centralPortalStagingDir)
+    archiveFileName = 'central-bundle.zip'
+    destinationDirectory = file("${buildDir}")
+}
+
+// Main entrypoint for CI to prepare the bundle
+tasks.register('prepareCentralBundle') {
+    group = 'publishing'
+    description = 'Stages and zips artifacts ready for Central Publisher Portal upload (no network).'
+    dependsOn 'zipCentralPortalBundle'
+}
