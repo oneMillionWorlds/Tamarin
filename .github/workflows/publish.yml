@@ -41,13 +41,14 @@ jobs:
       env:
         SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       run: ./gradlew --info --stacktrace prepareCentralBundle
-    - name: Upload bundle to Central Portal
+
+    - name: Grant execute permission for upload script
+      run: chmod +x .github/scripts/upload_central.sh
+    - name: Upload bundle via Central Publisher API (USER_MANAGED)
+      run: .github/scripts/upload_central.sh "android-native/build/central-bundle.zip"
       env:
         CENTRAL_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         CENTRAL_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-      run: |
-        chmod +x .github/scripts/upload_central.sh
-        .github/scripts/upload_central.sh build/central-bundle.zip
 
     - name: Tag and update version
       run: |
