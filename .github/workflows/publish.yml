@@ -26,11 +26,12 @@ jobs:
 
     - name: Create gradle.properties
       run: |
-        echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties
-        echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties
-        echo "signing.secretKeyRingFile=$HOME/secring.gpg" >> gradle.properties
-        echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
-        echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
+        mkdir -p ~/.gradle
+        echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> ~/.gradle/gradle.properties
+        echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> ~/.gradle/gradle.properties
+        echo "signing.secretKeyRingFile=$HOME/secring.gpg" >> ~/.gradle/gradle.properties
+        echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> ~/.gradle/gradle.properties
+        echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> ~/.gradle/gradle.properties
 
     - name: Build with Gradle
       env:
