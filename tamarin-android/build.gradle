@@ -2,6 +2,7 @@ plugins {
     id 'com.android.library'
     id 'maven-publish'
     id 'org.jetbrains.dokka'
+    id 'signing'
 }
 
 group = 'com.onemillionworlds'
@@ -76,7 +77,25 @@ afterEvaluate {
                 pom {
                     name = 'Tamarin Android'
                     description = 'VR library for JMonkeyEngine'
-                    url = 'https://github.com/oneMillionWorlds/Tamarin/wiki'
+                    url = 'https://github.com/oneMillionWorlds/Tamarin'
+                    licenses {
+                        license {
+                            name = 'New BSD (3-clause) License'
+                            url = 'http://opensource.org/licenses/BSD-3-Clause'
+                        }
+                    }
+                    scm {
+                        connection = 'git@github.com:oneMillionWorlds/Tamarin.git'
+                        developerConnection = 'git@github.com:oneMillionWorlds/Tamarin.git'
+                        url = 'https://github.com/oneMillionWorlds/Tamarin'
+                    }
+                    developers {
+                        developer {
+                            id = 'RichardTingle'
+                            name = 'Richard Tingle (aka richtea)'
+                            email = 'support@oneMillionWorlds.com'
+                        }
+                    }
                 }
             }
         }
@@ -88,4 +107,30 @@ afterEvaluate {
             }
         }
     }
+}
+
+
+// Signing configuration for Android publication
+signing {
+    // Fallback: inject signing.keyId from environment if not provided via properties
+    if (!project.hasProperty('signing.keyId')) {
+        def envKeyId = System.getenv('SIGNING_KEY_ID')
+        if (envKeyId && envKeyId.trim()) {
+            project.ext.set('signing.keyId', envKeyId.trim())
+            logger.lifecycle("[Signing Debug] Applied signing.keyId from SIGNING_KEY_ID env var")
+        } else {
+            logger.lifecycle("[Signing Debug] No SIGNING_KEY_ID env var found")
+        }
+    }
+    def ringFileProp = findProperty('signing.secretKeyRingFile')
+    def keyId = findProperty('signing.keyId')
+    def passSet = project.hasProperty('signing.password')
+    if (ringFileProp) {
+        def f = file(ringFileProp)
+        logger.lifecycle("[Signing Debug] secretKeyRingFile='${f}' exists=${f.exists()} keyIdSet=${keyId != null} passSet=${passSet}")
+    } else {
+        logger.lifecycle("[Signing Debug] secretKeyRingFile is NOT set. keyIdSet=${keyId != null} passSet=${passSet}")
+    }
+    // Sign all publications to avoid configuration-time lookup issues
+    sign publishing.publications
 }

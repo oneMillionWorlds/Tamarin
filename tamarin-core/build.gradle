@@ -5,6 +5,8 @@ plugins {
     id 'signing'
 }
 
+group = 'com.onemillionworlds'
+
 repositories {
     mavenCentral()
 }
