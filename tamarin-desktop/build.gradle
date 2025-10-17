@@ -4,6 +4,8 @@ plugins {
     id 'signing'
 }
 
+group = 'com.onemillionworlds'
+
 repositories {
     mavenCentral()
 }
@@ -63,7 +65,7 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
     publications {
         mavenJava(MavenPublication) {
             groupId = "${group}"
-            artifactId = 'tamarin-core'
+            artifactId = 'tamarin'
             version = "${version}"
 
             from components.java

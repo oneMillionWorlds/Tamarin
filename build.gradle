@@ -4,11 +4,22 @@ group = 'com.onemillionworlds'
 // --- Central Publisher API staging (no network) ---
 ext.centralPortalStagingDir = file("${buildDir}/central-portal-staging")
 
+// Clean the staging repo to avoid stale artifacts from previous runs
+tasks.register('cleanCentralPortalStaging', Delete) {
+    group = 'publishing'
+    description = 'Deletes the local Central Portal staging directory.'
+    delete centralPortalStagingDir
+}
+
+clean.dependsOn cleanCentralPortalStaging
+
+
 // Aggregate task to publish all subproject publications to the local staging repo
 tasks.register('publishAllToCentralPortalStaging') {
     group = 'publishing'
     description = 'Publishes all module publications to the local Central Portal staging directory.'
     dependsOn(
+        'cleanCentralPortalStaging',
         ':tamarin-core:publishMavenJavaPublicationToCentralPortalStagingRepository',
         ':tamarin-desktop:publishMavenJavaPublicationToCentralPortalStagingRepository',
         ':tamarin-android:publishReleasePublicationToCentralPortalStagingRepository'
@@ -20,6 +31,7 @@ tasks.register('zipCentralPortalBundle', Zip) {
     group = 'publishing'
     description = 'Zips the Central Portal staging directory into build/central-bundle.zip'
     dependsOn 'publishAllToCentralPortalStaging'
+    mustRunAfter 'cleanCentralPortalStaging'
     from(centralPortalStagingDir)
     archiveFileName = 'central-bundle.zip'
     destinationDirectory = file("${buildDir}")
