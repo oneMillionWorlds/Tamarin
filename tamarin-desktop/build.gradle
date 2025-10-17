@@ -113,5 +113,14 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
 }
 
 signing {
+    def ringFileProp = findProperty('signing.secretKeyRingFile')
+    def keyId = findProperty('signing.keyId')
+    def passSet = project.hasProperty('signing.password')
+    if (ringFileProp) {
+        def f = file(ringFileProp)
+        logger.lifecycle("[Signing Debug] secretKeyRingFile='${f}' exists=${f.exists()} keyIdSet=${keyId != null} passSet=${passSet}")
+    } else {
+        logger.lifecycle("[Signing Debug] secretKeyRingFile is NOT set. keyIdSet=${keyId != null} passSet=${passSet}")
+    }
     sign publishing.publications.mavenJava
 }
