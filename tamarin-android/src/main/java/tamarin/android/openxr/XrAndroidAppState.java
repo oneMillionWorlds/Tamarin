@@ -21,6 +21,7 @@ public class XrAndroidAppState extends XrVrAppState {
     }
     public XrAndroidAppState(XrSettings xrSettings){
         super(xrSettings);
+        xrSettings.addRequiredXrExtension("XR_KHR_opengl_es_enable"); //openGL support see KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME
     }
 
     @Override

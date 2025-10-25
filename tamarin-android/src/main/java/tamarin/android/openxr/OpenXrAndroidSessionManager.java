@@ -17,12 +17,9 @@ import com.onemillionworlds.tamarin.openxr.XrVrMode;
 import com.onemillionworlds.tamarin.openxrbindings.XR10;
 import com.onemillionworlds.tamarin.openxrbindings.XR10Constants;
 import com.onemillionworlds.tamarin.openxrbindings.XR10Utils;
-import com.onemillionworlds.tamarin.openxrbindings.XrApiLayerProperties;
 import com.onemillionworlds.tamarin.openxrbindings.XrApplicationInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjection;
 import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjectionView;
-import com.onemillionworlds.tamarin.openxrbindings.XrDebugUtilsMessengerCallbackDataEXT;
-import com.onemillionworlds.tamarin.openxrbindings.XrDebugUtilsMessengerCreateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBaseHeader;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBuffer;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataEventsLost;
@@ -76,6 +73,7 @@ import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryStack;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrViewConfigurationType;
 import com.onemillionworlds.tamarin.openxrbindings.memory.PointerBufferView;
 
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -86,7 +84,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateApiLayerProperties;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateInstanceExtensionProperties;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
 import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_HAND_TRACKING_EXTENSION_NAME;
@@ -98,7 +95,7 @@ import com.onemillionworlds.tamarin.openxrbindings.thickc.ThickC;
 
 public class OpenXrAndroidSessionManager {
 
-    public static final String XR_KHR_OPENGL_ENABLE_EXTENSION_NAME = "XR_KHR_opengl_enable";
+    public static final String XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME = "XR_KHR_opengl_es_enable";
 
     /**
      * In pixels the width of the swapchain (aka the width of the eye-screen)
@@ -267,7 +264,7 @@ public class OpenXrAndroidSessionManager {
             missingXrDebug = extensionsCheckResult.missingXrDebug();
 
             if(extensionsCheckResult.missingOpenGL()) {
-                throw new IllegalStateException("OpenXR library does not provide required extension: " + XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
+                throw new IllegalStateException("OpenXR library does not provide required extension: " + XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME);
             }
             missingHandTracking = extensionsCheckResult.missingHandTracking();
 
@@ -277,10 +274,14 @@ public class OpenXrAndroidSessionManager {
                     .type$Default()
                     .next(NULL)
                     .createFlags(0)
+                    .enabledApiLayerCount(0)
+                    .enabledApiLayerNames(NULL)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.utf8(xrSettings.getApplicationName()))
                             .apiVersion(XR10Utils.xrMakeVersion(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
+                    .enabledExtensionCount(extensionsCheckResult.getNumberOfExtensionsToLoad())
                     .enabledExtensionNames(extensionsCheckResult.getExtensionsToLoadBuffer().address());
+
 
             XrInstance.HandleBuffer pp = XrInstance.create(1,stack);
             checkResponseCode(XR10.xrCreateInstance(createInfo, pp));
@@ -1007,9 +1008,13 @@ public class OpenXrAndroidSessionManager {
             return extensionsLoaded;
         }
 
+        public int getNumberOfExtensionsToLoad() {
+            return (int)extensionsLoaded.values().stream().filter(b -> b).count();
+        }
+
         public boolean missingOpenGL(){
-    return !extensionsLoaded.get(XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
-}
+            return !extensionsLoaded.get(XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME);
+        }
         public boolean missingXrDebug(){
             return !extensionsLoaded.get(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }

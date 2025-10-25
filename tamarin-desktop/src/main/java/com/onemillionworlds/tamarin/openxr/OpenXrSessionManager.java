@@ -262,7 +262,7 @@ public class OpenXrSessionManager{
             useEglGraphicsBinding = extensionsCheckResult.useEglGraphicsBinding();
 
             if(extensionsCheckResult.missingOpenGL()) {
-                throw new IllegalStateException("OpenXR library does not provide required extension: " + XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
+                throw new IllegalStateException("OpenXR library does not provide required extension: " +   XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
             }
             missingHandTracking = extensionsCheckResult.missingHandTracking();
 

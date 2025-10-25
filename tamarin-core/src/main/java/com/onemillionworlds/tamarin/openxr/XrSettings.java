@@ -54,7 +54,6 @@ public class XrSettings{
     public XRVersion xrApiVersion = new XRVersion(1, 0, 43);
 
     public XrSettings(){
-        requiredXrExtensions.add("XR_KHR_opengl_enable"); //openGL support see KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_debug_utils"); // see EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME
         requiredXrExtensions.add("XR_MNDX_egl_enable"); //cross platform openGL support (not well supported yet but a good idea). See MNDXEGLEnable.XR_MNDX_EGL_ENABLE_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_hand_tracking"); //bones. See EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
