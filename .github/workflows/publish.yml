@@ -61,8 +61,19 @@ jobs:
         git tag "v$VERSION"
         git push origin "v$VERSION"
         
-        # Increment version for the next cycle (bump patch)
-        NEW_VERSION=$(echo $VERSION | awk -F. '{ $NF = $NF + 1; print $0 }' OFS='.')
+        # Increment version for the next cycle
+        # If version has a pre-release like 3.0.1-alpha1, increment the trailing number -> 3.0.1-alpha2
+        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[A-Za-z]+[0-9]+$ ]]; then
+          BASE="${VERSION%%-*}"
+          SUFFIX="${VERSION#*-}"
+          PREFIX="${SUFFIX%%[0-9]*}"
+          NUMBER="${SUFFIX#$PREFIX}"
+          NEW_NUMBER=$((10#$NUMBER + 1))
+          NEW_VERSION="$BASE-$PREFIX$NEW_NUMBER"
+        else
+          # Fallback: bump the last numeric segment (patch)
+          NEW_VERSION=$(echo $VERSION | awk -F. '{ $NF = $NF + 1; print $0 }' OFS='.')
+        fi
         echo "New version: $NEW_VERSION"
         
         # Update gradle.properties with the new version
