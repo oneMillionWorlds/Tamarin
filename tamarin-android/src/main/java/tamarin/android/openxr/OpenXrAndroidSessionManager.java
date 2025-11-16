@@ -311,12 +311,14 @@ public class OpenXrAndroidSessionManager {
                 throw new IllegalStateException("No compatible headset detected");
             }
             LOGGER.fine("Headset found with System ID: " + systemID);
+            String systemName = getSystemName();
+            LOGGER.info("systemName: " + systemName);
         }
     }
 
     public String getSystemName(){
         try (MemoryStack stack = MemoryStack.stackGet().push()){
-            XrSystemProperties systemProperties = XrSystemProperties.malloc(stack)
+            XrSystemProperties systemProperties = XrSystemProperties.calloc(stack)
                     .type(XrStructureType.XR_TYPE_SYSTEM_PROPERTIES);
             checkResponseCode(XR10.xrGetSystemProperties(xrInstance, systemID, systemProperties));
             return systemProperties.systemNameString();
@@ -958,7 +960,7 @@ public class OpenXrAndroidSessionManager {
         } else if (result == XrResult.ERROR_API_VERSION_UNSUPPORTED) {
             throw new RuntimeException("Open XR API version not supported " + result + contextString);
         }
-        throw new OpenXrException("Open XR returned an error code " + result + " " + contextString, result.getValue());
+        throw new OpenXrException("Open XR returned an error code " + result + " " + contextString + "(" + result.getValue() + ")", result.getValue());
 
     }
 
