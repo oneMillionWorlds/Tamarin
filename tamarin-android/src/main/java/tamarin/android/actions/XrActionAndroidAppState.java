@@ -367,21 +367,33 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 for(int i = 0; i < suggestedBindings.size(); i++){
                     Map.Entry<SuggestedBindingsProfileView.ActionData, String> actionAndBinding = suggestedBindingIterator.next();
                     LongBufferView bindingHandleBuffer = BufferUtils.createLongBufferView(1);
-                    withResponseCodeLogging("xrStringToPath:" + actionAndBinding.getValue(), XR10.xrStringToPath(xrInstance, stack.utf8(actionAndBinding.getValue()), bindingHandleBuffer));
+                    checkResponseCode("xrStringToPath:" + actionAndBinding.getValue(), XR10.xrStringToPath(xrInstance, stack.utf8(actionAndBinding.getValue()), bindingHandleBuffer));
 
                     XrAction action = actions.get(actionAndBinding.getKey().getActionSet()).get(actionAndBinding.getKey().getActionName());
-                    suggestedBindingsBuffer.position(i);
-                    suggestedBindingsBuffer.action(action);
-                    suggestedBindingsBuffer.binding(bindingHandleBuffer.get(0));
+                    if(action == null){
+                        throw new RuntimeException("Handle for " + actionAndBinding.getKey().getActionName() + " is (java) null");
+                    }
+                    if(action.getRawHandle() == 0L){
+                        throw new RuntimeException("Handle for " + actionAndBinding.getKey().getActionName() + " is (c) null");
+                    }
+                    suggestedBindingsBuffer.get(i).action(action);
+                    suggestedBindingsBuffer.get(i).binding(bindingHandleBuffer.get(0));
+
                 }
                 suggestedBindingsBuffer.position(0); //reset ready for reading
 
                 XrInteractionProfileSuggestedBinding xrInteractionProfileSuggestedBinding = XrInteractionProfileSuggestedBinding.calloc(stack)
                         .type$Default()
                         .interactionProfile(deviceProfileHandle)
+                        .countSuggestedBindings(suggestedBindings.size())
                         .suggestedBindings(suggestedBindingsBuffer);
 
-                withResponseCodeLogging("xrSuggestInteractionProfileBindings", XR10.xrSuggestInteractionProfileBindings(xrInstance, xrInteractionProfileSuggestedBinding));
+                try{
+                    checkResponseCode("xrSuggestInteractionProfileBindings: " + profile.getProfileName(), XR10.xrSuggestInteractionProfileBindings(xrInstance, xrInteractionProfileSuggestedBinding));
+                }catch (RuntimeException e){
+                    LOGGER.warning("Problem with " + profile.getProfileName() + " => " + xrInteractionProfileSuggestedBinding);
+                    throw e;
+                }
             }
 
             XrActionSet.HandleBuffer actionSetsBuffer = XrActionSet.create(actionSets.size(), stack);
@@ -395,7 +407,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             XrSessionActionSetsAttachInfo actionSetsAttachInfo = XrSessionActionSetsAttachInfo.create();
             actionSetsAttachInfo.type$Default();
             actionSetsAttachInfo.actionSets(actionSetsBuffer);
-            withResponseCodeLogging("xrAttachSessionActionSets", XR10.xrAttachSessionActionSets(xrSessionHandle, actionSetsAttachInfo));
+            checkResponseCode("xrAttachSessionActionSets", XR10.xrAttachSessionActionSets(xrSessionHandle, actionSetsAttachInfo));
 
             setActiveActionSets(startingActionSets);
 
@@ -440,12 +452,9 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         this.xrActionsSyncInfo.type$Default();
         this.xrActionsSyncInfo.countActiveActionSets(activeActionSets.size());
         XrActiveActionSet.Buffer activeActionSetsBuffer = XrActiveActionSet.calloc(activeActionSets.size());
-        for(XrActionSet activeActionSet : activeActionSets){
-            activeActionSetsBuffer.actionSet(activeActionSet);
-        }
         for(int i=0; i<activeActionSets.size(); i++){
             activeActionSetsBuffer.position(i);
-            activeActionSetsBuffer.actionSet(activeActionSets.get(i));
+            activeActionSetsBuffer.get(i).actionSet(activeActionSets.get(i));
         }
         activeActionSetsBuffer.position(0);
         this.xrActionsSyncInfo.activeActionSets(activeActionSetsBuffer);
@@ -841,7 +850,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         try(MemoryStack stack = MemoryStack.stackGet().push()){
 
             LongBufferView pathHandleBuffer = stack.callocLong(1);
-            withResponseCodeLogging("xrStringToPath:"+path, XR10.xrStringToPath(xrInstance, stack.utf8(path), pathHandleBuffer));
+            checkResponseCode("xrStringToPath:"+path, XR10.xrStringToPath(xrInstance, stack.utf8(path), pathHandleBuffer));
             long pathHandle = pathHandleBuffer.get(0);
             if (cache){
                 pathCache.put(path, pathHandle);

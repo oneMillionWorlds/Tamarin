@@ -34,6 +34,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrFrameWaitInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrGraphicsBindingOpenGLESAndroidKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrGraphicsRequirementsOpenGLESKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrInstanceCreateInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrInstanceCreateInfoAndroidKHR;
 import com.onemillionworlds.tamarin.openxrbindings.XrPosef;
 import com.onemillionworlds.tamarin.openxrbindings.XrQuaternionf;
 import com.onemillionworlds.tamarin.openxrbindings.XrRect2Di;
@@ -90,6 +91,8 @@ import static com.onemillionworlds.tamarin.openxrbindings.XR10Constants.XR_EXT_H
 import static com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil.NULL;
 
 import android.opengl.GLES20;
+
+import com.onemillionworlds.tamarin.openxrbindings.thickc.InitialisationData;
 import com.onemillionworlds.tamarin.openxrbindings.thickc.ThickC;
 
 
@@ -183,10 +186,10 @@ public class OpenXrAndroidSessionManager {
         DESIRED_SWAPCHAIN_FORMATS.put(GL_RGB10_A2, Image.Format.RGB10A2);
     }
 
-    public static OpenXrAndroidSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
+    public static OpenXrAndroidSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings, Renderer renderer, InitialisationData initialisationData){
         OpenXrAndroidSessionManager openXrSessionManager = new OpenXrAndroidSessionManager(xrSettings, regularSettings, renderer);
         openXrSessionManager.window = windowHandle;
-        openXrSessionManager.createOpenXRInstance();
+        openXrSessionManager.createOpenXRInstance(initialisationData);
         openXrSessionManager.determineOpenXRSystem();
         openXrSessionManager.initializeAndBindOpenGL();
         openXrSessionManager.createXRReferenceSpace();
@@ -248,7 +251,7 @@ public class OpenXrAndroidSessionManager {
         this.xrVrBlendMode = xrVrBlendMode;
     }
 
-    private void createOpenXRInstance() {
+    private void createOpenXRInstance(InitialisationData initialisationData) {
         try (MemoryStack stack = MemoryStack.stackGet().push()) {
             // skip the layers check as android doesn't provide any debugging layers
             ExtensionsCheckResult extensionsCheckResult = makeExtensionsCheck(stack, xrSettings.getRequiredXrExtensions());
@@ -269,10 +272,17 @@ public class OpenXrAndroidSessionManager {
             missingHandTracking = extensionsCheckResult.missingHandTracking();
 
             XrSettings.XRVersion xrVersion = xrSettings.xrApiVersion;
+            // should this be a XrInstanceCreateInfoAndroidKHR?
+
+            XrInstanceCreateInfoAndroidKHR androidKHR = XrInstanceCreateInfoAndroidKHR.calloc(stack);
+            androidKHR.type$Default();
+            androidKHR.applicationActivity(initialisationData.activityContext);
+            androidKHR.applicationVM(initialisationData.javaVm);
+            androidKHR.next(NULL);
 
             XrInstanceCreateInfo createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type$Default()
-                    .next(NULL)
+                    .next(androidKHR.address())
                     .createFlags(0)
                     .enabledApiLayerCount(0)
                     .enabledApiLayerNames(NULL)
@@ -475,7 +485,7 @@ public class OpenXrAndroidSessionManager {
             }
 
 
-            checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType,0, viewCountPointer, viewConfigs));
+            checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType,numberOfViews, viewCountPointer, viewConfigs));
             int viewCountNumber = viewCountPointer.get(0);
 
             views = XrView.calloc(viewCountNumber);
@@ -498,6 +508,7 @@ public class OpenXrAndroidSessionManager {
             for (int i = 0; i < swapchainFormats.getBufferView().capacity(); i++) {
                 availableFormats.add((int) swapchainFormats.get(i));
             }
+            LOGGER.info("AvailableSwapchainFormats:" + availableFormats);
 
             for (int glFormatIter : DESIRED_SWAPCHAIN_FORMATS.keySet()) {
                 if (availableFormats.contains(glFormatIter)){
@@ -515,7 +526,10 @@ public class OpenXrAndroidSessionManager {
             swapchains = new Swapchain[viewCountNumber];
             for (int i = 0; i < viewCountNumber; i++) {
                 XrViewConfigurationView viewConfig = viewConfigs.get(i);
-
+                LOGGER.info("Before create swap chain");
+                LOGGER.info("glColorFormat:" + glColorFormat);
+                LOGGER.info("width:" + viewConfig.recommendedImageRectWidth());
+                LOGGER.info("height:" + viewConfig.recommendedImageRectHeight());
                 XrSwapchainCreateInfo swapchainCreateInfo = XrSwapchainCreateInfo.malloc(stack)
                         .type$Default()
                         .next(NULL)
@@ -960,7 +974,7 @@ public class OpenXrAndroidSessionManager {
         } else if (result == XrResult.ERROR_API_VERSION_UNSUPPORTED) {
             throw new RuntimeException("Open XR API version not supported " + result + contextString);
         }
-        throw new OpenXrException("Open XR returned an error code " + result + " " + contextString + "(" + result.getValue() + ")", result.getValue());
+        throw new OpenXrException("Open XR returned an error code " + result + "(" + result.getValue() + ")" + " " + contextString, result.getValue());
 
     }
 
