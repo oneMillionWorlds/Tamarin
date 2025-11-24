@@ -25,9 +25,6 @@ class SingleOccurrenceLogTest {
 
     @BeforeEach
     void setUp() {
-        // Ensure suppression is enabled by default for tests unless explicitly disabled
-        SingleOccurrenceLog.SUPPRESS_REPEATED_LOGS = true;
-
         logger = Logger.getLogger("test." + getClass().getName() + "." + System.nanoTime());
         logger.setUseParentHandlers(false);
         logger.setLevel(Level.ALL);
@@ -62,9 +59,8 @@ class SingleOccurrenceLogTest {
 
     @Test
     void suppressionCanBeDisabled() {
-        SingleOccurrenceLog.SUPPRESS_REPEATED_LOGS = false;
         SingleOccurrenceLog sol = new SingleOccurrenceLog(logger);
-
+        sol.allowRepeatedLogs();
         sol.info("Repeat");
         sol.info("Repeat");
         sol.info("Repeat");

@@ -9,7 +9,7 @@ import java.util.logging.Logger;
  * This class is used to suppress multiple identical instances of the same log
  */
 public class SingleOccurrenceLog {
-    public static boolean SUPPRESS_REPEATED_LOGS = true;
+    public boolean suppressRepeatedLogs = true;
 
     private final Logger baseLogger;
 
@@ -19,8 +19,12 @@ public class SingleOccurrenceLog {
         this.baseLogger = baseLogger;
     }
 
+    public void allowRepeatedLogs(){
+        suppressRepeatedLogs = false;
+    }
+
     private boolean shouldLog(String message) {
-        if (!SUPPRESS_REPEATED_LOGS) {
+        if (!suppressRepeatedLogs) {
             return true;
         }
         // add() returns true if this set did not already contain the specified element

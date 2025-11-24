@@ -68,15 +68,12 @@ import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil;
 import tamarin.android.openxr.OpenXrAndroidSessionManager;
 import tamarin.android.openxr.XrAndroidAppState;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +81,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.onemillionworlds.tamarin.logging.SingleOccurrenceLog;
 
 import static com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil.NULL;
 
@@ -105,13 +104,11 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         identityPose.orientation(orientation);
     }
 
-    boolean suppressRepeatedErrors = true;
-
-    Set<String> errorsPreviouslyReported = new HashSet<>();
-
     public static final String ID = XrActionBaseAppState.ID;
 
     private static final Logger LOGGER = Logger.getLogger(XrActionAndroidAppState.class.getName());
+
+    private final SingleOccurrenceLog singleLog = new SingleOccurrenceLog(LOGGER);
 
     /**
      * A map of the action -> input -> handle for action space. Typically one for each hand.
@@ -487,21 +484,9 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     private boolean withResponseCodeLogging(String eventText, XrResult errorCode){
         //error code 0 is ultra common and means all is well. Don't flood the logs with it
         if (errorCode != XrResult.SUCCESS){
-
             String message = eventText + " returned error code " + errorCode;
-            if (!suppressRepeatedErrors || !errorsPreviouslyReported.contains(message)){
-                errorsPreviouslyReported.add(message);
-
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                new Throwable(message).printStackTrace(pw);
-                LOGGER.warning(sw.toString());
-
-                if (suppressRepeatedErrors){
-                    LOGGER.warning("Further identical errors will be suppressed. If you don't want that call doNotSupressRepeatedErrors()");
-                }
-            }
-
+            // Log the stack trace once per unique message using SingleOccurrenceLog
+            singleLog.log(Level.WARNING, message, new Throwable(message));
             return false;
         }
         return true;
@@ -517,7 +502,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
     @Override
     public void doNotSuppressRepeatedErrors(){
-        suppressRepeatedErrors = false;
+        singleLog.allowRepeatedLogs();
     }
 
     @Override
