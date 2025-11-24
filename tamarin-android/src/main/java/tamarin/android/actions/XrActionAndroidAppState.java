@@ -108,7 +108,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
     private static final Logger LOGGER = Logger.getLogger(XrActionAndroidAppState.class.getName());
 
-    private final SingleOccurrenceLog singleLog = new SingleOccurrenceLog(LOGGER);
+    private static final SingleOccurrenceLog SINGLE_LOGGER = new SingleOccurrenceLog(LOGGER);
 
     /**
      * A map of the action -> input -> handle for action space. Typically one for each hand.
@@ -486,7 +486,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         if (errorCode != XrResult.SUCCESS){
             String message = eventText + " returned error code " + errorCode;
             // Log the stack trace once per unique message using SingleOccurrenceLog
-            singleLog.log(Level.WARNING, message, new Throwable(message));
+            SINGLE_LOGGER.log(Level.WARNING, message, new Throwable(message));
             return false;
         }
         return true;
@@ -502,7 +502,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
     @Override
     public void doNotSuppressRepeatedErrors(){
-        singleLog.allowRepeatedLogs();
+        SINGLE_LOGGER.allowRepeatedLogs();
     }
 
     @Override
@@ -661,6 +661,11 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 Map<HandJoint, BonePose> results = new HashMap<>();
 
                 withResponseCodeLogging("Get joint locations", XR10.xrLocateHandJointsEXT(handTrackers.get(handSide), locateInfo, handJointLocations));
+
+                if(handJointLocations.isActive() == XR10Constants.XR_FALSE){
+                    SINGLE_LOGGER.info("xrLocateHandJointsEXT reporting inactive hand tracking");
+                    return Optional.empty();
+                }
 
                 XrHandJointLocationEXT.Buffer xrHandJointLocationEXTS = handJointLocations.jointLocations();
 

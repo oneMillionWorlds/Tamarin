@@ -17,6 +17,7 @@ import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.lemursupport.VrLemurAppState;
+import com.onemillionworlds.tamarin.logging.SingleOccurrenceLog;
 import com.onemillionworlds.tamarin.math.RotationalVelocity;
 import com.onemillionworlds.tamarin.openxr.DesktopSimulatingXrAppState;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
@@ -30,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 /**
  * An app state that can control multiple hands (realistically 1 or 2 at once). Once bound to the state the hands will
@@ -39,6 +41,10 @@ import java.util.Optional;
  */
 public class VRHandsAppState extends BaseAppState{
     public static final String ID = "VRHandsAppState";
+
+    private static final Logger LOGGER = Logger.getLogger(VRHandsAppState.class.getName());
+
+    private static final SingleOccurrenceLog singleOccurrenceLog = new SingleOccurrenceLog(LOGGER);
 
     XrActionBaseAppState actionState;
 
@@ -145,7 +151,7 @@ public class VRHandsAppState extends BaseAppState{
                     boundHand.updateVelocityData(pose.velocity(), new RotationalVelocity(pose.angularVelocity()));
                 });
 
-                Optional<Map<HandJoint, BonePose>> boneStancesOpt = getOrSynthesisBonePositions(boundHand);
+                Optional<Map<HandJoint, BonePose>> boneStancesOpt = getOrSynthesiseBonePositions(boundHand);
 
                 boneStancesOpt.ifPresent(boneStances -> {
                     boundHand.update(tpf, boneStances);
@@ -166,19 +172,59 @@ public class VRHandsAppState extends BaseAppState{
         }
     }
 
+    /**
+     * @deprecated Use {@link this#getOrSynthesiseBonePositions}
+     */
+    @Deprecated(since="3.0", forRemoval = true)
     public Optional<Map<HandJoint, BonePose>> getOrSynthesisBonePositions(BoundHand boundHand){
-        if(xrAppState.checkExtensionLoaded("XR_EXT_hand_tracking")){ // EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
-            return actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
-        } else{
-            //real hand tracking is not available, so we need to synthesise it
-            float grabStrength = boundHand.getFunctionOpt(GrabPickingFunction.class)
-                    .map(GrabPickingFunction::getGrabAction)
-                    .map(a -> actionState.getFloatActionState(a, boundHand.getHandSide().restrictToInputString))
-                    .map(FloatActionState::getState)
-                    .orElse(0f);
+        return getOrSynthesiseBonePositions(boundHand);
+    }
 
-            return Optional.of(SyntheticBonePositions.synthesizeBonePositions(boundHand.getHandSide(), grabStrength));
+    /**
+     * Obtains bone positions for the joints of the hand. Note that these joints are
+     * <b>not parented</b>, meaning each bone should move independently rather than
+     * relative to its parent.
+     *
+     * <p>Tamarin uses a series of approaches to determine bone positions:</p>
+     * <ul>
+     *     <li>If available, it uses the bones provided by the OpenXR runtime
+     *         (requires the <code>XR_EXT_hand_tracking</code> extension).</li>
+     *     <li>If that is not available, it uses grab strength to simulate plausible
+     *         hand positions.</li>
+     *     <li>If neither are available, it provides static hands.</li>
+     * </ul>
+     *
+     * @param boundHand the hand to read joint positions for
+     * @return the bone positions
+     */
+    public Optional<Map<HandJoint, BonePose>> getOrSynthesiseBonePositions(BoundHand boundHand){
+        if(actionState.isReady()){
+            return Optional.empty();
         }
+
+        if(xrAppState.checkExtensionLoaded("XR_EXT_hand_tracking")){ // EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
+            Optional<Map<HandJoint, BonePose>> skeleton = actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
+            if(skeleton.isPresent()){
+                return skeleton;
+            }
+        }
+
+        Optional<Float> grabStrengthOpt = boundHand.getFunctionOpt(GrabPickingFunction.class)
+                .map(GrabPickingFunction::getGrabAction)
+                .map(a -> actionState.getFloatActionState(a, boundHand.getHandSide().restrictToInputString))
+                .map(FloatActionState::getState);
+
+        if(grabStrengthOpt.isPresent()) {
+            singleOccurrenceLog.info("Real bone positions not available, using grab strength to simulate");
+        } else{
+            singleOccurrenceLog.info("Real bones and grab strength not available, using static hands");
+        }
+
+        //real hand tracking is not available, so we need to synthesise it
+        float grabStrength = grabStrengthOpt.orElse(0f);
+
+        return Optional.of(SyntheticBonePositions.synthesizeBonePositions(boundHand.getHandSide(), grabStrength));
+
     }
 
     /**
