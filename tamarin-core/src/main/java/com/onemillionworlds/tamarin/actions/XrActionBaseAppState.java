@@ -25,35 +25,27 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     }
 
     /**
-     * Gets the details of the physical button that is bound to the action. If multiple buttons are bound then multiple
-     * results will be returned.
-     * <p>
-     *  This is useful for things like tutorial messages like "press the ... to fire" where ... can be infered
-     *  based on the result of this call. This means your tutorial messages can work for all devices, even ones that
-     *  did not exist when your application was released.
-     * </p>
-     *
-     * <p>Example raw value outputs:</p>
-     * <ul>
-     *     <li>/user/hand/right/input/joystick/click</li>
-     *     <li>/user/hand/left/input/joystick/y</li>
-     *     <li>/user/hand/right/input/a/touch</li>
-     *     <li>/user/hand/right/input/a/click</li>
-     * </ul>
+     * Given the action handle (e.g. a logical "fire" or "walk") returns the localised description of the
+     * button that is currently bound to that action
      *
      * <p>
-     *     Be slightly careful as joysticks used as dPads may give surprising results like "/user/hand/left/input/joystick/y".
-     *     For traditional button presses it should be fine, giving results like
+     *     Note that tamarin requests the user-path (E.g. "Left Hand") and input component portion
+     *     (e.g. "Trigger") so ideally the results will look like "Left Hand Trigger". However,
+     *     some runtimes (e.g. the quest) return the interaction profile even if unasked for, so the
+     *     returned value may be "Left Hand Meta Touch Plus Controller Trigger". This is unfortunate
+     *     but tamarin can't prevent this happening
      * </p>
      *
      * <p>
      *     Note this method will return an empty list until the actions are synced (which happens once the session is fully running
      *     and this action state updates. Basically be careful calling this method at application start up).
      * </p>
-     * @param actionHandle the action that represents an action in the application (e.g. "fire")
-     * @return the list of physical buttons that are bound to the action
+     *
+     * @param actionHandle the handle to get the binding string for
+     * @return a String containing a localised description of the physical button(s) paired with the action
      */
-    public abstract List<PhysicalBindingInterpretation> getPhysicalBindingForAction(ActionHandle actionHandle);
+    public abstract List<String> getLocalisedButtonNameForAction(ActionHandle actionHandle);
+
 
     /**
      * This sets the action sets that will be active. I.e. the actions in this action set will work, others will be ignored

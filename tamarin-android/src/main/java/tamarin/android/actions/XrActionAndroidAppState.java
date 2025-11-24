@@ -6,7 +6,6 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.actions.ActionType;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.PhysicalBindingInterpretation;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.Action;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -38,8 +37,8 @@ import com.onemillionworlds.tamarin.openxrbindings.XrHandJointLocationsEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandJointsLocateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackerCreateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticActionInfo;
-import com.onemillionworlds.tamarin.openxrbindings.XrHapticBaseHeader;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticVibration;
+import com.onemillionworlds.tamarin.openxrbindings.XrInputSourceLocalizedNameGetInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrInteractionProfileSuggestedBinding;
 import com.onemillionworlds.tamarin.openxrbindings.XrPosef;
 import com.onemillionworlds.tamarin.openxrbindings.XrQuaternionf;
@@ -65,15 +64,13 @@ import com.onemillionworlds.tamarin.openxrbindings.memory.IntBufferView;
 import com.onemillionworlds.tamarin.openxrbindings.memory.LongBufferView;
 import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryStack;
 import com.onemillionworlds.tamarin.openxrbindings.memory.MemoryUtil;
-import com.onemillionworlds.tamarin.openxrbindings.memory.PointerBufferView;
+
 import tamarin.android.openxr.OpenXrAndroidSessionManager;
 import tamarin.android.openxr.XrAndroidAppState;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -223,17 +220,17 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     }
 
     @Override
-    public List<PhysicalBindingInterpretation> getPhysicalBindingForAction(ActionHandle actionHandle){
+    public List<String> getLocalisedButtonNameForAction(ActionHandle actionHandle){
         if (!isReady()){
             return List.of();
         }
 
-        List<PhysicalBindingInterpretation> results = new ArrayList<>(1);
+        List<String> results = new ArrayList<>(1);
         try (MemoryStack stack = MemoryStack.stackGet().push()) {
             XrBoundSourcesForActionEnumerateInfo enumerateInfo = XrBoundSourcesForActionEnumerateInfo.malloc(stack)
                     .type$Default()
                     .next(0)
-                    .action(obtainActionHandle(actionHandle));
+                    .action(obtainActionFromHandle(actionHandle));
 
             XrSession xrSession = xrAppState.getXrSession().getXrSession();
 
@@ -247,7 +244,9 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
             for (int i = 0; i < sourceCount; i++) {
                 long sourcePath = sources.get(i);
-                results.add(PhysicalBindingInterpretation.interpretRawValue(longToPath(sourcePath)));
+                String localisedName = localisedNameForPath(sourcePath);
+
+                results.add(localisedName);
             }
         }
         return results;
@@ -532,7 +531,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             actionState.type$Default();
             XrActionStateGetInfo actionInfo = XrActionStateGetInfo.calloc(stack);
             actionInfo.type$Default();
-            actionInfo.action(obtainActionHandle(action));
+            actionInfo.action(obtainActionFromHandle(action));
 
             if (restrictToInput != null){
                 actionInfo.subactionPath(pathToLong(restrictToInput, true));
@@ -548,7 +547,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         }
     }
 
-    private XrAction obtainActionHandle(ActionHandle actionHandle){
+    private XrAction obtainActionFromHandle(ActionHandle actionHandle){
         try{
             return actions.get(actionHandle.actionSetName()).get(actionHandle.actionName());
         }catch(NullPointerException nullPointerException){
@@ -707,7 +706,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             actionState.type$Default();
             XrActionStateGetInfo actionInfo = XrActionStateGetInfo.calloc(stack);
             actionInfo.type$Default();
-            actionInfo.action(obtainActionHandle(action));
+            actionInfo.action(obtainActionFromHandle(action));
 
             if (restrictToInput != null) {
                 actionInfo.subactionPath(pathToLong(restrictToInput, true));
@@ -739,7 +738,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             actionState.type$Default();
             XrActionStateGetInfo actionInfo = XrActionStateGetInfo.calloc(stack);
             actionInfo.type$Default();
-            actionInfo.action(obtainActionHandle(action));
+            actionInfo.action(obtainActionFromHandle(action));
             if (restrictToInput != null) {
                 actionInfo.subactionPath(pathToLong(restrictToInput, true));
             }
@@ -773,7 +772,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
         XrHapticActionInfo hapticActionInfo = XrHapticActionInfo.create()
                 .type$Default()
-                .action(obtainActionHandle(action));
+                .action(obtainActionFromHandle(action));
 
         if (restrictToInput!=null){
             hapticActionInfo.subactionPath(pathToLong(restrictToInput, true));
@@ -868,15 +867,35 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         }
     }
 
+    private String localisedNameForPath(long pathHandle){
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
+            XrInputSourceLocalizedNameGetInfo getInfo = XrInputSourceLocalizedNameGetInfo.malloc(stack);
+            getInfo.next(NULL);
+            getInfo.sourcePath(pathHandle);
+            getInfo.type$Default();
+            getInfo.whichComponents(XR10Constants.XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT | XR10Constants.XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT);
+
+            IntBufferView numberOfChars = stack.mallocInt(1);
+
+            checkResponseCode(XR10.xrGetInputSourceLocalizedName(xrSessionHandle, getInfo, 0, numberOfChars, null));
+
+            ByteBufferView stringBuffer = stack.malloc(1, numberOfChars.get(0));
+
+            checkResponseCode(XR10.xrGetInputSourceLocalizedName(xrSessionHandle, getInfo,  numberOfChars.get(0), numberOfChars, stringBuffer));
+
+            return MemoryUtil.memUTF8(stringBuffer.address(), numberOfChars.get(0));
+        }
+    }
+
     private String longToPath(long pathHandle){
         try (MemoryStack stack = MemoryStack.stackGet().push()){
             IntBufferView stringLengthUsed = stack.callocInt(1);
 
-            checkResponseCode(XR10.xrPathToString(xrInstance, pathHandle, 0, stringLengthUsed, null));
+            checkResponseCode("xrPathToString:" + pathHandle, XR10.xrPathToString(xrInstance, pathHandle, 0, stringLengthUsed, null));
             int stringLength = stringLengthUsed.get(0);
             ByteBufferView pathStringBuffer = stack.calloc(1,stringLength);
 
-            checkResponseCode(XR10.xrPathToString(xrInstance, pathHandle, stringLength, stringLengthUsed, pathStringBuffer));
+            checkResponseCode("xrPathToString:" + pathHandle, XR10.xrPathToString(xrInstance, pathHandle, stringLength, stringLengthUsed, pathStringBuffer));
 
             return MemoryUtil.memUTF8(pathStringBuffer.address(), stringLengthUsed.get(0) - 1);
         }

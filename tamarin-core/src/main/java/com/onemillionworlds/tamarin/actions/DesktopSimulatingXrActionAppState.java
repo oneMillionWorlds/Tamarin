@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * This allows the mouse and keyboard to be used to "pretend" to control the VR system, including button presses,
@@ -110,8 +111,8 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     }
 
     @Override
-    public List<PhysicalBindingInterpretation> getPhysicalBindingForAction(ActionHandle actionHandle){
-        return List.of(new PhysicalBindingInterpretation("Simulated/Simulated", Optional.empty(), "Simulated", "Simulated"));
+    public List<String> getLocalisedButtonNameForAction(ActionHandle actionHandle) {
+        return List.of("Simulated button for " + actionHandle.actionName());
     }
 
     @Override
@@ -320,7 +321,7 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
 
         InputManager inputManager = application.getInputManager();
 
-        for(Action action : manifest.getActionSets().stream().flatMap(as -> as.getActions().stream()).toList()){
+        for(Action action : manifest.getActionSets().stream().flatMap(as -> as.getActions().stream()).collect(Collectors.toList())){
             for(Map.Entry<String, DesktopSimulationKeybinding> restrictToInputBindingPair: action.getDesktopSimulationKeybinding().entrySet()){
                 String controllerString = restrictToInputBindingPair.getKey();
                 DesktopSimulationKeybinding keyTrigger = restrictToInputBindingPair.getValue();

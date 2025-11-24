@@ -43,6 +43,7 @@ import org.lwjgl.openxr.XrHandTrackerEXT;
 import org.lwjgl.openxr.XrHapticActionInfo;
 import org.lwjgl.openxr.XrHapticBaseHeader;
 import org.lwjgl.openxr.XrHapticVibration;
+import org.lwjgl.openxr.XrInputSourceLocalizedNameGetInfo;
 import org.lwjgl.openxr.XrInstance;
 import org.lwjgl.openxr.XrInteractionProfileSuggestedBinding;
 import org.lwjgl.openxr.XrPosef;
@@ -208,12 +209,12 @@ public class XrActionAppState extends XrActionBaseAppState{
     }
 
     @Override
-    public List<PhysicalBindingInterpretation> getPhysicalBindingForAction(ActionHandle actionHandle){
+    public List<String> getLocalisedButtonNameForAction(ActionHandle actionHandle){
         if (!isReady()){
             return List.of();
         }
 
-        List<PhysicalBindingInterpretation> results = new ArrayList<>(1);
+        List<String> results = new ArrayList<>(1);
         try (MemoryStack stack = stackPush()) {
             XrBoundSourcesForActionEnumerateInfo enumerateInfo = XrBoundSourcesForActionEnumerateInfo.malloc(stack)
                     .type$Default()
@@ -232,10 +233,30 @@ public class XrActionAppState extends XrActionBaseAppState{
 
             for (int i = 0; i < sourceCount; i++) {
                 long sourcePath = sources.get(i);
-                results.add(PhysicalBindingInterpretation.interpretRawValue(longToPath(sourcePath)));
+                results.add(localisedNameForPath(sourcePath));
             }
         }
         return results;
+    }
+
+    private String localisedNameForPath(long pathHandle){
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
+            XrInputSourceLocalizedNameGetInfo getInfo = XrInputSourceLocalizedNameGetInfo.malloc(stack);
+            getInfo.next(NULL);
+            getInfo.sourcePath(pathHandle);
+            getInfo.type$Default();
+            getInfo.whichComponents(XR10.XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT | XR10.XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT);
+
+            IntBuffer numberOfChars = stack.mallocInt(1);
+
+            checkResponseCode(XR10.xrGetInputSourceLocalizedName(xrSessionHandle, getInfo,  numberOfChars, null));
+
+            ByteBuffer stringBuffer = stack.malloc(1, numberOfChars.get(0));
+
+            checkResponseCode(XR10.xrGetInputSourceLocalizedName(xrSessionHandle, getInfo, numberOfChars, stringBuffer));
+
+            return MemoryUtil.memUTF8(stringBuffer, numberOfChars.get(0));
+        }
     }
 
     private boolean sessionFocussed(){
