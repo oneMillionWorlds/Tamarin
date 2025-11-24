@@ -173,7 +173,7 @@ public class VRHandsAppState extends BaseAppState{
     }
 
     /**
-     * @deprecated Use {@link this#getOrSynthesiseBonePositions}
+     * @deprecated Use {@link #getOrSynthesiseBonePositions}
      */
     @Deprecated(since="3.0", forRemoval = true)
     public Optional<Map<HandJoint, BonePose>> getOrSynthesisBonePositions(BoundHand boundHand){
