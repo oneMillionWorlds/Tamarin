@@ -198,7 +198,7 @@ public class VRHandsAppState extends BaseAppState{
      * @return the bone positions
      */
     public Optional<Map<HandJoint, BonePose>> getOrSynthesiseBonePositions(BoundHand boundHand){
-        if(actionState.isReady()){
+        if(!actionState.isReady()){
             return Optional.empty();
         }
 
