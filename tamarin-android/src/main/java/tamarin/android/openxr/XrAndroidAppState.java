@@ -32,8 +32,6 @@ public class XrAndroidAppState extends XrVrAppState {
     @Override
     protected void initialize(Application app){
         super.initialize(app);
-        Context context = androidActivity.getApplicationContext();
-        //InitialisationData initialisationData = ThickC.initializeLoader(context);
         InitialisationData initialisationData = ThickC.initializeLoader(androidActivity);
         // Get the current EGL context, which is already set up by jMonkeyEngine
         long windowHandle = EGL14.eglGetCurrentContext().getNativeHandle();
