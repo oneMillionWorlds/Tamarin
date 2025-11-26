@@ -7,9 +7,9 @@ uniform vec4 m_VignetteColor;   // The color of the vignette (RGBA)
 uniform vec2 g_Resolution;      // Screen resolution in pixels
 
 void main() {
-    if(m_VignetteAmount == 0){
+    if(m_VignetteAmount == 0.0){
          gl_FragColor = vec4(0.0,0.0,0.0,0.0);
-    } else if(m_VignetteAmount == 1){
+    } else if(m_VignetteAmount == 1.0){
          gl_FragColor = m_VignetteColor;
     } else {
         // Get the fragment's screen position in normalized coordinates (0 to 1)
