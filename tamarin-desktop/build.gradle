@@ -72,7 +72,7 @@ publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.ht
 
             pom {
                 name = project.name
-                description = 'A VR utilities library that extends the functionality in JMonkeyEngine'
+                description = 'A VR library that extends the functionality in JMonkeyEngine using OpenXR'
                 url = 'https://github.com/oneMillionWorlds/Tamarin'
                 licenses {
                     license {
