@@ -23,7 +23,8 @@ import com.onemillionworlds.tamarin.openxr.DesktopSimulatingXrAppState;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.onemillionworlds.tamarin.vrhands.functions.ClimbSupport;
 import com.onemillionworlds.tamarin.vrhands.functions.GrabPickingFunction;
-import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SyntheticBonePositions;
+import com.onemillionworlds.tamarin.vrhands.missinghandtracking.SimpleSyntheticBonePositions;
+import com.onemillionworlds.tamarin.vrhands.skeletonsynthesis.SkeletonSynthesiser;
 import com.simsilica.lemur.event.BasePickState;
 
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import java.util.logging.Logger;
  * <p>
  * See <a href="https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#XR_EXT_hand_tracking">Hand tracking spec</a>
  */
+@SuppressWarnings("unused")
 public class VRHandsAppState extends BaseAppState{
     public static final String ID = "VRHandsAppState";
 
@@ -65,6 +67,11 @@ public class VRHandsAppState extends BaseAppState{
      * Available as convenience data to calling application
      */
     private boolean currentlyClimbing = false;
+
+    /**
+     * Can be used instead of the runtime-provided skeleton data if desired (or as a fallback).
+     */
+    private Optional<SkeletonSynthesiser> skeletonSynthesiser = Optional.empty();
 
     /**
      * This constructor allows for bound hands to be created as soon as the state has initialised.
@@ -106,6 +113,13 @@ public class VRHandsAppState extends BaseAppState{
                 }
             }
             getStateManager().attach(new VrLemurAppState());
+        }
+    }
+
+    public void setSkeletonSynthesiser(SkeletonSynthesiser skeletonSynthesiser){
+        this.skeletonSynthesiser = Optional.ofNullable(skeletonSynthesiser);
+        if (skeletonSynthesiser!=null){
+            skeletonSynthesiser.initialise();
         }
     }
 
@@ -202,11 +216,20 @@ public class VRHandsAppState extends BaseAppState{
             return Optional.empty();
         }
 
+        if(skeletonSynthesiser.isPresent() && skeletonSynthesiser.get().getSynthesiseMode() == SkeletonSynthesiser.SynthesiseMode.ALWAYS_SYNTHESISE){
+            return Optional.of(skeletonSynthesiser.get().synthesiseBonePositions(boundHand));
+        }
+
         if(xrAppState.checkExtensionLoaded("XR_EXT_hand_tracking")){ // EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
             Optional<Map<HandJoint, BonePose>> skeleton = actionState.getSkeleton(boundHand.getSkeletonActionName(), boundHand.getHandSide());
             if(skeleton.isPresent()){
                 return skeleton;
             }
+        }
+
+        if(skeletonSynthesiser.isPresent()){
+            singleOccurrenceLog.info("Real bone positions not available, using skeletonSynthesiser to simulate");
+            return Optional.of(skeletonSynthesiser.get().synthesiseBonePositions(boundHand));
         }
 
         Optional<Float> grabStrengthOpt = boundHand.getFunctionOpt(GrabPickingFunction.class)
@@ -223,7 +246,7 @@ public class VRHandsAppState extends BaseAppState{
         //real hand tracking is not available, so we need to synthesise it
         float grabStrength = grabStrengthOpt.orElse(0f);
 
-        return Optional.of(SyntheticBonePositions.synthesizeBonePositions(boundHand.getHandSide(), grabStrength));
+        return Optional.of(SimpleSyntheticBonePositions.synthesizeBonePositions(boundHand.getHandSide(), grabStrength));
 
     }
 

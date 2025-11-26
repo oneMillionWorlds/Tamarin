@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-public class SyntheticBonePositions{
+public class SimpleSyntheticBonePositions {
     static Map<HandSide, Map<Float, Map<HandJoint, BonePose>>> skeletonData = new HashMap<>();
 
     static Function<HandSide, Map<Float, Map<HandJoint, BonePose>>> newMap1 = key -> new HashMap<>();
