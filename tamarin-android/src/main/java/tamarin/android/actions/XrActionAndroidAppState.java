@@ -392,7 +392,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                         .suggestedBindings(suggestedBindingsBuffer);
 
                 try{
-                    checkResponseCode("xrSuggestInteractionProfileBindings: " + profile.getProfileName(), XR10.xrSuggestInteractionProfileBindings(xrInstance, xrInteractionProfileSuggestedBinding));
+                    checkResponseCode("during xrSuggestInteractionProfileBindings for profile " + profile.getProfileName() + " (earlier debug messages may explain why)", XR10.xrSuggestInteractionProfileBindings(xrInstance, xrInteractionProfileSuggestedBinding));
                 }catch (RuntimeException e){
                     LOGGER.warning("Problem with " + profile.getProfileName() + " => " + xrInteractionProfileSuggestedBinding);
                     throw e;
