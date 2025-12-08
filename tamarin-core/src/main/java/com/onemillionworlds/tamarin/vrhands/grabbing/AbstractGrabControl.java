@@ -18,6 +18,7 @@ import java.util.Optional;
  * </p>
  * Extend this class to get access to onGrab and onRelease, make sure to call super
  */
+@SuppressWarnings("unused")
 public abstract class AbstractGrabControl extends AbstractControl{
 
 

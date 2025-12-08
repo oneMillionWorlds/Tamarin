@@ -40,3 +40,10 @@ tasks.register('prepareCentralBundle') {
     description = 'Stages and zips artifacts ready for Central Publisher Portal upload (no network).'
     dependsOn 'zipCentralPortalBundle'
 }
+
+subprojects {
+    tasks.withType(Javadoc).configureEach {
+        // Prevent the build complaining there isn't an @param on every singple parameter
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+}

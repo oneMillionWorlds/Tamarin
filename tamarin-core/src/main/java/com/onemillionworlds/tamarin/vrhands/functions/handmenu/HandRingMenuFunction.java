@@ -34,14 +34,13 @@ import java.util.function.Supplier;
  * The menu remains open for as long as the digital action remains held. When the action is released where the hand is
  * controls what is selected (if anything)
  */
+@SuppressWarnings("unused")
 public class HandRingMenuFunction<T> implements BoundHandFunction{
 
     private final List<MenuItem<T>> topLevelMenuItems;
     private List<MenuBranch<T>> currentOpenPath = List.of();
 
     private final Consumer<Optional<T>> selectionConsumer;
-
-    ActionHandle digitalActionToOpenMenu;
 
     private BoundHand boundHand;
     private XrActionBaseAppState actionBasedOpenVrState;
@@ -93,6 +92,8 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
      */
     Map<Node, Supplier<Spatial>> dynamicGeometrySuppliers = new HashMap<>();
 
+    private final Supplier<Boolean> shouldBeOpenSupplier;
+
     /**
      * @param menuItems               the tree of menu items
      * @param selectionConsumer       when an item is selected it is given to this consumer
@@ -101,9 +102,14 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
     public HandRingMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, ActionHandle digitalActionToOpenMenu){
         this.topLevelMenuItems = menuItems;
         this.selectionConsumer = selectionConsumer;
-        this.digitalActionToOpenMenu = digitalActionToOpenMenu;
-    }
+        this.shouldBeOpenSupplier = () -> this.actionBasedOpenVrState.getBooleanActionState(digitalActionToOpenMenu, boundHand.getHandSide().restrictToInputString).getState();
 
+    }
+    public HandRingMenuFunction(List<MenuItem<T>> menuItems, Consumer<Optional<T>> selectionConsumer, Supplier<Boolean> shouldBeOpenSupplier){
+        this.topLevelMenuItems = menuItems;
+        this.selectionConsumer = selectionConsumer;
+        this.shouldBeOpenSupplier = shouldBeOpenSupplier;
+    }
 
     @Override
     public void onBind(BoundHand boundHand, AppStateManager stateManager){
@@ -124,12 +130,12 @@ public class HandRingMenuFunction<T> implements BoundHandFunction{
 
     @Override
     public void update(float timeSlice, BoundHand boundHand, AppStateManager stateManager){
-        BooleanActionState menuButtonPressed = actionBasedOpenVrState.getBooleanActionState(digitalActionToOpenMenu, boundHand.getHandSide().restrictToInputString);
-        if(menuButtonPressed.getState() && !this.menuOpen){
+        boolean menuButtonPressed = shouldBeOpenSupplier.get();
+        if(menuButtonPressed && !this.menuOpen){
             openMenu();
         }
 
-        if(!menuButtonPressed.getState() && this.menuOpen){
+        if(!menuButtonPressed && this.menuOpen){
             closeMenuAndSelect();
         }
 
