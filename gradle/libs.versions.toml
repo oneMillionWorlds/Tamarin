@@ -1,6 +1,6 @@
 [versions]
 jme = "3.8.0-stable"
-openxrBindingsNative = "1.0.0"
+openxrBindingsNative = "1.0.2"
 
 [libraries]
 jme3-core = {module="org.jmonkeyengine:jme3-core", version.ref = "jme"}
