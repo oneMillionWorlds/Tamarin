@@ -3,10 +3,14 @@ package com.onemillionworlds.tamarin.debugwindow;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.StatsAppState;
+import com.jme3.app.StatsView;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.Statistics;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -23,6 +27,7 @@ import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.BoxLayout;
+import com.simsilica.lemur.component.TbtQuadBackgroundComponent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -84,6 +89,10 @@ public class DebugWindowState extends BaseAppState{
     private final ActionHandle hapticAction;
     private final ActionHandle grabAction;
 
+    private boolean requestInitialiseStats = false;
+
+    private Statistics statistics;
+
     public DebugWindowState(){
         this(null, null);
     }
@@ -108,6 +117,9 @@ public class DebugWindowState extends BaseAppState{
 
         lemurWindow.setLocalTranslation(-0.25f, -0.25f, 0); //a bit arbitrary, but likely to be about correct so a normal-sized window looks at the player right
 
+        Material material = ((TbtQuadBackgroundComponent)lemurWindow.getBackground()).getMaterial().getMaterial();
+        material.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+
         AbstractGrabControl control = new RelativeMovingGrabControl();
         debugWindowNode.addControl(control);
 
@@ -115,7 +127,6 @@ public class DebugWindowState extends BaseAppState{
         vrHandsAppState = getState(VRHandsAppState.class);
         statsAppState = getState(StatsAppState.class);
         ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
-
 
         //attach press functions to the bound hands so buttons are guaranteed to be pressable (If other mouse support
         //is on that can also be used)
@@ -162,9 +173,34 @@ public class DebugWindowState extends BaseAppState{
         debugWindowNode.setCullHint(Spatial.CullHint.Always);
     }
 
-    public void showFtps(){
+    public DebugWindowState showFtps(){
         newLineItems.put("FPS", new NonFadingRenderText("FPS"));
+        return this;
     }
+
+    /**
+     * Enable showing of the renderer statistics in the debug window.
+     * When enabled, all labels from {@link Statistics#getLabels()} will be displayed as NonFadingRenderText
+     * and refreshed once per second.
+     */
+    public DebugWindowState showStats(){
+        requestInitialiseStats = true;
+        return this;
+    }
+
+    private void initialiseStats(){
+        requestInitialiseStats = false;
+        if(statistics == null) {
+            statistics = getApplication().getRenderer().getStatistics();
+            statistics.setEnabled(true);
+
+            for (String label : statistics.getLabels()) {
+                NonFadingRenderText item = new NonFadingRenderText(label);
+                newLineItems.put(label, item);
+            }
+        }
+    }
+
 
     /**
      * This registers a single button that when clicked will call the event
@@ -239,6 +275,10 @@ public class DebugWindowState extends BaseAppState{
             connectToHands();
         }
 
+        if(requestInitialiseStats){
+            initialiseStats();
+        }
+
         secondCounter += getApplication().getTimer().getTimePerFrame();
         frameCounter ++;
         if (secondCounter >= 1.0f) {
@@ -246,6 +286,16 @@ public class DebugWindowState extends BaseAppState{
             setData("FPS", ""+fps);
             secondCounter = 0.0f;
             frameCounter = 0;
+
+            if(statistics !=null){
+                String[] labels = statistics.getLabels();
+
+                int[] data = new int[labels.length];
+                statistics.getData(data);
+                for (int i = 0; i < labels.length; i++) {
+                    setData(labels[i], ""+data[i]);
+                }
+            }
         }
 
         synchronized(lock){
@@ -254,6 +304,7 @@ public class DebugWindowState extends BaseAppState{
                     lemurWindow.addChild(lineItem.render());
                     currentLineItems.put(label, lineItem);
                 });
+                newLineItems.clear();
             }
 
             currentLineItems.forEach((label, lineItem) -> lineItem.update(tpf));
