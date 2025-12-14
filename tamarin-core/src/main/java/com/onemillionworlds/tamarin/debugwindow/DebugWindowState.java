@@ -49,7 +49,7 @@ public class DebugWindowState extends BaseAppState{
     public static Optional<DebugWindowState> INSTANCE = Optional.empty();
 
     Node debugWindowNode = new Node("Tamarin-debug-window-node");
-    Container lemurWindow = new Container();
+    Container lemurWindow;
 
     /**
      * Stuff this window is displaying
@@ -101,6 +101,7 @@ public class DebugWindowState extends BaseAppState{
 
     @Override
     protected void initialize(Application app){
+        lemurWindow = new Container();
         lemurWindow.addChild(new Label("Debug window"));
         debugWindowNode.attachChild(lemurWindow);
         lemurWindow.setLocalScale(0.0015f);
@@ -114,6 +115,7 @@ public class DebugWindowState extends BaseAppState{
         vrHandsAppState = getState(VRHandsAppState.class);
         statsAppState = getState(StatsAppState.class);
         ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
+
 
         //attach press functions to the bound hands so buttons are guaranteed to be pressable (If other mouse support
         //is on that can also be used)
