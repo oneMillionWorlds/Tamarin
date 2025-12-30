@@ -117,9 +117,6 @@ signing {
         def envKeyId = System.getenv('SIGNING_KEY_ID')
         if (envKeyId && envKeyId.trim()) {
             project.ext.set('signing.keyId', envKeyId.trim())
-            logger.lifecycle("[Signing Debug] Applied signing.keyId from SIGNING_KEY_ID env var")
-        } else {
-            logger.lifecycle("[Signing Debug] No SIGNING_KEY_ID env var found")
         }
     }
     def ringFileProp = findProperty('signing.secretKeyRingFile')
@@ -127,9 +124,7 @@ signing {
     def passSet = project.hasProperty('signing.password')
     if (ringFileProp) {
         def f = file(ringFileProp)
-        logger.lifecycle("[Signing Debug] secretKeyRingFile='${f}' exists=${f.exists()} keyIdSet=${keyId != null} passSet=${passSet}")
     } else {
-        logger.lifecycle("[Signing Debug] secretKeyRingFile is NOT set. keyIdSet=${keyId != null} passSet=${passSet}")
     }
     // Sign all publications to avoid configuration-time lookup issues
     sign publishing.publications
