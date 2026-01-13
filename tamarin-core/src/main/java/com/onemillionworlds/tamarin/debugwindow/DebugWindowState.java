@@ -27,7 +27,9 @@ import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.BoxLayout;
+import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.component.TbtQuadBackgroundComponent;
+import com.simsilica.lemur.style.ElementId;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,7 +75,7 @@ public class DebugWindowState extends BaseAppState{
     VRHandsAppState vrHandsAppState;
     StatsAppState statsAppState;
 
-    protected float secondCounter = 0.0f;
+    protected long nanosOfCountStart = -1;
     protected int frameCounter = 0;
 
     boolean connectedToHands = false;
@@ -91,7 +93,13 @@ public class DebugWindowState extends BaseAppState{
 
     private boolean requestInitialiseStats = false;
 
+    private Optional<ElementId> topLevelContainerId = Optional.empty();
+
     private Statistics statistics;
+
+    private boolean initialised;
+
+    private long lastNanoTime = 0;
 
     public DebugWindowState(){
         this(null, null);
@@ -108,25 +116,55 @@ public class DebugWindowState extends BaseAppState{
         this.grabAction = grabAction;
     }
 
+    /**
+     * Allows the top level lemur contain ID to be set (for styling).
+     * <p>Must be called before initialisation in order to have any effect</p>
+     * @param elementId the element ID to use as the top level container
+     */
+    public DebugWindowState setTopLevelContainerId(ElementId elementId){
+        topLevelContainerId = Optional.of(elementId);
+        return this;
+    }
+
     @Override
     protected void initialize(Application app){
-        lemurWindow = new Container();
+        initialise();
+    }
+
+    private void initialise(){
+        if(getState(XrBaseAppState.ID, XrBaseAppState.class) ==null){
+            return;
+        }
+
+        lastNanoTime = System.nanoTime();
+
+        initialised = true;
+        lemurWindow = topLevelContainerId.map(Container::new).orElseGet(Container::new);
         lemurWindow.addChild(new Label("Debug window"));
         debugWindowNode.attachChild(lemurWindow);
         lemurWindow.setLocalScale(0.0015f);
 
         lemurWindow.setLocalTranslation(-0.25f, -0.25f, 0); //a bit arbitrary, but likely to be about correct so a normal-sized window looks at the player right
 
-        Material material = ((TbtQuadBackgroundComponent)lemurWindow.getBackground()).getMaterial().getMaterial();
-        material.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+        if(lemurWindow.getBackground()!=null && lemurWindow.getBackground() instanceof TbtQuadBackgroundComponent) {
+            Material material = null;
+            if(lemurWindow.getBackground() instanceof TbtQuadBackgroundComponent){
+                material = ((TbtQuadBackgroundComponent) lemurWindow.getBackground()).getMaterial().getMaterial();
+            }
+            if(lemurWindow.getBackground() instanceof QuadBackgroundComponent){
+                material = ((QuadBackgroundComponent) lemurWindow.getBackground()).getMaterial().getMaterial();
+            }
+            if(material!=null) {
+                material.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+            }
+        }
 
         AbstractGrabControl control = new RelativeMovingGrabControl();
         debugWindowNode.addControl(control);
 
         xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
-        vrHandsAppState = getState(VRHandsAppState.class);
         statsAppState = getState(StatsAppState.class);
-        ((SimpleApplication)app).getRootNode().attachChild(debugWindowNode);
+        ((SimpleApplication)getApplication()).getRootNode().attachChild(debugWindowNode);
 
         //attach press functions to the bound hands so buttons are guaranteed to be pressable (If other mouse support
         //is on that can also be used)
@@ -136,6 +174,11 @@ public class DebugWindowState extends BaseAppState{
     }
 
     private void connectToHands(){
+        vrHandsAppState = getState(VRHandsAppState.ID, VRHandsAppState.class);
+        if(vrHandsAppState == null){
+            return;
+        }
+
         List<BoundHand> handControls = vrHandsAppState.getHandControls();
 
         if (!handControls.isEmpty()){
@@ -271,6 +314,14 @@ public class DebugWindowState extends BaseAppState{
     public void update(float tpf){
         super.update(tpf);
 
+        if(!initialised){
+            initialise();
+        }
+        if(!initialised){
+            return;
+        }
+
+
         if (!connectedToHands){
             connectToHands();
         }
@@ -279,12 +330,13 @@ public class DebugWindowState extends BaseAppState{
             initialiseStats();
         }
 
-        secondCounter += getApplication().getTimer().getTimePerFrame();
         frameCounter ++;
-        if (secondCounter >= 1.0f) {
+        if (frameCounter >= 60) {
+            long timeNowNanos =  System.nanoTime();
+            float secondCounter = (timeNowNanos - nanosOfCountStart) / 1000000000f;
             int fps = (int) (frameCounter / secondCounter);
             setData("FPS", ""+fps);
-            secondCounter = 0.0f;
+            nanosOfCountStart = timeNowNanos;
             frameCounter = 0;
 
             if(statistics !=null){
