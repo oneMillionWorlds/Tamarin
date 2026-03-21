@@ -235,6 +235,10 @@ public class DeferredAttachmentService extends BaseAppState{
         }
     }
 
+    public boolean hasInProgressItems(){
+        return !autoAttachings.isEmpty();
+    }
+
     /**
      * Registers a task (whose completion can be queried using the future) to generate all the collision data on a separate thread.
      * On the futures completion the node should be safe to add to the scene graph without causing performance hiccoughs
