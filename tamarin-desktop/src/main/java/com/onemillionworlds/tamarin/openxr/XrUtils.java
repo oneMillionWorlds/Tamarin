@@ -4,7 +4,14 @@ package com.onemillionworlds.tamarin.openxr;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.egl.EGL;
+import org.lwjgl.egl.EGL10;
+import org.lwjgl.egl.EGL14;
+import org.lwjgl.opengl.GLX;
+import org.lwjgl.opengl.GLX13;
+import org.lwjgl.opengl.GLXEXTImportContext;
+import org.lwjgl.opengl.WGL;
 import org.lwjgl.openxr.XR10;
 import org.lwjgl.openxr.XrApiLayerProperties;
 import org.lwjgl.openxr.XrExtensionProperties;
@@ -19,25 +26,16 @@ import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
 import org.lwjgl.system.linux.XVisualInfo;
 
+import java.nio.IntBuffer;
 import java.util.logging.Logger;
 
-import static org.lwjgl.glfw.GLFW.GLFW_PLATFORM_X11;
-import static org.lwjgl.glfw.GLFW.glfwGetPlatform;
-import static org.lwjgl.glfw.GLFWNativeEGL.glfwGetEGLConfig;
-import static org.lwjgl.glfw.GLFWNativeEGL.glfwGetEGLContext;
-import static org.lwjgl.glfw.GLFWNativeEGL.glfwGetEGLDisplay;
-import static org.lwjgl.glfw.GLFWNativeGLX.glfwGetGLXContext;
-import static org.lwjgl.glfw.GLFWNativeGLX.glfwGetGLXFBConfig;
-import static org.lwjgl.glfw.GLFWNativeWGL.glfwGetWGLContext;
-import static org.lwjgl.glfw.GLFWNativeWin32.glfwGetWin32Window;
-import static org.lwjgl.glfw.GLFWNativeX11.glfwGetX11Display;
+import static org.lwjgl.opengl.GLX.glXGetCurrentContext;
 import static org.lwjgl.opengl.GLX.glXGetCurrentDrawable;
 import static org.lwjgl.opengl.GLX13.glXGetVisualFromFBConfig;
 import static org.lwjgl.openxr.XR10.XR_TYPE_API_LAYER_PROPERTIES;
 import static org.lwjgl.openxr.XR10.XR_TYPE_EXTENSION_PROPERTIES;
 import static org.lwjgl.system.MemoryUtil.NULL;
 import static org.lwjgl.system.MemoryUtil.memPutInt;
-import static org.lwjgl.system.windows.User32.GetDC;
 
 public class XrUtils{
 
@@ -93,75 +91,105 @@ public class XrUtils{
     }
 
     /**
-     * Appends the right <i>XrGraphicsBinding</i>** struct to the next chain of <i>sessionCreateInfo</i>.
-     * Uses the cross platform XrGraphicsBindingEGLMNDX if its available, otherwise uses the platform specific version.
+     * Appends the right <i>XrGraphicsBinding</i> struct to the next chain of <i>sessionCreateInfo</i>.
+     * Uses the cross-platform XrGraphicsBindingEGLMNDX if available, otherwise uses the platform-specific version.
+     * <p>
+     * All handle queries use the currently-bound OpenGL context directly (WGL/GLX/EGL APIs), so
+     * this works regardless of the windowing backend (GLFW, SDL3, or any other that calls
+     * wglMakeCurrent / glXMakeCurrent before this point).
      * <p>
      * There are 4 graphics binding structs available:
-     *
      * <ul>
-     *     <li> XrGraphicsBindingOpenGLWin32KHR - which can only be used on Windows </li>
-     *     <li> XrGraphicsBindingOpenGLXlibKHR - Linux computers with the X11 windowing system </li>
-     *     <li> XrGraphicsBindingOpenGLWaylandKHR - theoretically Linux computers with the Wayland windowing system but actually no one </li>
-     *     <li> XrGraphicsBindingEGLMNDX - cross-platform, but also experimental and not widely supported, use with Wayland windowing system </li>
+     *     <li> XrGraphicsBindingOpenGLWin32KHR - Windows </li>
+     *     <li> XrGraphicsBindingOpenGLXlibKHR - Linux X11 / GLX </li>
+     *     <li> XrGraphicsBindingOpenGLWaylandKHR - Linux Wayland (use EGL instead) </li>
+     *     <li> XrGraphicsBindingEGLMNDX - cross-platform, experimental </li>
      * </ul>
      * @param stack The <i>MemoryStack</i> onto which this method should allocate the graphics binding struct
-     * @param window The GLFW window
+     * @param window Unused (retained for API compatibility); handles are queried from the current GL context
      * @param useEGL Whether this method should use XrGraphicsBindingEGLMNDX
-     * @return sessionCreateInfo (after appending a graphics binding to it)
-     * @throws IllegalStateException If the current OS and/or windowing system needs EGL, but <b>useEGL</b> is false
+     * @return the graphics binding struct
+     * @throws IllegalStateException If no usable GL context binding can be determined
      */
     static Struct<?> createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
         if (useEGL) {
-            long eglDisplay = glfwGetEGLDisplay();
-
-            if (eglDisplay != NULL){ //check that the egl display is actually available (even if the extension is)
+            // Query the current EGL display/context directly — works with any windowing system.
+            long eglDisplay = EGL10.eglGetCurrentDisplay();
+            if (eglDisplay != NULL) {
+                long eglContext = EGL14.eglGetCurrentContext(); // added in EGL 1.1, exposed via EGL14 in LWJGL
+                // Retrieve the EGLConfig ID from the current context, then resolve the EGLConfig.
+                IntBuffer cfgIdBuf = stack.callocInt(1);
+                EGL10.eglQueryContext(eglDisplay, eglContext, EGL10.EGL_CONFIG_ID, cfgIdBuf);
+                IntBuffer cfgAttribs = stack.ints(EGL10.EGL_CONFIG_ID, cfgIdBuf.get(0), EGL10.EGL_NONE);
+                PointerBuffer cfgBuf = stack.mallocPointer(1);
+                IntBuffer numCfg = stack.callocInt(1);
+                EGL10.eglChooseConfig(eglDisplay, cfgAttribs, cfgBuf, numCfg);
+                long eglConfig = (numCfg.get(0) > 0) ? cfgBuf.get(0) : NULL;
                 return XrGraphicsBindingEGLMNDX.malloc(stack)
                         .type$Default()
                         .next(NULL)
                         .getProcAddress(EGL.getCapabilities().eglGetProcAddress)
                         .display(eglDisplay)
-                        .config(glfwGetEGLConfig(window))
-                        .context(glfwGetEGLContext(window));
+                        .config(eglConfig)
+                        .context(eglContext);
             }
         }
         switch (Platform.get()) {
-            case LINUX:
-                int platform = glfwGetPlatform();
-                if (platform == GLFW_PLATFORM_X11) {
-                    long display   = glfwGetX11Display();
-                    long glxConfig = glfwGetGLXFBConfig(window);
-
-                    XVisualInfo visualInfo = glXGetVisualFromFBConfig(display, glxConfig);
-                    if (visualInfo == null) {
-                        throw new IllegalStateException("Failed to get visual info");
-                    }
-                    long visualId = visualInfo.visualid();
-
-                    LOGGER.info("Using XrGraphicsBindingOpenGLXlibKHR to create the session");
-                    return XrGraphicsBindingOpenGLXlibKHR.malloc(stack)
-                                    .type$Default()
-                                    .next(NULL)
-                                    .xDisplay(display)
-                                    .visualid((int)visualId)
-                                    .glxFBConfig(glxConfig)
-                                    .glxDrawable(glXGetCurrentDrawable())
-                                    .glxContext(glfwGetGLXContext(window));
-                } else {
+            case LINUX: {
+                // Use GLX_EXT_import_context to get the current X11 Display, then query the
+                // current context for screen + FBConfig — no GLFW required.
+                long glxCtx = glXGetCurrentContext();
+                long display = GLXEXTImportContext.glXGetCurrentDisplayEXT();
+                if (glxCtx == NULL || display == NULL) {
                     throw new IllegalStateException(
-                            "X11 is the only Linux windowing system with explicit OpenXR support. All other Linux systems must use EGL."
-                    );
+                            "X11/GLX is the only Linux windowing system with explicit OpenXR support (no current " +
+                            "GLX context or GLX_EXT_import_context display found). " +
+                            "For Wayland / EGL, set useEGL=true in XrSettings.");
                 }
+
+                // Query the screen and FBConfig ID from the current GLX context.
+                IntBuffer val = stack.callocInt(1);
+                GLX13.glXQueryContext(display, glxCtx, GLX13.GLX_SCREEN, val);
+                int screen = val.get(0);
+                val.clear();
+                GLX13.glXQueryContext(display, glxCtx, GLX13.GLX_FBCONFIG_ID, val);
+                int fbConfigId = val.get(0);
+
+                // glXChooseFBConfig returns a PointerBuffer sized to the matching configs.
+                IntBuffer fbAttribs = stack.ints(GLX13.GLX_FBCONFIG_ID, fbConfigId, 0);
+                PointerBuffer cfgs = GLX13.glXChooseFBConfig(display, screen, fbAttribs);
+                if (cfgs == null || cfgs.limit() == 0) {
+                    throw new IllegalStateException("Failed to find GLXFBConfig for the current context");
+                }
+                long glxConfig = cfgs.get(0);
+
+                XVisualInfo visualInfo = glXGetVisualFromFBConfig(display, glxConfig);
+                if (visualInfo == null) {
+                    throw new IllegalStateException("Failed to get XVisualInfo from GLXFBConfig");
+                }
+
+                LOGGER.info("Using XrGraphicsBindingOpenGLXlibKHR to create the session");
+                return XrGraphicsBindingOpenGLXlibKHR.malloc(stack)
+                        .type$Default()
+                        .next(NULL)
+                        .xDisplay(display)
+                        .visualid((int) visualInfo.visualid())
+                        .glxFBConfig(glxConfig)
+                        .glxDrawable(glXGetCurrentDrawable())
+                        .glxContext(glxCtx);
+            }
             case WINDOWS:
+                // Query hDC and hGLRC directly from the current WGL context — works with any
+                // windowing backend (GLFW, SDL3, etc.) since jME already called wglMakeCurrent.
                 LOGGER.info("Using XrGraphicsBindingOpenGLWin32KHR to create the session");
                 return XrGraphicsBindingOpenGLWin32KHR.malloc(stack)
-                                .type$Default()
-                                .next(NULL)
-                                .hDC(GetDC(glfwGetWin32Window(window)))
-                                .hGLRC(glfwGetWGLContext(window));
+                        .type$Default()
+                        .next(NULL)
+                        .hDC(WGL.wglGetCurrentDC())
+                        .hGLRC(WGL.wglGetCurrentContext(stack.callocInt(1)));
             default:
                 throw new IllegalStateException(
-                        "Windows and Linux are the only platforms with explicit OpenXR support. All other platforms must use EGL."
-                );
+                        "Windows and Linux are the only platforms with explicit OpenXR support. All other platforms must use EGL.");
         }
     }
 
