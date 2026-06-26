@@ -1,10 +1,14 @@
 [versions]
-jme = "3.9.0-beta1"
+jme = "3.10.0-beta1"
 openxrBindingsNative = "1.0.2"
+lwjgl = "3.4.1" # it is important that this is the same as JME which provides the rest of LWJGL
 
 [libraries]
 jme3-core = {module="org.jmonkeyengine:jme3-core", version.ref = "jme"}
 jme3-desktop = {module="org.jmonkeyengine:jme3-desktop", version.ref = "jme"}
 jme3-lwjgl3 = {module="org.jmonkeyengine:jme3-lwjgl3", version.ref = "jme"}
 jme3-android = {module="org.jmonkeyengine:jme3-android", version.ref = "jme"}
+lwjgl-openxr = { module = "org.lwjgl:lwjgl-openxr", version.ref = "lwjgl" }
+lwjgl-egl = { module = "org.lwjgl:lwjgl-egl", version.ref = "lwjgl" }
+
 openxr-bindings-native = { module = "com.onemillionworlds.tamarin:openxr-bindings-native", version.ref = "openxrBindingsNative" }

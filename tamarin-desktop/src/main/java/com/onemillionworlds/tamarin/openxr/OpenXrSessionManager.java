@@ -85,7 +85,6 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 import static org.lwjgl.system.MemoryUtil.memLengthNT1;
 
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.Struct;
@@ -175,7 +174,7 @@ public class OpenXrSessionManager{
         DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB10_A2, Image.Format.RGB10A2);
 
-        //fall backs with not enough bits for color; expect banding
+        //fall backs with not enough bits for colour; expect banding
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGBA8, Image.Format.RGBA8);
         DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGBA8_SNORM, Image.Format.RGBA8I); //not sure if this is right
         //other formats that were not mentioned in the helloOpenXRGL example
@@ -380,8 +379,7 @@ public class OpenXrSessionManager{
                                         EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                                         EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
                                         EXTDebugUtils.XR_DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT
-                        )
-                        .userCallback((messageSeverity, messageTypes, pCallbackData, userData) -> {
+                        ).userCallback((messageSeverity, messageTypes, pCallbackData, userData) -> {
                             XrDebugUtilsMessengerCallbackDataEXT callbackData = XrDebugUtilsMessengerCallbackDataEXT.create(pCallbackData);
                             LOGGER.warning("XR Debug Utils: " + callbackData.messageString());
                             return 0;
@@ -398,7 +396,7 @@ public class OpenXrSessionManager{
 
     /**
      * Creates the main reference space for the application. This is a stage space that is ideal for standing
-     * experiences (although not bad for seating experiences either). The origin is on the floor at the center of the
+     * experiences (although not bad for seating experiences either). The origin is on the floor at the centre of the
      * bounding rectangle, with +Y up, and the X and Z axes aligned with the rectangle edges
      */
     public void createXRReferenceSpace() {
@@ -450,7 +448,7 @@ public class OpenXrSessionManager{
 
             checkResponseCode(XR10.xrEnumerateViewConfigurationViews(xrInstance, systemID, viewConfigType, viewCountPointer, null));
             viewConfigs = XrUtils.fill(
-                    XrViewConfigurationView.calloc(viewCountPointer.get(0)), // use calloc() rather than malloc() to ensure the next field is correctly initialized
+                    XrViewConfigurationView.calloc(viewCountPointer.get(0)), // use calloc() rather than malloc() to ensure the next field is correctly initialised
                     XrViewConfigurationView.TYPE,
                     XR10.XR_TYPE_VIEW_CONFIGURATION_VIEW
             );
@@ -539,7 +537,6 @@ public class OpenXrSessionManager{
      * @return if the application should exit
      */
     private boolean pollEvents() {
-        GLFW.glfwPollEvents();
         XrEventDataBaseHeader event = readNextOpenXREvent();
         if (event == null) {
             return false;

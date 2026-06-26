@@ -30,11 +30,11 @@ dependencies {
 
     api project(':tamarin-core')
 
-    api "org.lwjgl:lwjgl-openxr:${lwjgl3Version}"
+    api libs.lwjgl.openxr
+    runtimeOnly variantOf(libs.lwjgl.openxr) { classifier('natives-windows') }
+    runtimeOnly variantOf(libs.lwjgl.openxr) { classifier('natives-linux') }
+    api libs.lwjgl.egl // Necessary for the cross platform XrGraphicsBindingEGLMNDX binding
 
-    runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-windows"
-    runtimeOnly "org.lwjgl:lwjgl-openxr:${lwjgl3Version}:natives-linux"
-    api "org.lwjgl:lwjgl-egl:${lwjgl3Version}" // Necessary for the cross platform XrGraphicsBindingEGLMNDX binding
 
     implementation 'com.google.code.findbugs:jsr305:3.0.2' //for the OverridingMethodsMustInvokeSuper annotation
 
