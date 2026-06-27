@@ -258,7 +258,6 @@ public class OpenXrSessionManager{
             }
 
             missingXrDebug = extensionsCheckResult.missingXrDebug();
-            useEglGraphicsBinding = extensionsCheckResult.useEglGraphicsBinding();
 
             if(extensionsCheckResult.missingOpenGL()) {
                 throw new IllegalStateException("OpenXR library does not provide required extension: " +   XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
@@ -354,7 +353,7 @@ public class OpenXrSessionManager{
             }
 
             //Bind the OpenGL context to the OpenXR instance and create the session
-            Struct<?> graphicsBinding = XrUtils.createGraphicsBindingOpenGL(stack, window, useEglGraphicsBinding);
+            Struct<?> graphicsBinding = XrUtils.createGraphicsBindingOpenGL(stack, window);
             PointerBuffer sessionPointerBuffer = stack.mallocPointer(1);
             checkResponseCode(XR10.xrCreateSession(
                     xrInstance,
@@ -1047,12 +1046,6 @@ public class OpenXrSessionManager{
             return !Optional.ofNullable(extensionsLoaded.get(EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME)).orElse(false);
         }
 
-        /**
-         * the EGL bindings are cross-platform but not well-supported, use if available
-         */
-        public boolean useEglGraphicsBinding(){
-            return extensionsLoaded.get(XR_MNDX_EGL_ENABLE_EXTENSION_NAME);
-        }
     }
 
     private static final class LayerCheckResult{
