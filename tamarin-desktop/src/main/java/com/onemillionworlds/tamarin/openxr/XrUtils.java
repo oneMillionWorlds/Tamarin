@@ -112,9 +112,38 @@ public class XrUtils{
      */
     static Struct<?> createGraphicsBindingOpenGL(MemoryStack stack, long window, boolean useEGL) throws IllegalStateException {
         if (useEGL) {
-            long eglDisplay = glfwGetEGLDisplay();
+            long eglDisplay = EGL10.eglGetCurrentDisplay();
 
-            if (eglDisplay != NULL){ //check that the egl display is actually available (even if the extension is)
+            if (eglDisplay != NULL) {
+                long eglContext = EGL14.eglGetCurrentContext();
+                IntBuffer cfgIdBuf = stack.callocInt(1);
+                EGL10.eglQueryContext(eglDisplay, eglContext, EGL10.EGL_CONFIG_ID, cfgIdBuf);
+
+                int configId = cfgIdBuf.get(0);
+
+                // Now, get the actual EGLConfig handle
+                // You need to enumerate configs and match by ID
+                IntBuffer numConfigs = stack.callocInt(1);
+
+                EGL10.eglGetConfigs(eglDisplay, null, numConfigs);
+                PointerBuffer configs = stack.callocPointer(numConfigs.get(0));
+                EGL10.eglGetConfigs(eglDisplay, configs, numConfigs);
+
+                long eglConfig = NULL;
+
+                for (int i = 0; i < numConfigs.get(0); i++) {
+                    IntBuffer currentConfigIdBuf = stack.callocInt(1);
+                    EGL10.eglGetConfigAttrib(eglDisplay, configs.get(i), EGL10.EGL_CONFIG_ID, currentConfigIdBuf);
+                    if (currentConfigIdBuf.get(0) == configId) {
+                        eglConfig = configs.get(i);
+                        break;
+                    }
+                }
+
+                if (eglConfig != NULL) {
+                    throw new RuntimeException("Failed to find matching EGLConfig");
+                }
+
                 return XrGraphicsBindingEGLMNDX.malloc(stack)
                         .type$Default()
                         .next(NULL)
