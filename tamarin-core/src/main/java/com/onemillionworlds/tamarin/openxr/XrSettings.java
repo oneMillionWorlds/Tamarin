@@ -55,7 +55,7 @@ public class XrSettings{
 
     public XrSettings(){
         requiredXrExtensions.add("XR_EXT_debug_utils"); // see EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME
-        requiredXrExtensions.add("XR_MNDX_egl_enable"); //cross platform openGL support (not well supported yet but a good idea). See MNDXEGLEnable.XR_MNDX_EGL_ENABLE_EXTENSION_NAME
+        requiredXrExtensions.add("XR_KHR_opengl_enable"); //desktop OpenGL support via the Win32/WGL graphics binding (supported by SteamVR and other desktop runtimes). See KHROpenGLEnable.XR_KHR_OPENGL_ENABLE_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_hand_tracking"); //bones. See EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
         requiredXrExtensions.add("XR_KHR_binding_modification"); //required by XR_EXT_DPAD_BINDING_EXTENSION_NAME See KHRBindingModification.XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_dpad_binding"); //treating joysticks as dpads. See EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME

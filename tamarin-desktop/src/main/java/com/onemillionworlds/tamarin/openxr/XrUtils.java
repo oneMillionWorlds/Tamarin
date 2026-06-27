@@ -4,14 +4,10 @@ package com.onemillionworlds.tamarin.openxr;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
-import org.lwjgl.PointerBuffer;
-import org.lwjgl.egl.EGL;
-import org.lwjgl.egl.EGL10;
-import org.lwjgl.egl.EGL14;
 import org.lwjgl.openxr.XR10;
 import org.lwjgl.openxr.XrApiLayerProperties;
 import org.lwjgl.openxr.XrExtensionProperties;
-import org.lwjgl.openxr.XrGraphicsBindingEGLMNDX;
+import org.lwjgl.openxr.XrGraphicsBindingOpenGLWin32KHR;
 import org.lwjgl.openxr.XrQuaternionf;
 import org.lwjgl.openxr.XrVector3f;
 import org.lwjgl.system.MemoryStack;
@@ -19,9 +15,10 @@ import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
 
 
-import java.nio.IntBuffer;
 import java.util.logging.Logger;
 
+import static org.lwjgl.opengl.WGL.wglGetCurrentContext;
+import static org.lwjgl.opengl.WGL.wglGetCurrentDC;
 import static org.lwjgl.openxr.XR10.XR_TYPE_API_LAYER_PROPERTIES;
 import static org.lwjgl.openxr.XR10.XR_TYPE_EXTENSION_PROPERTIES;
 import static org.lwjgl.system.MemoryUtil.NULL;
@@ -82,64 +79,38 @@ public class XrUtils{
     }
 
     /**
-     * Appends an {@link XrGraphicsBindingEGLMNDX} struct to the next chain of <i>sessionCreateInfo</i>.
+     * Appends an {@link XrGraphicsBindingOpenGLWin32KHR} struct to the next chain of <i>sessionCreateInfo</i>.
      * <p>
-     * Since jMonkeyEngine moved from GLFW to ANGLE, the OpenGL calls are forwarded through EGL on every
-     * platform, so the EGL graphics binding is used unconditionally (ANGLE forwards the calls), removing
-     * the need for the platform specific Win32 / Xlib bindings.
+     * Desktop OpenXR runtimes (e.g. SteamVR) support the Win32 OpenGL graphics binding
+     * ({@code XR_KHR_opengl_enable}) but not the cross-platform EGL binding ({@code XR_MNDX_egl_enable}).
+     * Since jMonkeyEngine 3.10 windowing is now SDL based (no GLFW window handle is available), the
+     * WGL context and device context are obtained directly from the current thread via
+     * {@link org.lwjgl.opengl.WGL#wglGetCurrentContext()} / {@link org.lwjgl.opengl.WGL#wglGetCurrentDC()}.
+     * This requires jMonkeyEngine to run under a real desktop OpenGL renderer (AppSettings.LWJGL_OPENGL45),
+     * not the ANGLE/GLES renderer.
      *
      * @param stack The <i>MemoryStack</i> onto which this method should allocate the graphics binding struct
      * @param window The window handle (unused, retained for API compatibility)
-     * @return the EGL graphics binding struct
-     * @throws IllegalStateException If no current EGL display/context can be found
+     * @return the Win32 OpenGL graphics binding struct
+     * @throws IllegalStateException If no current WGL context / device context can be found
      */
     static Struct<?> createGraphicsBindingOpenGL(MemoryStack stack, long window) throws IllegalStateException {
-        long eglDisplay = EGL10.eglGetCurrentDisplay();
-        if (eglDisplay == NULL) {
-            throw new IllegalStateException("No current EGL display found. An EGL context (e.g. via ANGLE) must be current before creating the OpenXR session.");
+        long hglrc = wglGetCurrentContext(stack.callocInt(1));
+        if (hglrc == NULL) {
+            throw new IllegalStateException("No current WGL OpenGL context found. jMonkeyEngine must run under a real desktop OpenGL renderer (AppSettings.LWJGL_OPENGL45) before creating the OpenXR session.");
         }
 
-        long eglContext = EGL14.eglGetCurrentContext();
-        if (eglContext == NULL) {
-            throw new IllegalStateException("No current EGL context found. An EGL context (e.g. via ANGLE) must be current before creating the OpenXR session.");
+        long hdc = wglGetCurrentDC();
+        if (hdc == NULL) {
+            throw new IllegalStateException("No current WGL device context (HDC) found. jMonkeyEngine must run under a real desktop OpenGL renderer (AppSettings.LWJGL_OPENGL45) before creating the OpenXR session.");
         }
 
-        IntBuffer cfgIdBuf = stack.callocInt(1);
-        EGL10.eglQueryContext(eglDisplay, eglContext, EGL10.EGL_CONFIG_ID, cfgIdBuf);
-
-        int configId = cfgIdBuf.get(0);
-
-        // Now, get the actual EGLConfig handle
-        // You need to enumerate configs and match by ID
-        IntBuffer numConfigs = stack.callocInt(1);
-
-        EGL10.eglGetConfigs(eglDisplay, null, numConfigs);
-        PointerBuffer configs = stack.callocPointer(numConfigs.get(0));
-        EGL10.eglGetConfigs(eglDisplay, configs, numConfigs);
-
-        long eglConfig = NULL;
-
-        for (int i = 0; i < numConfigs.get(0); i++) {
-            IntBuffer currentConfigIdBuf = stack.callocInt(1);
-            EGL10.eglGetConfigAttrib(eglDisplay, configs.get(i), EGL10.EGL_CONFIG_ID, currentConfigIdBuf);
-            if (currentConfigIdBuf.get(0) == configId) {
-                eglConfig = configs.get(i);
-                break;
-            }
-        }
-
-        if (eglConfig == NULL) {
-            throw new IllegalStateException("Failed to find matching EGLConfig");
-        }
-
-        LOGGER.info("Using XrGraphicsBindingEGLMNDX to create the session");
-        return XrGraphicsBindingEGLMNDX.malloc(stack)
+        LOGGER.info("Using XrGraphicsBindingOpenGLWin32KHR to create the session");
+        return XrGraphicsBindingOpenGLWin32KHR.malloc(stack)
                 .type$Default()
                 .next(NULL)
-                .getProcAddress(EGL.getCapabilities().eglGetProcAddress)
-                .display(eglDisplay)
-                .config(eglConfig)
-                .context(eglContext);
+                .hDC(hdc)
+                .hGLRC(hglrc);
     }
 
     public static Vector3f convertOpenXRToJme(XrVector3f openxrVec) {

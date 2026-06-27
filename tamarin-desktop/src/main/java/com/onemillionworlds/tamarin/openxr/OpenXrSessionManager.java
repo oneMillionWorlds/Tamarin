@@ -170,6 +170,19 @@ public class OpenXrSessionManager{
 
     private XrVrMode xrVrBlendMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
+    /*static {
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGBA16F, Image.Format.RGBA16F);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGB10_A2, Image.Format.RGB10A2);
+
+        //fall backs with not enough bits for colour; expect banding
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGBA8, Image.Format.RGBA8);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGBA8_SNORM, Image.Format.RGBA8I); //not sure if this is right
+        //other formats that were not mentioned in the helloOpenXRGL example
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGB8, Image.Format.RGB8);
+        DESIRED_SWAPCHAIN_FORMATS.put(GL31.GL_RGB5_A1, Image.Format.RGB5A1);
+    }*/
+
+
     static {
         DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB10_A2, Image.Format.RGB10A2);
@@ -181,6 +194,7 @@ public class OpenXrSessionManager{
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB8, Image.Format.RGB8);
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB5_A1, Image.Format.RGB5A1);
     }
+
 
     public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings,  Renderer renderer){
         OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings, regularSettings, renderer);
@@ -327,11 +341,11 @@ public class OpenXrSessionManager{
                     .maxApiVersionSupported(0);
             KHROpenGLEnable.xrGetOpenGLGraphicsRequirementsKHR(xrInstance, systemID, graphicsRequirements);
 
-            int minMajorVersion = XR_VERSION_MAJOR(graphicsRequirements.minApiVersionSupported());
-            int minMinorVersion = XR_VERSION_MINOR(graphicsRequirements.minApiVersionSupported());
+            int minMajorVersion = XR10.XR_VERSION_MAJOR(graphicsRequirements.minApiVersionSupported());
+            int minMinorVersion = XR10.XR_VERSION_MINOR(graphicsRequirements.minApiVersionSupported());
 
-            int maxMajorVersion = XR_VERSION_MAJOR(graphicsRequirements.maxApiVersionSupported());
-            int maxMinorVersion = XR_VERSION_MINOR(graphicsRequirements.maxApiVersionSupported());
+            int maxMajorVersion = XR10.XR_VERSION_MAJOR(graphicsRequirements.maxApiVersionSupported());
+            int maxMinorVersion = XR10.XR_VERSION_MINOR(graphicsRequirements.maxApiVersionSupported());
             LOGGER.info("The OpenXR runtime supports OpenGL " + minMajorVersion + "." + minMinorVersion
                     + " to OpenGL " + maxMajorVersion + "." + maxMinorVersion);
             // Check if OpenGL version is supported by OpenXR runtime

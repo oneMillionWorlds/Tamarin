@@ -34,6 +34,7 @@ dependencies {
     runtimeOnly variantOf(libs.lwjgl.openxr) { classifier('natives-windows') }
     runtimeOnly variantOf(libs.lwjgl.openxr) { classifier('natives-linux') }
     api libs.lwjgl.egl // Necessary for the cross platform XrGraphicsBindingEGLMNDX binding
+    //api libs.lwjgl.opengles // jME's ANGLE renderer uses OpenGL ES, so Tamarin must use the GLES bindings (not desktop GL) to share LWJGL's GLES capabilities
 
 
     implementation 'com.google.code.findbugs:jsr305:3.0.2' //for the OverridingMethodsMustInvokeSuper annotation
