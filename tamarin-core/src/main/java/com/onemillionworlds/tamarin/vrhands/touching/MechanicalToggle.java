@@ -394,6 +394,20 @@ public class MechanicalToggle extends Node{
      * @param state the new state
      */
     public void setState(ToggleState state){
+        setState(state, true);
+    }
+
+    /**
+     * This manually sets the state of the button. ToggleState.TOGGLED_ON and {@link ToggleState#FULLY_OFF} move
+     * the button to those set points. {@link ToggleState#TRANSITIONING_OFF} allows the button to slowly relax from a
+     * locked position.
+     * <p>
+     * {@link ToggleState#TRANSITIONING_OFF} is ignored if it is already {@link ToggleState#FULLY_OFF}
+     * </p>
+     *
+     * @param state the new state
+     */
+    public void setState(ToggleState state, boolean notifyListeners){
 
         if(currentState == state){
             return;
@@ -407,10 +421,10 @@ public class MechanicalToggle extends Node{
         } else if(state == ToggleState.TOGGLED_ON){
             setTravel(toggleInTravel);
         }
-        updateAndNotifyState(state);
+        updateAndNotifyState(state, notifyListeners);
     }
 
-    private void updateAndNotifyState(ToggleState state){
+    private void updateAndNotifyState(ToggleState state, boolean notifyListeners){
         if(currentState == state){
             return;
         }
@@ -421,12 +435,14 @@ public class MechanicalToggle extends Node{
 
         ToggleState previousState = currentState;
         currentState = state;
-        pressEvents.set(state);
-        for(Consumer<ToggleState> listener : pressListeners){
-            listener.accept(state);
-        }
-        if(previousState.isAKindOfOn() != currentState.isAKindOfOn()){
-            majorPressEvents.set(currentState.isAKindOfOn());
+        if(notifyListeners){
+            pressEvents.set(state);
+            for(Consumer<ToggleState> listener : pressListeners){
+                listener.accept(state);
+            }
+            if(previousState.isAKindOfOn() != currentState.isAKindOfOn()){
+                majorPressEvents.set(currentState.isAKindOfOn());
+            }
         }
 
         if(currentState.isAKindOfOn()){
