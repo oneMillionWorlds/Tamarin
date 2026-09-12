@@ -40,7 +40,7 @@ public class MechanicalButton extends Node{
 
     ButtonMovementAxis movementAxis;
 
-    private final float geometrySurfaceDistanceFromOrigin;
+    private float geometrySurfaceDistanceFromOrigin;
 
     private Optional<Haptic> hapticOnFullDepress = Optional.empty();
 
@@ -51,23 +51,17 @@ public class MechanicalButton extends Node{
      * collisions with the button if the player plunges their hand into it. The whole volume is collidable
      * rather than just the surface.
      */
-    private final BoundingBox overallBoundsLocalisedToSpatialOrigin;
+    private BoundingBox overallBoundsLocalisedToSpatialOrigin;
 
-    private final Geometry representativeGeometry;
+    private Geometry representativeGeometry;
+
+    /** Kept so {@link #refreshBounds()} can re-measure the geometry after it changes size. */
+    private final Spatial buttonGeometry;
 
     public MechanicalButton(Spatial buttonGeometry, ButtonMovementAxis movementAxis, float maximumButtonTravel, float resetTime){
-        representativeGeometry = findGeometry(buttonGeometry);
-        assert representativeGeometry != null : "Couldn't find a geometry in the spatial";
-        overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
-
-        geometrySurfaceDistanceFromOrigin = Math.min(
-                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMin(null)),
-                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMax(null))
-        );
-
-        //we want the top surface of the bounding box
-
+        this.buttonGeometry = buttonGeometry;
         this.movementAxis = movementAxis;
+        measureGeometry();
         movingNode = new Node("MechanicalButton_MovingNode"){
             @Override
             public int collideWith(Collidable other, CollisionResults results){
@@ -151,6 +145,26 @@ public class MechanicalButton extends Node{
     /**
      * Returns the first geometry it can recursively find in the spatial
      */
+    /**
+     * Re-measures the button geometry, updating the collision bounds and the surface depth used to work out
+     * how far a fingertip has pressed.
+     */
+    public void refreshBounds(){
+        measureGeometry();
+    }
+
+    private void measureGeometry(){
+        representativeGeometry = findGeometry(buttonGeometry);
+        assert representativeGeometry != null : "Couldn't find a geometry in the spatial";
+        overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
+
+        //we want the top surface of the bounding box
+        geometrySurfaceDistanceFromOrigin = Math.min(
+                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMin(null)),
+                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMax(null))
+        );
+    }
+
     private Geometry findGeometry(Spatial buttonGeometry){
         if(buttonGeometry instanceof Geometry){
             return (Geometry) buttonGeometry;

@@ -42,7 +42,7 @@ public class MechanicalToggle extends Node{
 
     ButtonMovementAxis movementAxis;
 
-    private final float geometrySurfaceDistanceFromOrigin;
+    private float geometrySurfaceDistanceFromOrigin;
 
     private Optional<Haptic> hapticOnFullDepress = Optional.empty();
 
@@ -53,9 +53,12 @@ public class MechanicalToggle extends Node{
      * collisions with the button if the player plunges their hand into it. The whole volume is collidable
      * rather than just the surface.
      */
-    private final BoundingBox overallBoundsLocalisedToSpatialOrigin;
+    private BoundingBox overallBoundsLocalisedToSpatialOrigin;
 
-    private final Geometry representativeGeometry;
+    private Geometry representativeGeometry;
+
+    /** Kept so {@link #refreshBounds()} can re-measure the geometry after it changes size. */
+    private final Spatial buttonGeometry;
 
     private final float toggleInTravel;
 
@@ -77,17 +80,9 @@ public class MechanicalToggle extends Node{
         assert toggleInTravel < maximumButtonTravelPoint : "toggleInTravel must be less than maximumButtonTravel (its the half way point that the button will lock in at)";
 
         this.toggleInTravel = toggleInTravel;
-
-        representativeGeometry = findGeometry(buttonGeometry);
-        assert representativeGeometry != null : "Couldn't find a geometry in the spatial";
-        overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
-
-        geometrySurfaceDistanceFromOrigin = Math.min(
-                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMin(null)),
-                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMax(null))
-        );
-
+        this.buttonGeometry = buttonGeometry;
         this.movementAxis = movementAxis;
+        measureGeometry();
         movingNode = new Node("MechanicalButton_MovingNode"){
             @Override
             public int collideWith(Collidable other, CollisionResults results){
@@ -249,6 +244,24 @@ public class MechanicalToggle extends Node{
      */
     public void setDynamicEnablementState(Supplier<EnablementState> enablementState){
         this.enablementState = enablementState;
+    }
+
+    /**
+     * Re-measures the toggle geometry, updating the collision bounds and the surface depth used to work out
+     * how far a fingertip has pressed.*/
+    public void refreshBounds(){
+        measureGeometry();
+    }
+
+    private void measureGeometry(){
+        representativeGeometry = findGeometry(buttonGeometry);
+        assert representativeGeometry != null : "Couldn't find a geometry in the spatial";
+        overallBoundsLocalisedToSpatialOrigin = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(buttonGeometry);
+
+        geometrySurfaceDistanceFromOrigin = Math.min(
+                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMin(null)),
+                movementAxis.extract(overallBoundsLocalisedToSpatialOrigin.getMax(null))
+        );
     }
 
     /**
@@ -422,6 +435,10 @@ public class MechanicalToggle extends Node{
             setTravel(toggleInTravel);
         }
         updateAndNotifyState(state, notifyListeners);
+    }
+
+    private void updateAndNotifyState(ToggleState state){
+        updateAndNotifyState(state, true);
     }
 
     private void updateAndNotifyState(ToggleState state, boolean notifyListeners){
