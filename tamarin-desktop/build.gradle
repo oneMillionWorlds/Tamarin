@@ -123,5 +123,9 @@ signing {
         }
     }
 
-    sign publishing.publications.mavenJava
+    // Only sign when a key is actually configured. Unconditional signing makes publishToMavenLocal fail on a
+    // dev machine with no GPG key, because the publication then references .asc files that were never produced.
+    if (project.hasProperty('signing.keyId')) {
+        sign publishing.publications.mavenJava
+    }
 }
