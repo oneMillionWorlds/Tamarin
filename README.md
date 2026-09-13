@@ -58,11 +58,11 @@ Note that the keyId is just the last 8 characters of the long id, and the secret
 
 ## Nexus
 
-Project is provisioned on https://s01.oss.sonatype.org/
+Project is provisioned on https://central.sonatype.com/publishing
 
 Deploy to sonatype via pipeline by:
 - Running in gitlab the publish job
-- Go to https://s01.oss.sonatype.org/ and log in
+- Go to https://central.sonatype.com/publishing and log in
 - Go to the staging repository and select the repository
 - If all looks well "close" the repository and then Release it
 - Tag the release
@@ -71,19 +71,49 @@ Deploy to sonatype via pipeline by:
 Deploy to sonatype manually by:
 - Editing the build.gradle file to have a non snapshot version
 - Running `./gradlew publishMavenJavaPublicationToSonaTypeRepository` (see https://docs.gradle.org/current/userguide/publishing_maven.html)
-- Go to https://s01.oss.sonatype.org/ and log in as user oneMillionWorlds
+- Go to https://central.sonatype.com/publishing and log in as user oneMillionWorlds
 - Go to the staging repository and select the repository
 - If all looks well "close" the repository and then Release it
 - Tag the release
 
-### Testing staging builds
+### Testing a deployment before publishing
 
-To test a staging build the repository must be in "closed" state, then add the following to the consuming build.gradle
+A `VALIDATED` deployment can be consumed straight from the Portal, so a release can be tested from a real
+consuming project before it is made permanent.
 
-    maven {
-        url "https://s01.oss.sonatype.org/content/repositories/comonemillionworlds-XXXX"
+Add to the consuming `build.gradle`:
+
+    repositories {
+        maven {
+            name = "centralManualTesting"
+            url = "https://central.sonatype.com/api/v1/publisher/deployments/download/"
+            credentials(HttpHeaderCredentials)
+            authentication { header(HttpHeaderAuthentication) }
+        }
     }
 
-Where XXXX is replaced by the specific repository number being used for this version (see https://s01.oss.sonatype.org/#stagingRepositories
-when logged in).
+And to that project's `gradle.properties` (or better, your user level `~/.gradle/gradle.properties`):
+
+    centralManualTestingAuthHeaderName=Authorization
+    centralManualTestingAuthHeaderValue=Bearer <base64 of tokenUsername:tokenPassword>
+
+Where the token value is the base64 encoding of `tokenUsername:tokenPassword`, e.g.
+
+    printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 -w 0
+
+Then depend on the version being released as normal. That URL serves files from any of your validated
+deployments; to pin to one specific deployment use
+`https://central.sonatype.com/api/v1/publisher/deployment/<deploymentId>/download/` instead.
+
+Remember to remove this repository from the consuming project once the version is actually published.
+
+### Testing without uploading at all
+
+For quick local iteration skip the Portal entirely and use maven local:
+
+    ./gradlew publishToMavenLocal
+
+Then add `mavenLocal()` to the consuming project's repositories. Use a distinct version number so it is
+obvious which artifacts are being picked up.
+
 
