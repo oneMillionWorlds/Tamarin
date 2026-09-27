@@ -57,6 +57,7 @@ dependencies {
     compileOnly 'com.github.stephengold:Minie:8.2.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.8.2'
     testImplementation libs.jme3.core
     testImplementation 'org.mockito:mockito-core:5.4.0'
 }

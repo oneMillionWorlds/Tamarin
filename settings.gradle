@@ -14,13 +14,12 @@ pluginManagement {
         gradlePluginPortal()
     }
     plugins {
-        id 'com.android.library' version '8.13.0'
-        id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
-        id 'org.jetbrains.dokka' version '2.0.0'
+        id 'com.android.library' version '9.4.1'
+        id 'org.jetbrains.dokka' version '2.2.0'
     }
 }
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.10.0'
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
 rootProject.name = 'tamarin'

@@ -26,17 +26,17 @@ dependencies {
 }
 
 android {
-    namespace 'com.onemillionworlds.tamarin.android'
-    compileSdk 35
+    namespace = 'com.onemillionworlds.tamarin.android'
+    compileSdk = 35
 
     defaultConfig {
-        minSdk 26
-        targetSdk 35
+        minSdk = 26
+        targetSdk = 35
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     tasks.withType(JavaCompile).configureEach {
