@@ -25,7 +25,7 @@ test {
 
 
 dependencies {
-    implementation 'com.google.code.findbugs:jsr305:3.0.2' //for the OverridingMethodsMustInvokeSuper annotation
+    implementation libs.jsr305 //for the OverridingMethodsMustInvokeSuper annotation
 
     /*
      * It is presumed any user of Tamarin will already be using JMonkey but we don't want to force a version on them.
@@ -36,18 +36,19 @@ dependencies {
     /*
      * Lemur is an optional dependency
      */
-    compileOnly ("com.simsilica:lemur:1.16.0")
-    compileOnly ("com.simsilica:lemur-proto:1.13.0")
+    compileOnly libs.lemur
+    compileOnly libs.lemur.proto
 
     /*
      * Minie is an optional dependency
      */
-    compileOnly 'com.github.stephengold:Minie:8.2.0'
+    compileOnly libs.minie
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.8.2'
+    testImplementation platform(libs.junit.bom)
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly libs.junit.platform.launcher
     testImplementation libs.jme3.core
-    testImplementation 'org.mockito:mockito-core:5.4.0'
+    testImplementation libs.mockito.core
 }
 
 publishing { //see https://docs.gradle.org/current/userguide/publishing_maven.html

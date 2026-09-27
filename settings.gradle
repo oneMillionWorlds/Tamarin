@@ -13,10 +13,6 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
-    plugins {
-        id 'com.android.library' version '9.4.1'
-        id 'org.jetbrains.dokka' version '2.2.0'
-    }
 }
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
