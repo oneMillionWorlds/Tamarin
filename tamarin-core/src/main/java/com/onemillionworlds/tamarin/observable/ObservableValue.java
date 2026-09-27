@@ -24,6 +24,14 @@ public class ObservableValue<T>{
     }
 
     /**
+     * Updates the value without subscriptions seeing it as a change (they will still read the new value from
+     * {@link ObservableValueSubscription#get()}).
+     */
+    public void setWithoutNotifying(T newValue){
+        value = newValue;
+    }
+
+    /**
      * Obtains a subscription to be able to independantly determine if the value has changed.
      */
     public ObservableValueSubscription<T> subscribe(){

@@ -34,6 +34,8 @@ public class MechanicalToggle extends Node{
 
     private final List<Consumer<ToggleState>> pressListeners = new SafeArrayList<>(castClass(Consumer.class));
 
+    private final List<Consumer<Boolean>> onOffListeners = new SafeArrayList<>(castClass(Consumer.class));
+
     private final List<Runnable> tutorialModePressListeners = new SafeArrayList<>(castClass(Runnable.class));
 
     private boolean tutorialResetReadyToFire = true;
@@ -63,6 +65,14 @@ public class MechanicalToggle extends Node{
     private final float toggleInTravel;
 
     private ToggleState currentState = ToggleState.FULLY_OFF;
+
+    /**
+     * Whether the automatic completion of an in-progress transition (TRANSITIONING_OFF relaxing to FULLY_OFF, or
+     * TRANSITIONING_ON settling to TOGGLED_ON) notifies listeners. It follows whatever started the transition, so a
+     * transition begun by {@link #setState(ToggleState, boolean)} with notifyListeners=false also completes silently
+     * rather than surprising listeners with a FULLY_OFF they were never told was coming.
+     */
+    private boolean notifyOnTransitionCompletion = true;
 
     /**
      * If true then the button can be untoggled by pressing it again. If false then the button can only be untoggled
@@ -200,7 +210,7 @@ public class MechanicalToggle extends Node{
                                     newTravel -= distanceInThisTick;
                                     if(newTravel < toggleInTravel){
                                         newTravel = toggleInTravel;
-                                        updateAndNotifyState(ToggleState.TOGGLED_ON);
+                                        updateAndNotifyState(ToggleState.TOGGLED_ON, notifyOnTransitionCompletion);
                                     }
                                 }
                             }
@@ -214,7 +224,7 @@ public class MechanicalToggle extends Node{
                                     newTravel -= distanceInThisTick;
                                     if(newTravel < 0){
                                         newTravel = 0;
-                                        updateAndNotifyState(ToggleState.FULLY_OFF);
+                                        updateAndNotifyState(ToggleState.FULLY_OFF, notifyOnTransitionCompletion);
                                     }
                                 }
                             }
@@ -349,6 +359,20 @@ public class MechanicalToggle extends Node{
     }
 
     /**
+     * Adds a listener that is called only on the major change between on and off (receiving true for on), not the
+     * minor {@link ToggleState#TRANSITIONING_OFF} to {@link ToggleState#FULLY_OFF} and similar. This is the listener
+     * equivalent of {@link MechanicalToggle#subscribeToOnOffEvents()}.
+     *
+     * @param listener a listener that will be called immediately when the toggle turns on or off.
+     * @return a TerminateListener to de register the listener.
+     */
+    @SuppressWarnings("UnusedReturnValue")
+    public TerminateListener addOnOffListener(Consumer<Boolean> listener){
+        onOffListeners.add(listener);
+        return () -> onOffListeners.remove(listener);
+    }
+
+    /**
      * This will change the material applied to the toggle automatically based on its state.
      *
      * <p>
@@ -417,8 +441,16 @@ public class MechanicalToggle extends Node{
      * <p>
      * {@link ToggleState#TRANSITIONING_OFF} is ignored if it is already {@link ToggleState#FULLY_OFF}
      * </p>
+     * <p>
+     * If listeners are not notified then neither are they notified when a transition this starts completes (e.g. a
+     * silent {@link ToggleState#TRANSITIONING_OFF} later relaxing to {@link ToggleState#FULLY_OFF}). This is intended
+     * for syncing the toggle to some external state, where echoing the change back to the listeners would be wrong.
+     * Values read from {@link #subscribeToPressEvents()} and {@link #subscribeToOnOffEvents()} are still kept up to
+     * date, but a silent change is not reported as a change.
+     * </p>
      *
      * @param state the new state
+     * @param notifyListeners whether listeners (and subscriptions) should be told about this change
      */
     public void setState(ToggleState state, boolean notifyListeners){
 
@@ -452,13 +484,23 @@ public class MechanicalToggle extends Node{
 
         ToggleState previousState = currentState;
         currentState = state;
+        notifyOnTransitionCompletion = notifyListeners;
+        boolean onOffChanged = previousState.isAKindOfOn() != currentState.isAKindOfOn();
         if(notifyListeners){
             pressEvents.set(state);
             for(Consumer<ToggleState> listener : pressListeners){
                 listener.accept(state);
             }
-            if(previousState.isAKindOfOn() != currentState.isAKindOfOn()){
+            if(onOffChanged){
                 majorPressEvents.set(currentState.isAKindOfOn());
+                for(Consumer<Boolean> listener : onOffListeners){
+                    listener.accept(currentState.isAKindOfOn());
+                }
+            }
+        } else{
+            pressEvents.setWithoutNotifying(state);
+            if(onOffChanged){
+                majorPressEvents.setWithoutNotifying(currentState.isAKindOfOn());
             }
         }
 
