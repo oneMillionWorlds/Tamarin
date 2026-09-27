@@ -131,6 +131,11 @@ public class LemurKeyboard extends BaseAppState{
             }
 
         }
+
+        //lemur containers have their origin at the top left, shift left by half the width so the keyboard is horizontally centred on the owner
+        float keyboardWidth = lemurWindow.getPreferredSize().x * keyboardScale;
+        lemurWindow.setLocalTranslation(-keyboardWidth / 2, 0, 0);
+
         keyboardNode.attachChild(lemurWindow);
     }
 
