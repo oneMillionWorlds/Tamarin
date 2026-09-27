@@ -50,9 +50,6 @@ To sign jars for maven central appropriate details will need to be in C:\Users\{
     signing.keyId=keyId
     signing.password=password
     signing.secretKeyRingFile=C:/Users/{user}/AppData/Roaming/gnupg/pubring.kbx
-    
-    ossrhUsername=your-jira-id
-    ossrhPassword=your-jira-password
 
 Note that the keyId is just the last 8 characters of the long id, and the secretRing must be explicitly exported `gpg --export-secret-keys -o secring.gpg`
 
@@ -60,20 +57,23 @@ Note that the keyId is just the last 8 characters of the long id, and the secret
 
 Project is provisioned on https://central.sonatype.com/publishing
 
-Deploy to sonatype via pipeline by:
-- Running in gitlab the publish job
+Deploy via pipeline by:
+- Running the "Java release with Gradle" GitHub action. This builds a bundle (`./gradlew prepareCentralBundle`, which
+  creates `build/central-bundle.zip`), uploads it via the Central Publisher API as a `USER_MANAGED` deployment, tags
+  the release and increments the version in `gradle.properties`
 - Go to https://central.sonatype.com/publishing and log in
-- Go to the staging repository and select the repository
-- If all looks well "close" the repository and then Release it
-- Tag the release
+- Go to Deployments and select the deployment
+- If all looks well (it should reach the `VALIDATED` state) "Publish" it
 
+The action's `OSSRH_USERNAME` / `OSSRH_PASSWORD` secrets must be a Central Portal user token (generated from your
+account page on https://central.sonatype.com), not the old OSSRH credentials.
 
-Deploy to sonatype manually by:
-- Editing the build.gradle file to have a non snapshot version
-- Running `./gradlew publishMavenJavaPublicationToSonaTypeRepository` (see https://docs.gradle.org/current/userguide/publishing_maven.html)
-- Go to https://central.sonatype.com/publishing and log in as user oneMillionWorlds
-- Go to the staging repository and select the repository
-- If all looks well "close" the repository and then Release it
+Deploy manually by:
+- Running `./gradlew prepareCentralBundle` (with signing configured, see above)
+- Uploading it with `.github/scripts/upload_central.sh build/central-bundle.zip` (with `CENTRAL_USERNAME` and
+  `CENTRAL_PASSWORD` environment variables set to the user token), or uploading `build/central-bundle.zip` by hand
+  at https://central.sonatype.com/publishing
+- Then publish the deployment as above
 - Tag the release
 
 ### Testing a deployment before publishing

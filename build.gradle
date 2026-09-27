@@ -42,6 +42,12 @@ tasks.register('prepareCentralBundle') {
 }
 
 subprojects {
+    // publishAllToCentralPortalStaging depends on both cleaning the staging directory and publishing into it; make sure
+    // the clean happens before (not after) the publishing
+    tasks.withType(PublishToMavenRepository).matching { it.name.endsWith('ToCentralPortalStagingRepository') }.configureEach {
+        mustRunAfter(':cleanCentralPortalStaging')
+    }
+
     tasks.withType(Javadoc).configureEach {
         // Prevent the build complaining there isn't an @param on every singple parameter
         options.addStringOption('Xdoclint:none', '-quiet')
