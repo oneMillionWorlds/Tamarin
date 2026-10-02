@@ -319,7 +319,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                             }
                             return standardSubActionPaths;
                         });
-                        xrActionCreateInfo.subactionPaths(subActionsLongBuffer.address());
+                        xrActionCreateInfo.subactionPaths(subActionsLongBuffer);
                     }
                     xrActionCreateInfo.countSubactionPaths(supportedSubActionPaths.size());
 

@@ -29,3 +29,4 @@ build
 /.idea
 /out
 /.profileconfig.json
+/local.properties

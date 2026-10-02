@@ -1,6 +1,6 @@
 [versions]
 jme = "3.9.0-beta1"
-openxrBindingsNative = "1.0.2"
+openxrBindingsNative = "1.1.0-alpha1"
 lwjgl3 = "3.3.6" # it is important that this is the same as JME which provides the rest of LWJGL
 jsr305 = "3.0.2"
 lemur = "1.16.0"

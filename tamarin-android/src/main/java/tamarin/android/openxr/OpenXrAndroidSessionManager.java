@@ -285,12 +285,11 @@ public class OpenXrAndroidSessionManager {
                     .next(androidKHR.address())
                     .createFlags(0)
                     .enabledApiLayerCount(0)
-                    .enabledApiLayerNames(NULL)
+                    .enabledApiLayerNames(null)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.utf8(xrSettings.getApplicationName()))
                             .apiVersion(XR10Utils.xrMakeVersion(xrVersion.getMajor(), xrVersion.getMinor(), xrVersion.getPatch())))
-                    .enabledExtensionCount(extensionsCheckResult.getNumberOfExtensionsToLoad())
-                    .enabledExtensionNames(extensionsCheckResult.getExtensionsToLoadBuffer().address());
+                    .enabledExtensionNames(extensionsCheckResult.getExtensionsToLoadBuffer());
 
 
             XrInstance.HandleBuffer pp = XrInstance.create(1,stack);
@@ -938,23 +937,24 @@ public class OpenXrAndroidSessionManager {
 
         checkResponseCode(xrEnumerateInstanceExtensionProperties((ByteBufferView)null, numExtensions, numberOfExtensionsPointer, properties));
 
-        PointerBufferView extensions = PointerBufferView.createPointerBufferView(desiredExtensions.size()); //note must have space for the max possible no. of extensions
-
         Map<String, Boolean> extensionsLoaded = new HashMap<>();
         desiredExtensions.forEach(e -> extensionsLoaded.put(e, false));
 
-        int extensionIndex = 0;
+        List<Long> extensionNameAddresses = new ArrayList<>();
         for (int i = 0; i < numExtensions; i++) {
             XrExtensionProperties prop = properties.get(i);
             String extensionName = prop.extensionNameString();
 
             if (extensionsLoaded.containsKey(extensionName)) {
                 extensionsLoaded.put(extensionName, true);
-                extensions.set(extensionIndex, prop.extensionName().address());
-                extensionIndex++;
+                extensionNameAddresses.add(prop.extensionName().address());
             }
         }
-        extensions.getBufferView().flip();
+
+        PointerBufferView extensions = PointerBufferView.createPointerBufferView(extensionNameAddresses.size());
+        for (int i = 0; i < extensionNameAddresses.size(); i++) {
+            extensions.set(i, extensionNameAddresses.get(i));
+        }
 
         return new ExtensionsCheckResult(extensions, extensionsLoaded);
     }
@@ -1022,10 +1022,6 @@ public class OpenXrAndroidSessionManager {
 
         public Map<String, Boolean> getExtensionsLoaded() {
             return extensionsLoaded;
-        }
-
-        public int getNumberOfExtensionsToLoad() {
-            return (int)extensionsLoaded.values().stream().filter(b -> b).count();
         }
 
         public boolean missingOpenGL(){
