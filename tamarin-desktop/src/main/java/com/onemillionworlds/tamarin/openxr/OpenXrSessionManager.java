@@ -592,14 +592,15 @@ public class OpenXrSessionManager{
     }
 
     boolean handleSessionStateChangedEvent(XrEventDataSessionStateChanged stateChangedEvent) {
+        if (stateChangedEvent.session() != xrSession.address()) {
+            System.err.println("XrEventDataSessionStateChanged for unknown session " + stateChangedEvent.session());
+            return false;
+        }
+
         SessionState oldState = sessionState;
         sessionState = SessionState.fromXRValue(stateChangedEvent.state());
 
         LOGGER.info("XrEventDataSessionStateChanged: state " + oldState + "->" + sessionState + " session=" + stateChangedEvent.session() + " time=" + stateChangedEvent.time());
-        if ((stateChangedEvent.session() != NULL) && (stateChangedEvent.session() != xrSession.address())) {
-            System.err.println("XrEventDataSessionStateChanged for unknown session");
-            return false;
-        }
 
         switch (sessionState) {
             case READY: {

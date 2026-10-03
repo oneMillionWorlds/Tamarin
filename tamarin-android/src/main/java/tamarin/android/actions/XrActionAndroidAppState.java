@@ -113,7 +113,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     /**
      * A map of the action -> input -> handle for action space. Typically one for each hand.
      */
-    private final Map<ActionHandle,Map<String, Long>> poseActionInputSpaceHandles = new HashMap<>();
+    private final Map<ActionHandle,Map<String, XrSpace>> poseActionInputSpaces = new HashMap<>();
 
     /**
      * A map of paths (e.g. /user/hand/right) to the handle used to address it.
@@ -121,9 +121,9 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     private final Map<String, Long> pathCache = new HashMap<>();
 
     /**
-     * Holds things like XR10.XR_REFERENCE_SPACE_TYPE_STAGE -> the memory handle of the reference space.
+     * Holds things like REFERENCE_SPACE_TYPE_STAGE -> the reference space.
      */
-    private final Map<Long, Long> referenceSpaceHandles = new HashMap<>();
+    private final EnumMap<XrReferenceSpaceType, XrSpace> referenceSpaces = new EnumMap<>(XrReferenceSpaceType.class);
 
     private XrSession xrSessionHandle;
     private XrInstance xrInstance;
@@ -295,7 +295,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                         "Creating action set " + actionSet.getName() + " (" + actionSet.getTranslatedName() + ") p:" + actionSet.getPriority(),
                         XR10.xrCreateActionSet(xrInstance, actionSetCreate, actionSetPointer));
 
-                XrActionSet xrActionSet = new XrActionSet(actionSetPointer.get(0));
+                XrActionSet xrActionSet = actionSetPointer.getByIndex(0);
                 actionSets.put(actionSet.getName(), xrActionSet);
 
                 for(Action action : actionSet.getActions()){
@@ -320,13 +320,15 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                             return standardSubActionPaths;
                         });
                         xrActionCreateInfo.subactionPaths(subActionsLongBuffer);
+                    }else{
+                        xrActionCreateInfo.subactionPaths(null);
+                        xrActionCreateInfo.countSubactionPaths(0);
                     }
-                    xrActionCreateInfo.countSubactionPaths(supportedSubActionPaths.size());
 
                     XrAction.HandleBuffer actionPointer = XrAction.create(1, stack);
 
                     withResponseCodeLogging("xrStringToPath", XR10.xrCreateAction(xrActionSet, xrActionCreateInfo, actionPointer));
-                    XrAction xrAction = new XrAction(actionPointer.get(0));
+                    XrAction xrAction = actionPointer.getByIndex(0);
                     actions.computeIfAbsent(actionSet.getName(), name -> new HashMap<>()).put(action.getActionName(), xrAction);
 
                     if(action.getActionType() == ActionType.POSE){
@@ -350,7 +352,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
                             withResponseCodeLogging("Create pose space", XR10.xrCreateActionSpace(xrSessionHandle, actionSpaceCreateInfo, spacePointer));
 
-                            poseActionInputSpaceHandles.computeIfAbsent(new ActionHandle(action.getActionSetName(), action.getActionName()), key -> new HashMap<>()).put(input, spacePointer.get(0));
+                            poseActionInputSpaces.computeIfAbsent(new ActionHandle(action.getActionSetName(), action.getActionName()), key -> new HashMap<>()).put(input, spacePointer.getByIndex(0));
                         }
 
                     }
@@ -375,7 +377,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                     if(action == null){
                         throw new RuntimeException("Handle for " + actionAndBinding.getKey().getActionName() + " is (java) null");
                     }
-                    if(action.getRawHandle() == 0L){
+                    if(action.isNullHandle()){
                         throw new RuntimeException("Handle for " + actionAndBinding.getKey().getActionName() + " is (c) null");
                     }
                     suggestedBindingsBuffer.get(i).action(action);
@@ -388,7 +390,6 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                         .type$Default()
                         .next(NULL)
                         .interactionProfile(deviceProfileHandle)
-                        .countSuggestedBindings(suggestedBindings.size())
                         .suggestedBindings(suggestedBindingsBuffer);
 
                 try{
@@ -410,7 +411,6 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             XrSessionActionSetsAttachInfo actionSetsAttachInfo = XrSessionActionSetsAttachInfo.malloc(stack);
             actionSetsAttachInfo.type$Default();
             actionSetsAttachInfo.next(NULL);
-            actionSetsAttachInfo.countActionSets(actionSetsBuffer.capacity());
             actionSetsAttachInfo.actionSets(actionSetsBuffer);
             checkResponseCode("xrAttachSessionActionSets", XR10.xrAttachSessionActionSets(xrSessionHandle, actionSetsAttachInfo));
 
@@ -429,7 +429,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                     // then report unsupported when you try to use it. Gracefully accept that and don't crash
                     boolean success = withResponseCodeLogging("Setup hand tracking", XR10.xrCreateHandTrackerEXT(xrSessionHandle, createHandTracking, handTrackingPointerBuffer));
                     if (success){
-                        XrHandTrackerEXT handTrackerEXT = new XrHandTrackerEXT(handTrackingPointerBuffer.get(0));
+                        XrHandTrackerEXT handTrackerEXT = handTrackingPointerBuffer.getByIndex(0);
                         handTrackers.put(handSide, handTrackerEXT);
                     }else{
                         LOGGER.warning("XR_EXT_hand_tracking not *actually* available, correcting" );
@@ -457,7 +457,6 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         this.xrActionsSyncInfo = XrActionsSyncInfo.create();
         this.xrActionsSyncInfo.type$Default();
         this.xrActionsSyncInfo.next(NULL);
-        this.xrActionsSyncInfo.countActiveActionSets(activeActionSets.size());
         this.activeActionSetsBuffer = XrActiveActionSet.create(activeActionSets.size());
         for(int i=0; i<activeActionSets.size(); i++){
             activeActionSetsBuffer.get(i).actionSet(activeActionSets.get(i));
@@ -532,6 +531,15 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         }
     }
 
+    private XrSpace getPoseSpace(ActionHandle poseAction, HandSide handSide){
+        Map<String, XrSpace> spacesForAction = poseActionInputSpaces.get(poseAction);
+        XrSpace space = spacesForAction == null ? null : spacesForAction.get(handSide.restrictToInputString);
+        if (space == null){
+            throw new RuntimeException("No pose action found for " + poseAction + " and handSide " + handSide + ". Have you registered it in the manifest?");
+        }
+        return space;
+    }
+
     private XrAction obtainActionFromHandle(ActionHandle actionHandle){
         try{
             return actions.get(actionHandle.actionSetName()).get(actionHandle.actionName());
@@ -579,16 +587,8 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                     .type$Default()
                     .next(spaceVelocity.address());
 
-            long spaceHandle;
-            try {
-                spaceHandle = poseActionInputSpaceHandles.get(action).get(handSide.restrictToInputString);
-            } catch (NullPointerException nullPointerException) {
-                throw new RuntimeException("No pose action found for " + action + " and handSide " + handSide + ". Have you registered in it the manifest?", nullPointerException);
-            }
-
-            XrSpace poseSpace = new XrSpace(spaceHandle);
-            long handleForReferenceSpace = getOrCreateReferenceSpaceHandle(stageRelative ? XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE: XrReferenceSpaceType.REFERENCE_SPACE_TYPE_LOCAL);
-            XrSpace relativeToSpace = new XrSpace(handleForReferenceSpace);
+            XrSpace poseSpace = getPoseSpace(action, handSide);
+            XrSpace relativeToSpace = getOrCreateReferenceSpace(stageRelative ? XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE: XrReferenceSpaceType.REFERENCE_SPACE_TYPE_LOCAL);
             withResponseCodeLogging("getPose", XR10.xrLocateSpace(poseSpace, relativeToSpace, predictedTime, spaceLocation));
 
             long locationFlags = spaceLocation.locationFlags();
@@ -639,15 +639,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 return Optional.empty();
             }
 
-            long spaceHandle;
-            try {
-                spaceHandle = poseActionInputSpaceHandles.get(poseAction).get(handSide.restrictToInputString);
-            } catch (NullPointerException nullPointerException) {
-                throw new RuntimeException("No pose action found for " + poseAction + " and handSide " + handSide + ". Have you registered it in the manifest?", nullPointerException);
-            }
-
-
-            XrSpace poseSpace = new XrSpace(spaceHandle);
+            XrSpace poseSpace = getPoseSpace(poseAction, handSide);
 
             XrHandJointLocationsEXT handJointLocations = XrHandJointLocationsEXT.calloc(stack)
                     .type$Default()
@@ -817,10 +809,10 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     /**
      * @param xrReferenceSpaceType
      */
-    private long getOrCreateReferenceSpaceHandle(XrReferenceSpaceType xrReferenceSpaceType){
-        long referenceSpaceEnum = xrReferenceSpaceType.getValue();
-        if (this.referenceSpaceHandles.containsKey(referenceSpaceEnum)){
-            return referenceSpaceHandles.get(referenceSpaceEnum);
+    private XrSpace getOrCreateReferenceSpace(XrReferenceSpaceType xrReferenceSpaceType){
+        XrSpace cachedSpace = referenceSpaces.get(xrReferenceSpaceType);
+        if (cachedSpace != null){
+            return cachedSpace;
         }
 
         // because these are cached they are intentionally not on the stack
@@ -829,13 +821,13 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 .type$Default()
                 .referenceSpaceType(xrReferenceSpaceType)
                 .poseInReferenceSpace(identityPose);
-        XrSpace.HandleBuffer space = XrSpace.create(1);
+        XrSpace.HandleBuffer spaceBuffer = XrSpace.create(1);
 
-        withResponseCodeLogging("Get space for " +referenceSpaceEnum, XR10.xrCreateReferenceSpace(xrSessionHandle, spaceInfo, space));
-        long handle = space.get(0);
-        referenceSpaceHandles.put(referenceSpaceEnum, handle);
+        withResponseCodeLogging("Get space for " + xrReferenceSpaceType, XR10.xrCreateReferenceSpace(xrSessionHandle, spaceInfo, spaceBuffer));
+        XrSpace space = spaceBuffer.getByIndex(0);
+        referenceSpaces.put(xrReferenceSpaceType, space);
 
-        return handle;
+        return space;
     }
 
     private long pathToLong(String path, boolean cache){

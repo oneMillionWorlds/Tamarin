@@ -294,7 +294,7 @@ public class OpenXrAndroidSessionManager {
 
             XrInstance.HandleBuffer pp = XrInstance.create(1,stack);
             checkResponseCode(XR10.xrCreateInstance(createInfo, pp));
-            xrInstance = new XrInstance(pp.get(0));
+            xrInstance = pp.getByIndex(0);
         }
     }
 
@@ -407,7 +407,7 @@ public class OpenXrAndroidSessionManager {
                             .systemId(systemID),
                     sessionPointerBuffer
             ));
-            xrSession = new XrSession(sessionPointerBuffer.get(0));
+            xrSession = sessionPointerBuffer.getByIndex(0);
             if (!missingXrDebug) {
                 // the whole java call back thing is a pain, so use thick C instead to set up the callback
                 xrDebugMessenger = ThickC.setupDebugMessenger(xrInstance, message -> {
@@ -444,7 +444,7 @@ public class OpenXrAndroidSessionManager {
                     pp
             ));
 
-            xrAppSpace = new XrSpace(pp.get(0));
+            xrAppSpace = pp.getByIndex(0);
         }
     }
 
@@ -548,7 +548,7 @@ public class OpenXrAndroidSessionManager {
                 XrSwapchain.HandleBuffer swapchainHanglePointerBuffer = XrSwapchain.create(1,stack);
                 checkResponseCode(XR10.xrCreateSwapchain(xrSession, swapchainCreateInfo, swapchainHanglePointerBuffer));
 
-                XrSwapchain swapchainHandle = new XrSwapchain(swapchainHanglePointerBuffer.get(0));
+                XrSwapchain swapchainHandle = swapchainHanglePointerBuffer.getByIndex(0);
 
                 checkResponseCode(XR10.xrEnumerateSwapchainImages(swapchainHandle, 0, viewCountPointer, null));
                 int imageCount = viewCountPointer.get(0);
@@ -579,13 +579,13 @@ public class OpenXrAndroidSessionManager {
         do {
             switch (event.type()) {
                 case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
-                    XrEventDataInstanceLossPending instanceLossPending = XrEventDataInstanceLossPending.create(event.address());
+                    XrEventDataInstanceLossPending instanceLossPending = event.asXrEventDataInstanceLossPending();
                     LOGGER.severe("XrEventDataInstanceLossPending by " + instanceLossPending.lossTime());
 
                     return true;
                 }
                 case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
-                    XrEventDataSessionStateChanged sessionStateChangedEvent = XrEventDataSessionStateChanged.create(event.address());
+                    XrEventDataSessionStateChanged sessionStateChangedEvent = event.asXrEventDataSessionStateChanged();
                     return handleSessionStateChangedEvent(sessionStateChangedEvent);
                 }
                 case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
@@ -610,11 +610,12 @@ public class OpenXrAndroidSessionManager {
         eventDataBuffer.type$Default();
         XrResult result = XR10.xrPollEvent(xrInstance, eventDataBuffer);
         if (result == XrResult.SUCCESS) {
-            if (eventDataBuffer.type() == XrStructureType.XR_TYPE_EVENT_DATA_EVENTS_LOST) {
-                XrEventDataEventsLost dataEventsLost = XrEventDataEventsLost.create(eventDataBuffer.address());
+            XrEventDataBaseHeader event = XrEventDataBaseHeader.create(eventDataBuffer.address());
+            if (event.type() == XrStructureType.XR_TYPE_EVENT_DATA_EVENTS_LOST) {
+                XrEventDataEventsLost dataEventsLost = event.asXrEventDataEventsLost();
                 LOGGER.info(dataEventsLost.lostEventCount() + " events lost");
             }
-            return XrEventDataBaseHeader.create(eventDataBuffer.address());
+            return event;
         }
         if (result == XrResult.EVENT_UNAVAILABLE) {
             return null;
@@ -623,14 +624,15 @@ public class OpenXrAndroidSessionManager {
     }
 
     boolean handleSessionStateChangedEvent(XrEventDataSessionStateChanged stateChangedEvent) {
+        if (!stateChangedEvent.session().equals(xrSession)) {
+            System.err.println("XrEventDataSessionStateChanged for unknown session " + stateChangedEvent.session());
+            return false;
+        }
+
         SessionState oldState = sessionState;
         sessionState = SessionState.fromXRValue(stateChangedEvent.state().getValue());
 
         LOGGER.info("XrEventDataSessionStateChanged: state " + oldState + "->" + sessionState + " session=" + stateChangedEvent.session() + " time=" + stateChangedEvent.time());
-        if ((stateChangedEvent.session().isNullHandle()) && (!stateChangedEvent.session().equals(xrSession))) {
-            System.err.println("XrEventDataSessionStateChanged for unknown session");
-            return false;
-        }
 
         switch (sessionState) {
             case READY: {
