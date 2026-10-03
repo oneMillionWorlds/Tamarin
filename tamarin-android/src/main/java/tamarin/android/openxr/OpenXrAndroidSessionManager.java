@@ -27,6 +27,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBuffer;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataEventsLost;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataInstanceLossPending;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataReferenceSpaceChangePending;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataUserPresenceChangedEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataSessionStateChanged;
 import com.onemillionworlds.tamarin.openxrbindings.XrExtensionProperties;
 import com.onemillionworlds.tamarin.openxrbindings.XrFovf;
@@ -611,6 +612,13 @@ public class OpenXrAndroidSessionManager {
                     XrEventDataReferenceSpaceChangePending referenceSpaceChangePending = event.asXrEventDataReferenceSpaceChangePending();
                     LOGGER.info("Reference space change pending for reference space type " + referenceSpaceChangePending.referenceSpaceType());
                     sessionObservables.fireReferenceSpaceChangePending();
+                    break;
+                }
+                case XR_TYPE_EVENT_DATA_USER_PRESENCE_CHANGED_EXT: {
+                    XrEventDataUserPresenceChangedEXT userPresenceChanged = event.asXrEventDataUserPresenceChangedEXT();
+                    boolean userPresent = userPresenceChanged.isUserPresent() == XR10Constants.XR_TRUE;
+                    LOGGER.info("User presence changed, user present: " + userPresent);
+                    sessionObservables.setUserPresent(userPresent);
                     break;
                 }
                 default: {

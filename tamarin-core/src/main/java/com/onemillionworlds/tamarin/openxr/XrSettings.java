@@ -64,6 +64,7 @@ public class XrSettings{
         requiredXrExtensions.add("XR_EXT_hand_tracking"); //bones. See EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME
         requiredXrExtensions.add("XR_KHR_binding_modification"); //required by XR_EXT_DPAD_BINDING_EXTENSION_NAME See KHRBindingModification.XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_dpad_binding"); //treating joysticks as dpads. See EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME
+        requiredXrExtensions.add("XR_EXT_user_presence"); //detecting the headset being taken off. See EXTUserPresence.XR_EXT_USER_PRESENCE_EXTENSION_NAME
     }
 
     /**

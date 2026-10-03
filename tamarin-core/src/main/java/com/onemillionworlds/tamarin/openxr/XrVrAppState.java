@@ -14,8 +14,6 @@ import com.jme3.system.AppSettings;
 import com.jme3.texture.FrameBuffer;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
-import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
-import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportData;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
@@ -376,22 +374,7 @@ public abstract class XrVrAppState extends XrBaseAppState{
     }
 
     @Override
-    public SessionState getSessionState(){
-        return sessionObservables.getSessionState();
-    }
-
-    @Override
-    public ObservableValueSubscription<SessionState> subscribeToSessionState(){
-        return sessionObservables.subscribeToSessionState();
-    }
-
-    @Override
-    public ObservableValueSubscription<Boolean> subscribeToSessionFocused(){
-        return sessionObservables.subscribeToSessionFocused();
-    }
-
-    @Override
-    public ObservableEventSubscription subscribeToReferenceSpaceChangePending(){
-        return sessionObservables.subscribeToReferenceSpaceChangePending();
+    protected XrSessionObservables getSessionObservables(){
+        return sessionObservables;
     }
 }

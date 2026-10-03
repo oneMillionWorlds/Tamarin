@@ -23,6 +23,8 @@ import org.lwjgl.openxr.XrEventDataBuffer;
 import org.lwjgl.openxr.XrEventDataEventsLost;
 import org.lwjgl.openxr.XrEventDataInstanceLossPending;
 import org.lwjgl.openxr.XrEventDataReferenceSpaceChangePending;
+import org.lwjgl.openxr.XrEventDataUserPresenceChangedEXT;
+import org.lwjgl.openxr.EXTUserPresence;
 import org.lwjgl.openxr.XrEventDataSessionStateChanged;
 import org.lwjgl.openxr.XrExtensionProperties;
 import org.lwjgl.openxr.XrFovf;
@@ -580,6 +582,12 @@ public class OpenXrSessionManager{
                     XrEventDataReferenceSpaceChangePending referenceSpaceChangePending = XrEventDataReferenceSpaceChangePending.create(event.address());
                     LOGGER.info("Reference space change pending for reference space type " + referenceSpaceChangePending.referenceSpaceType());
                     sessionObservables.fireReferenceSpaceChangePending();
+                    break;
+                }
+                case EXTUserPresence.XR_TYPE_EVENT_DATA_USER_PRESENCE_CHANGED_EXT: {
+                    XrEventDataUserPresenceChangedEXT userPresenceChanged = XrEventDataUserPresenceChangedEXT.create(event.address());
+                    LOGGER.info("User presence changed, user present: " + userPresenceChanged.isUserPresent());
+                    sessionObservables.setUserPresent(userPresenceChanged.isUserPresent());
                     break;
                 }
                 default: {

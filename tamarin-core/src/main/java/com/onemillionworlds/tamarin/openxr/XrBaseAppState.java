@@ -241,57 +241,120 @@ public abstract class XrBaseAppState extends BaseAppState{
     public abstract CameraResolution getCameraResolution();
 
     /**
+     * The observables that the session (or simulated session) reports its state to. All the session related methods
+     * (e.g. {@link #subscribeToShouldPause()}) are backed by this.
+     */
+    protected abstract XrSessionObservables getSessionObservables();
+
+    /**
      * The current state of the OpenXR session. See {@link SessionState} for what each state means.
      * <p>
      *     In desktop simulation mode this is always {@link SessionState#FOCUSED}.
      * </p>
      */
-    public abstract SessionState getSessionState();
+    public SessionState getSessionState(){
+        return getSessionObservables().getSessionState();
+    }
 
     /**
      * Returns true if the session is focused, i.e. the application is visible to the user and is receiving input.
      * <p>
      *     The session will lose focus if (for example) the user opens the system menu (e.g. the SteamVR dashboard
-     *     or the Quest universal menu) or takes the headset off. While unfocused no input will be received, so many
-     *     applications will want to pause their game logic.
+     *     or the Quest universal menu). Note that taking the headset off does not necessarily cause focus to be lost
+     *     (it doesn't on the Quest), see {@link #isUserPresent()} for that.
+     * </p>
+     * <p>
+     *     Most applications that want to pause their game logic should use {@link #shouldPause()} which combines
+     *     focus and user presence.
      * </p>
      */
     public boolean isSessionFocused(){
-        return getSessionState() == SessionState.FOCUSED;
+        return getSessionObservables().isSessionFocused();
+    }
+
+    /**
+     * Returns true if the user is wearing the headset.
+     * <p>
+     *     This relies on the XR_EXT_user_presence extension (requested by default in {@link XrSettings}), which uses
+     *     the headset's proximity sensor. If the runtime doesn't support it (or the proximity sensor is disabled, as
+     *     can be done on developer headsets) the user is always reported as present.
+     * </p>
+     * <p>
+     *     In desktop simulation mode this is always true.
+     * </p>
+     */
+    public boolean isUserPresent(){
+        return getSessionObservables().isUserPresent();
+    }
+
+    /**
+     * Returns true if the game logic should be paused. This is the case if the session is not focused (e.g. the
+     * user has opened the system menu) or the user is not present (e.g. they have taken the headset off).
+     * <p>
+     *     In desktop simulation mode this is always false.
+     * </p>
+     * @see #subscribeToShouldPause()
+     */
+    public boolean shouldPause(){
+        return getSessionObservables().shouldPause();
     }
 
     /**
      * Obtains a subscription that can be used to determine if the {@link SessionState} has changed (and what it now is).
      * <p>
-     *     Most applications will want {@link #subscribeToSessionFocused()} instead which is a simplified view of this.
+     *     Most applications will want {@link #subscribeToShouldPause()} instead.
      * </p>
      */
-    public abstract ObservableValueSubscription<SessionState> subscribeToSessionState();
+    public ObservableValueSubscription<SessionState> subscribeToSessionState(){
+        return getSessionObservables().subscribeToSessionState();
+    }
 
     /**
      * Obtains a subscription that can be used to determine if the session has gained or lost focus. Focus is lost
-     * when the application is no longer receiving input, e.g. because the user has opened the system menu or taken the
-     * headset off.
+     * when the application is no longer receiving input, e.g. because the user has opened the system menu.
      * <p>
-     *     A typical use is to pause the game while focus is lost. Note that this should be done within the
-     *     application (e.g. by disabling game app states) rather than by pausing the JME application as a whole (e.g.
-     *     via {@link com.jme3.app.LostFocusBehavior#PauseOnLostFocus}). The OpenXR frame loop must continue to run while
-     *     the session is unfocused, otherwise the headset will consider the application to have frozen.
+     *     Note that taking the headset off does not necessarily cause focus to be lost. Most applications will want
+     *     {@link #subscribeToShouldPause()} instead, which also considers whether the user is wearing the headset.
+     * </p>
+     */
+    public ObservableValueSubscription<Boolean> subscribeToSessionFocused(){
+        return getSessionObservables().subscribeToSessionFocused();
+    }
+
+    /**
+     * Obtains a subscription that can be used to determine if the user has put on or taken off the headset.
+     * See {@link #isUserPresent()} for caveats.
+     */
+    public ObservableValueSubscription<Boolean> subscribeToUserPresent(){
+        return getSessionObservables().subscribeToUserPresent();
+    }
+
+    /**
+     * Obtains a subscription that can be used to determine if the game logic should pause or resume. The value is true
+     * (should pause) if the session is not focused (e.g. the user has opened the system menu) or the user is not present
+     * (e.g. they have taken the headset off).
+     * <p>
+     *     The pausing should be done within the application (e.g. by disabling game app states) rather than by pausing
+     *     the JME application as a whole (e.g. via {@link com.jme3.app.LostFocusBehavior#PauseOnLostFocus}). The OpenXR
+     *     frame loop must continue to run while paused, otherwise the headset will consider the application to have
+     *     frozen.
      * </p>
      * <p>
      *     Example:
      * </p>
      * <pre>{@code
-     * ObservableValueSubscription<Boolean> focusSubscription = xrAppState.subscribeToSessionFocused();
+     * ObservableValueSubscription<Boolean> shouldPauseSubscription = xrAppState.subscribeToShouldPause();
      * ...
      * public void update(float tpf){
-     *     if(focusSubscription.checkHasChanged()){
-     *         gameState.setEnabled(focusSubscription.get());
+     *     if(shouldPauseSubscription.checkHasChanged()){
+     *         gameState.setEnabled(!shouldPauseSubscription.get());
      *     }
      * }
      * }</pre>
      */
-    public abstract ObservableValueSubscription<Boolean> subscribeToSessionFocused();
+    public ObservableValueSubscription<Boolean> subscribeToShouldPause(){
+        return getSessionObservables().subscribeToShouldPause();
+    }
 
     /**
      * Obtains a subscription that will report when the OpenXR runtime has signalled that a reference space is about to
@@ -305,7 +368,9 @@ public abstract class XrBaseAppState extends BaseAppState{
      *     In desktop simulation mode this never fires.
      * </p>
      */
-    public abstract ObservableEventSubscription subscribeToReferenceSpaceChangePending();
+    public ObservableEventSubscription subscribeToReferenceSpaceChangePending(){
+        return getSessionObservables().subscribeToReferenceSpaceChangePending();
+    }
 
     public static final class CameraResolution{
         private final int width;

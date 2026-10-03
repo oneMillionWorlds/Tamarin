@@ -5,6 +5,8 @@ import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableValue;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 
+import java.util.Objects;
+
 /**
  * Holds the observable state that an OpenXR session manager reports to the rest of Tamarin (and the application).
  * <p>
@@ -17,6 +19,16 @@ public class XrSessionObservables{
 
     private final ObservableValue<Boolean> sessionFocused = new ObservableValue<>(false);
 
+    /**
+     * Assumed true unless the runtime (via XR_EXT_user_presence) tells us otherwise.
+     */
+    private final ObservableValue<Boolean> userPresent = new ObservableValue<>(true);
+
+    /**
+     * True when the session isn't focused or the user isn't present.
+     */
+    private final ObservableValue<Boolean> shouldPause = new ObservableValue<>(true);
+
     private final ObservableEvent referenceSpaceChangePending = new ObservableEvent();
 
     private final ObservableEvent interactionProfileChanged = new ObservableEvent();
@@ -25,17 +37,44 @@ public class XrSessionObservables{
         return sessionState.get();
     }
 
+    public boolean isSessionFocused(){
+        return sessionFocused.get();
+    }
+
+    public boolean isUserPresent(){
+        return userPresent.get();
+    }
+
+    public boolean shouldPause(){
+        return shouldPause.get();
+    }
+
     /**
-     * Updates the session state (and the derived focus state). Subscribers are only notified if the value actually
-     * changes.
+     * Updates the session state (and the derived focus and should pause states). Subscribers are only notified if the
+     * value actually changes.
      */
     public void setSessionState(SessionState newState){
-        if (sessionState.get() != newState){
-            sessionState.set(newState);
-        }
-        boolean focused = newState == SessionState.FOCUSED;
-        if (sessionFocused.get() != focused){
-            sessionFocused.set(focused);
+        setIfChanged(sessionState, newState);
+        setIfChanged(sessionFocused, newState == SessionState.FOCUSED);
+        updateShouldPause();
+    }
+
+    /**
+     * Updates whether the user is present (i.e. wearing the headset). Subscribers are only notified if the value
+     * actually changes.
+     */
+    public void setUserPresent(boolean present){
+        setIfChanged(userPresent, present);
+        updateShouldPause();
+    }
+
+    private void updateShouldPause(){
+        setIfChanged(shouldPause, !(sessionFocused.get() && userPresent.get()));
+    }
+
+    private static <T> void setIfChanged(ObservableValue<T> observableValue, T newValue){
+        if (!Objects.equals(observableValue.get(), newValue)){
+            observableValue.set(newValue);
         }
     }
 
@@ -53,6 +92,14 @@ public class XrSessionObservables{
 
     public ObservableValueSubscription<Boolean> subscribeToSessionFocused(){
         return sessionFocused.subscribe();
+    }
+
+    public ObservableValueSubscription<Boolean> subscribeToUserPresent(){
+        return userPresent.subscribe();
+    }
+
+    public ObservableValueSubscription<Boolean> subscribeToShouldPause(){
+        return shouldPause.subscribe();
     }
 
     public ObservableEventSubscription subscribeToReferenceSpaceChangePending(){

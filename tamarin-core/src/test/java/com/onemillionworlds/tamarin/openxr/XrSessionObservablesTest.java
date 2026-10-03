@@ -36,6 +36,37 @@ class XrSessionObservablesTest{
     }
 
     @Test
+    void shouldPauseCombinesFocusAndUserPresence(){
+        XrSessionObservables observables = new XrSessionObservables();
+        ObservableValueSubscription<Boolean> shouldPauseSubscription = observables.subscribeToShouldPause();
+        ObservableValueSubscription<Boolean> presentSubscription = observables.subscribeToUserPresent();
+
+        assertTrue(observables.isUserPresent(), "User should be assumed present until told otherwise");
+        assertTrue(shouldPauseSubscription.get(), "Not yet focused, so should pause");
+
+        observables.setSessionState(SessionState.FOCUSED);
+        assertTrue(shouldPauseSubscription.checkHasChanged());
+        assertFalse(shouldPauseSubscription.get());
+
+        observables.setUserPresent(false);
+        assertTrue(presentSubscription.checkHasChanged());
+        assertTrue(shouldPauseSubscription.checkHasChanged());
+        assertTrue(shouldPauseSubscription.get());
+        assertTrue(observables.isSessionFocused(), "Taking the headset off doesn't by itself change focus");
+
+        // losing focus while already paused is not a change in should pause
+        observables.setSessionState(SessionState.VISIBLE);
+        assertFalse(shouldPauseSubscription.checkHasChanged());
+
+        observables.setUserPresent(true);
+        assertFalse(shouldPauseSubscription.checkHasChanged(), "Still unfocused, so still paused");
+
+        observables.setSessionState(SessionState.FOCUSED);
+        assertTrue(shouldPauseSubscription.checkHasChanged());
+        assertFalse(shouldPauseSubscription.get());
+    }
+
+    @Test
     void referenceSpaceChangeEventsAreReported(){
         XrSessionObservables observables = new XrSessionObservables();
         var subscription = observables.subscribeToReferenceSpaceChangePending();
