@@ -12,6 +12,7 @@ import com.onemillionworlds.tamarin.openxr.InProgressXrRender;
 import com.onemillionworlds.tamarin.openxr.OpenXrDeviceNotAvailableException;
 import com.onemillionworlds.tamarin.openxr.SessionState;
 import com.onemillionworlds.tamarin.openxr.SwapchainImage;
+import com.onemillionworlds.tamarin.openxr.XrSessionObservables;
 import com.onemillionworlds.tamarin.openxr.XrSettings;
 import com.onemillionworlds.tamarin.openxr.XrVrMode;
 import com.onemillionworlds.tamarin.openxrbindings.XR10;
@@ -25,6 +26,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBaseHeader;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBuffer;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataEventsLost;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataInstanceLossPending;
+import com.onemillionworlds.tamarin.openxrbindings.XrEventDataReferenceSpaceChangePending;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataSessionStateChanged;
 import com.onemillionworlds.tamarin.openxrbindings.XrExtensionProperties;
 import com.onemillionworlds.tamarin.openxrbindings.XrFovf;
@@ -142,7 +144,7 @@ public class OpenXrAndroidSessionManager {
     XrView.Buffer views; //Each view represents an eye in the headset with views[0] being left and views[1] being right
     Swapchain[] swapchains;  //One swapchain per view
 
-    SessionState sessionState;
+    private final XrSessionObservables sessionObservables;
 
     XrEventDataBuffer eventDataBuffer = XrEventDataBuffer.calloc()
             .type$Default();
@@ -187,8 +189,11 @@ public class OpenXrAndroidSessionManager {
         DESIRED_SWAPCHAIN_FORMATS.put(GL_RGB10_A2, Image.Format.RGB10A2);
     }
 
-    public static OpenXrAndroidSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings, Renderer renderer, InitialisationData initialisationData){
-        OpenXrAndroidSessionManager openXrSessionManager = new OpenXrAndroidSessionManager(xrSettings, regularSettings, renderer);
+    /**
+     * @param sessionObservables the observables that session events (state changes etc.) will be reported to
+     */
+    public static OpenXrAndroidSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings, Renderer renderer, InitialisationData initialisationData, XrSessionObservables sessionObservables){
+        OpenXrAndroidSessionManager openXrSessionManager = new OpenXrAndroidSessionManager(xrSettings, regularSettings, renderer, sessionObservables);
         openXrSessionManager.window = windowHandle;
         openXrSessionManager.createOpenXRInstance(initialisationData);
         openXrSessionManager.determineOpenXRSystem();
@@ -201,8 +206,9 @@ public class OpenXrAndroidSessionManager {
     }
 
 
-    private OpenXrAndroidSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
+    private OpenXrAndroidSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer, XrSessionObservables sessionObservables){
         this.xrSettings = xrSettings;
+        this.sessionObservables = sessionObservables;
         this.regularSettings = regularSettings;
         this.renderer = renderer;
     }
@@ -216,7 +222,14 @@ public class OpenXrAndroidSessionManager {
     }
 
     public SessionState getSessionState(){
-        return sessionState;
+        return sessionObservables.getSessionState();
+    }
+
+    /**
+     * Provides subscriptions to session events (state changes, reference space changes, interaction profile changes)
+     */
+    public XrSessionObservables getSessionObservables(){
+        return sessionObservables;
     }
 
     public XrSession getXrSession(){
@@ -241,11 +254,11 @@ public class OpenXrAndroidSessionManager {
     }
 
     public boolean isSessionRunning(){
-        return sessionState.isAtLeastReady();
+        return getSessionState().isAtLeastReady();
     }
 
     public boolean isSessionFocused(){
-        return sessionState == SessionState.FOCUSED;
+        return getSessionState() == SessionState.FOCUSED;
     }
 
     public void setXrVrBlendMode(XrVrMode xrVrBlendMode){
@@ -575,6 +588,7 @@ public class OpenXrAndroidSessionManager {
             return false;
         }
 
+        boolean shouldExit = false;
         do {
             switch (event.type()) {
                 case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
@@ -585,11 +599,20 @@ public class OpenXrAndroidSessionManager {
                 }
                 case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
                     XrEventDataSessionStateChanged sessionStateChangedEvent = event.asXrEventDataSessionStateChanged();
-                    return handleSessionStateChangedEvent(sessionStateChangedEvent);
-                }
-                case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+                    shouldExit |= handleSessionStateChangedEvent(sessionStateChangedEvent);
                     break;
-                case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
+                }
+                case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED: {
+                    LOGGER.fine("Interaction profile changed");
+                    sessionObservables.fireInteractionProfileChanged();
+                    break;
+                }
+                case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING: {
+                    XrEventDataReferenceSpaceChangePending referenceSpaceChangePending = event.asXrEventDataReferenceSpaceChangePending();
+                    LOGGER.info("Reference space change pending for reference space type " + referenceSpaceChangePending.referenceSpaceType());
+                    sessionObservables.fireReferenceSpaceChangePending();
+                    break;
+                }
                 default: {
                     LOGGER.info("Ignoring event type: " + event.type());
                     break;
@@ -599,7 +622,7 @@ public class OpenXrAndroidSessionManager {
         }
         while (event != null);
 
-        return false;
+        return shouldExit;
     }
 
     private XrEventDataBaseHeader readNextOpenXREvent() {
@@ -628,8 +651,9 @@ public class OpenXrAndroidSessionManager {
             return false;
         }
 
-        SessionState oldState = sessionState;
-        sessionState = SessionState.fromXRValue(stateChangedEvent.state().getValue());
+        SessionState oldState = getSessionState();
+        SessionState sessionState = SessionState.fromXRValue(stateChangedEvent.state().getValue());
+        sessionObservables.setSessionState(sessionState);
 
         LOGGER.info("XrEventDataSessionStateChanged: state " + oldState + "->" + sessionState + " session=" + stateChangedEvent.session() + " time=" + stateChangedEvent.time());
 
@@ -717,7 +741,8 @@ public class OpenXrAndroidSessionManager {
 
             if ((viewState.viewStateFlags() & XR10Constants.XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
                     (viewState.viewStateFlags() & XR10Constants.XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
-                return InProgressXrRender.NO_XR_FRAME;  // There is no valid tracking poses for the views.
+                // There are no valid tracking poses for the views. The frame has been begun so must still be ended (with no layers)
+                return new InProgressXrRender(true, false, frameState.predictedDisplayTime(), InProgressXrRender.NO_EYE_POSITION, InProgressXrRender.NO_EYE_POSITION, null, null, -1, -1);
             }
 
             int viewCountOutput = pi.get(0);
@@ -964,7 +989,8 @@ public class OpenXrAndroidSessionManager {
     }
 
     public void checkResponseCode(String context, XrResult result) throws IllegalStateException {
-        if (result == XrResult.SUCCESS) {
+        if (result.getValue() >= 0) {
+            // non-negative results are success codes (e.g. FRAME_DISCARDED, SESSION_LOSS_PENDING), only negative ones are errors
             return;
         }
         String contextString = context == null ? "" : " Context: " + context;

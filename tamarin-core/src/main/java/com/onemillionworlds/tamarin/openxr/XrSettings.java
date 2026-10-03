@@ -51,6 +51,11 @@ public class XrSettings{
      */
     boolean mainCameraFollowsVrCamera = true;
 
+    /**
+     * If true (the default) JME's LostFocusBehavior will be set to Disabled when the XR session starts (desktop only).
+     */
+    boolean overrideLostFocusBehaviour = true;
+
     public XRVersion xrApiVersion = new XRVersion(1, 0, 43);
 
     public XrSettings(){
@@ -216,6 +221,36 @@ public class XrSettings{
      */
     public void setMainCameraFollowsVrCamera(boolean mainCameraFollowsVrCamera){
         this.mainCameraFollowsVrCamera = mainCameraFollowsVrCamera;
+    }
+
+    /**
+     * Determines whether Tamarin will set JME's {@link com.jme3.app.LostFocusBehavior} to Disabled when the
+     * XR session starts (desktop only).
+     *
+     * @return true if the lost focus behaviour will be overridden (the default)
+     */
+    public boolean isOverrideLostFocusBehaviour(){
+        return overrideLostFocusBehaviour;
+    }
+
+    /**
+     * Sets whether Tamarin will set JME's {@link com.jme3.app.LostFocusBehavior} to Disabled when the XR session
+     * starts (desktop only). This defaults to true.
+     * <p>
+     *     JME's lost focus behaviour refers to the desktop window, which in VR is just a mirror and is often unfocused
+     *     (e.g. if the user clicked on another monitor). JME's default behaviour (ThrottleOnLostFocus) caps the whole
+     *     application (and so the headset) at 20 fps when that happens. PauseOnLostFocus is worse, it stops the
+     *     OpenXR frame loop entirely, which the headset will treat as the application having frozen.
+     * </p>
+     * <p>
+     *     To react to the <i>headset</i> losing focus (e.g. the user opening the system menu) use
+     *     {@link XrBaseAppState#subscribeToSessionFocused()}.
+     * </p>
+     *
+     * @param overrideLostFocusBehaviour true to disable JME's lost focus behaviour in VR, false to leave it as configured
+     */
+    public void setOverrideLostFocusBehaviour(boolean overrideLostFocusBehaviour){
+        this.overrideLostFocusBehaviour = overrideLostFocusBehaviour;
     }
 
     /**

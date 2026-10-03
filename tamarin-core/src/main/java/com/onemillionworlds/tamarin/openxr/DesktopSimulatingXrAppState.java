@@ -7,6 +7,8 @@ import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
+import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 
@@ -30,6 +32,11 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
      * floor.
      */
     Node observer = new Node("Xr Observer");
+
+    /**
+     * There is no real session in desktop mode, so it is reported as always focused
+     */
+    private final XrSessionObservables sessionObservables = alwaysFocusedSessionObservables();
 
     @Override
     public void setMainViewportConfiguration(Consumer<ViewPort> configureViewport){
@@ -271,5 +278,31 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
     @Override
     public Map<String, Boolean> getExtensionsLoaded() {
         return Map.of();
+    }
+
+    @Override
+    public SessionState getSessionState(){
+        return sessionObservables.getSessionState();
+    }
+
+    @Override
+    public ObservableValueSubscription<SessionState> subscribeToSessionState(){
+        return sessionObservables.subscribeToSessionState();
+    }
+
+    @Override
+    public ObservableValueSubscription<Boolean> subscribeToSessionFocused(){
+        return sessionObservables.subscribeToSessionFocused();
+    }
+
+    @Override
+    public ObservableEventSubscription subscribeToReferenceSpaceChangePending(){
+        return sessionObservables.subscribeToReferenceSpaceChangePending();
+    }
+
+    private static XrSessionObservables alwaysFocusedSessionObservables(){
+        XrSessionObservables observables = new XrSessionObservables();
+        observables.setSessionState(SessionState.FOCUSED);
+        return observables;
     }
 }

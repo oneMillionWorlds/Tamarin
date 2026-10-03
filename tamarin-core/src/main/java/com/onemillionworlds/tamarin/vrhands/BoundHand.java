@@ -804,6 +804,24 @@ public abstract class BoundHand{
     }
 
     /**
+     * Stops a haptic action (aka a vibration) that is currently running on this hand, e.g. to end a long
+     * vibration early.
+     */
+    public void stopHapticAction(Haptic haptic){
+        stopHapticAction(haptic.actionHandle());
+    }
+
+    /**
+     * Stops a haptic action (aka a vibration) that is currently running on this hand, e.g. to end a long
+     * vibration early.
+     *
+     * @param actionHandle the handle for the haptic action (just an object with the set name and action name)
+     */
+    public void stopHapticAction(ActionHandle actionHandle){
+        xrActionState.stopHapticAction(actionHandle, getHandSide().restrictToInputString);
+    }
+
+    /**
      * Gets the current state of the action (abstract version of a button press).
      * <p>
      * This is called for digital style actions (a button is pressed, or not)

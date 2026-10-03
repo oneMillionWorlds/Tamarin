@@ -10,15 +10,25 @@ import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
+import com.onemillionworlds.tamarin.observable.ObservableEvent;
+import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 public abstract class XrActionBaseAppState extends BaseAppState{
 
     public static final String ID = "OpenXrActionAppState";
+
+    private static final Logger LOGGER = Logger.getLogger(XrActionBaseAppState.class.getName());
+
+    private final EnumMap<HandSide, String> currentInteractionProfiles = new EnumMap<>(HandSide.class);
+
+    private final ObservableEvent interactionProfileChanged = new ObservableEvent();
 
     public XrActionBaseAppState(){
         super(ID);
@@ -216,6 +226,67 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @param restrictToInput the input to restrict the action to. E.g. /user/hand/right, /user/hand/left. Or null, which means "both hands"
      */
     public abstract void triggerHapticAction(ActionHandle action, float duration, float frequency, float amplitude, String restrictToInput );
+
+    /**
+     * Stops a haptic action (aka a vibration) that is currently running, e.g. to end a long vibration early.
+     *
+     * @param action The action for haptic vibration.
+     */
+    @SuppressWarnings("unused")
+    public void stopHapticAction(ActionHandle action){
+        stopHapticAction(action, null);
+    }
+
+    /**
+     * Stops a haptic action (aka a vibration) that is currently running, restricted to just one input (e.g. left
+     * or right hand).
+     *
+     * @param action The action for haptic vibration.
+     * @param restrictToInput the input to restrict the action to. E.g. /user/hand/right, /user/hand/left. Or null, which means "both hands"
+     */
+    public abstract void stopHapticAction(ActionHandle action, String restrictToInput);
+
+    /**
+     * Returns the interaction profile currently in use for the given hand, e.g.
+     * "/interaction_profiles/oculus/touch_controller". These strings match the PROFILE constants in the
+     * {@link com.onemillionworlds.tamarin.actions.controllerprofile} classes (although the runtime may report profiles
+     * Tamarin does not have a class for).
+     * <p>
+     *     This is useful for things like showing the correct controller model or button prompts. Note that, in
+     *     general, applications should not change their <i>behaviour</i> based on the controller type, actions should
+     *     be used for that.
+     * </p>
+     * <p>
+     *     Empty if no profile is active for that hand (e.g. the controller is turned off), before the actions have
+     *     been registered with the runtime, and always in desktop simulation mode. Note that the runtime will only
+     *     report profiles for which the action manifest has suggested bindings.
+     * </p>
+     */
+    public Optional<String> getCurrentInteractionProfile(HandSide handSide){
+        return Optional.ofNullable(currentInteractionProfiles.get(handSide));
+    }
+
+    /**
+     * Obtains a subscription that can be used to determine if the interaction profile in use for either hand has changed
+     * (e.g. the user has switched from controllers to hand tracking). Use {@link #getCurrentInteractionProfile(HandSide)}
+     * to get the new value(s).
+     */
+    public ObservableEventSubscription subscribeToInteractionProfileChanges(){
+        return interactionProfileChanged.subscribe();
+    }
+
+    /**
+     * Updates the current interaction profiles, firing the change event if any have changed.
+     * @param newProfiles the profile for each hand. Hands with no profile should be absent.
+     */
+    protected void updateCurrentInteractionProfiles(Map<HandSide, String> newProfiles){
+        if (!currentInteractionProfiles.equals(newProfiles)){
+            LOGGER.info("Interaction profiles changed to " + newProfiles);
+            currentInteractionProfiles.clear();
+            currentInteractionProfiles.putAll(newProfiles);
+            interactionProfileChanged.fireEvent();
+        }
+    }
 
     /**
      * The OpenXR session may take some time to start, after that time the acion manifest is registered. Until that time

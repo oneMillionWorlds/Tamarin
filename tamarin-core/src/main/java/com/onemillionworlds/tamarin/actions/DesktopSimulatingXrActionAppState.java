@@ -257,6 +257,11 @@ public class DesktopSimulatingXrActionAppState extends XrActionBaseAppState{
     }
 
     @Override
+    public void stopHapticAction(ActionHandle action, String restrictToInput){
+
+    }
+
+    @Override
     public boolean isReady(){
         return true;
     }

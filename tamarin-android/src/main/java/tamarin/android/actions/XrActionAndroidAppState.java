@@ -18,6 +18,7 @@ import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
+import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.openxrbindings.BufferUtils;
 import com.onemillionworlds.tamarin.openxrbindings.XR10;
 import com.onemillionworlds.tamarin.openxrbindings.XR10Constants;
@@ -39,6 +40,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackerCreateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticActionInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticVibration;
 import com.onemillionworlds.tamarin.openxrbindings.XrInputSourceLocalizedNameGetInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrInteractionProfileState;
 import com.onemillionworlds.tamarin.openxrbindings.XrInteractionProfileSuggestedBinding;
 import com.onemillionworlds.tamarin.openxrbindings.XrPosef;
 import com.onemillionworlds.tamarin.openxrbindings.XrQuaternionf;
@@ -157,6 +159,8 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
     XrAndroidAppState xrAppState;
 
+    private ObservableEventSubscription interactionProfileChangedSubscription;
+
     /**
      * Creates an OpenXrActionState with a single active action set (but with potentially more than one registered, ready to use later).
      * <p>
@@ -199,6 +203,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         this.openXRGL = xrAppState.getXrSession();
         this.xrSessionHandle = openXRGL.getXrSession();
         this.xrInstance = openXRGL.getXrInstance();
+        this.interactionProfileChangedSubscription = openXRGL.getSessionObservables().subscribeToInteractionProfileChanged();
     }
 
     @Override
@@ -763,17 +768,41 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     }
 
     @Override
+    public void stopHapticAction(ActionHandle action, String restrictToInput){
+        if (!isReady()){
+            return;
+        }
+
+        XrHapticActionInfo hapticActionInfo = XrHapticActionInfo.create()
+                .type$Default()
+                .action(obtainActionFromHandle(action));
+
+        if (restrictToInput!=null){
+            hapticActionInfo.subactionPath(pathToLong(restrictToInput, true));
+        }
+
+        withResponseCodeLogging("Stop Haptic Vibration", XR10.xrStopHapticFeedback(xrSessionHandle, hapticActionInfo));
+    }
+
+    @Override
     public void update(float tpf){
         super.update(tpf);
         if (!sessionFocussed()){
             return;
         }
 
+        boolean actionsJustRegistered = false;
         if (pendingActions !=null){
             registerActions(pendingActions.pendingActionSets(), pendingActions.pendingActiveActionSetNames());
             pendingActions = null;
             runAfterActionsRegistered.forEach(Runnable::run);
             runAfterActionsRegistered=List.of();
+            actionsJustRegistered = true;
+        }
+
+        boolean interactionProfileChanged = interactionProfileChangedSubscription.checkHasChanged();
+        if (isReady() && (interactionProfileChanged || actionsJustRegistered)){
+            refreshCurrentInteractionProfiles();
         }
 
         if (xrActionsSyncInfo !=null){
@@ -784,6 +813,22 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 runAfterActionsSync.clear();
             }
         }
+    }
+
+    private void refreshCurrentInteractionProfiles(){
+        Map<HandSide, String> profiles = new EnumMap<>(HandSide.class);
+        try (MemoryStack stack = MemoryStack.stackGet().push()){
+            for(HandSide handSide : HandSide.values()){
+                XrInteractionProfileState profileState = XrInteractionProfileState.calloc(stack)
+                        .type$Default();
+                boolean success = withResponseCodeLogging("xrGetCurrentInteractionProfile",
+                        XR10.xrGetCurrentInteractionProfile(xrSessionHandle, pathToLong(handSide.restrictToInputString, true), profileState));
+                if (success && profileState.interactionProfile() != XR10Constants.XR_NULL_PATH){
+                    profiles.put(handSide, longToPath(profileState.interactionProfile()));
+                }
+            }
+        }
+        updateCurrentInteractionProfiles(profiles);
     }
 
     @Override

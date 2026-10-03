@@ -5,6 +5,8 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
+import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 
@@ -237,6 +239,73 @@ public abstract class XrBaseAppState extends BaseAppState{
     public abstract void setXrVrMode(XrVrMode xrVrMode);
 
     public abstract CameraResolution getCameraResolution();
+
+    /**
+     * The current state of the OpenXR session. See {@link SessionState} for what each state means.
+     * <p>
+     *     In desktop simulation mode this is always {@link SessionState#FOCUSED}.
+     * </p>
+     */
+    public abstract SessionState getSessionState();
+
+    /**
+     * Returns true if the session is focused, i.e. the application is visible to the user and is receiving input.
+     * <p>
+     *     The session will lose focus if (for example) the user opens the system menu (e.g. the SteamVR dashboard
+     *     or the Quest universal menu) or takes the headset off. While unfocused no input will be received, so many
+     *     applications will want to pause their game logic.
+     * </p>
+     */
+    public boolean isSessionFocused(){
+        return getSessionState() == SessionState.FOCUSED;
+    }
+
+    /**
+     * Obtains a subscription that can be used to determine if the {@link SessionState} has changed (and what it now is).
+     * <p>
+     *     Most applications will want {@link #subscribeToSessionFocused()} instead which is a simplified view of this.
+     * </p>
+     */
+    public abstract ObservableValueSubscription<SessionState> subscribeToSessionState();
+
+    /**
+     * Obtains a subscription that can be used to determine if the session has gained or lost focus. Focus is lost
+     * when the application is no longer receiving input, e.g. because the user has opened the system menu or taken the
+     * headset off.
+     * <p>
+     *     A typical use is to pause the game while focus is lost. Note that this should be done within the
+     *     application (e.g. by disabling game app states) rather than by pausing the JME application as a whole (e.g.
+     *     via {@link com.jme3.app.LostFocusBehavior#PauseOnLostFocus}). The OpenXR frame loop must continue to run while
+     *     the session is unfocused, otherwise the headset will consider the application to have frozen.
+     * </p>
+     * <p>
+     *     Example:
+     * </p>
+     * <pre>{@code
+     * ObservableValueSubscription<Boolean> focusSubscription = xrAppState.subscribeToSessionFocused();
+     * ...
+     * public void update(float tpf){
+     *     if(focusSubscription.checkHasChanged()){
+     *         gameState.setEnabled(focusSubscription.get());
+     *     }
+     * }
+     * }</pre>
+     */
+    public abstract ObservableValueSubscription<Boolean> subscribeToSessionFocused();
+
+    /**
+     * Obtains a subscription that will report when the OpenXR runtime has signalled that a reference space is about to
+     * change. This happens when (for example) the user recentres their view or redefines their play area (guardian/chaperone).
+     * <p>
+     *     This fires for changes to any reference space (e.g. stage or local). Tamarin's camera and hand positions
+     *     will update automatically, but if the application has placed things relative to the player's real world
+     *     position (e.g. a menu placed in front of the player) it may want to reposition them.
+     * </p>
+     * <p>
+     *     In desktop simulation mode this never fires.
+     * </p>
+     */
+    public abstract ObservableEventSubscription subscribeToReferenceSpaceChangePending();
 
     public static final class CameraResolution{
         private final int width;

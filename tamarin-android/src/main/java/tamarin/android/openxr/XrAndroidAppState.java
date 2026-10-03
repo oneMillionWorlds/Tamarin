@@ -38,7 +38,7 @@ public class XrAndroidAppState extends XrVrAppState {
 
         AppSettings settings = app.getContext().getSettings();
 
-        xrSession = OpenXrAndroidSessionManager.createOpenXrSession(windowHandle, xrSettings, settings, app.getRenderer(), initialisationData);
+        xrSession = OpenXrAndroidSessionManager.createOpenXrSession(windowHandle, xrSettings, settings, app.getRenderer(), initialisationData, sessionObservables);
         xrSession.setXrVrBlendMode(xrSettings.getInitialXrVrMode());
         int width = xrSession.getSwapchainWidth();
         int height = xrSession.getSwapchainHeight();

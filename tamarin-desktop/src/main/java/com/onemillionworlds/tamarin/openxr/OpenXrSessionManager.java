@@ -22,6 +22,7 @@ import org.lwjgl.openxr.XrEventDataBaseHeader;
 import org.lwjgl.openxr.XrEventDataBuffer;
 import org.lwjgl.openxr.XrEventDataEventsLost;
 import org.lwjgl.openxr.XrEventDataInstanceLossPending;
+import org.lwjgl.openxr.XrEventDataReferenceSpaceChangePending;
 import org.lwjgl.openxr.XrEventDataSessionStateChanged;
 import org.lwjgl.openxr.XrExtensionProperties;
 import org.lwjgl.openxr.XrFovf;
@@ -135,7 +136,7 @@ public class OpenXrSessionManager{
     XrView.Buffer views; //Each view represents an eye in the headset with views[0] being left and views[1] being right
     Swapchain[] swapchains;  //One swapchain per view
 
-    SessionState sessionState;
+    private final XrSessionObservables sessionObservables;
 
     XrEventDataBuffer eventDataBuffer = XrEventDataBuffer.calloc()
             .type$Default();
@@ -183,8 +184,11 @@ public class OpenXrSessionManager{
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB5_A1, Image.Format.RGB5A1);
     }
 
-    public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings,  Renderer renderer){
-        OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings, regularSettings, renderer);
+    /**
+     * @param sessionObservables the observables that session events (state changes etc.) will be reported to
+     */
+    public static OpenXrSessionManager createOpenXrSession(long windowHandle, XrSettings xrSettings, AppSettings regularSettings, Renderer renderer, XrSessionObservables sessionObservables){
+        OpenXrSessionManager openXrSessionManager = new OpenXrSessionManager(xrSettings, regularSettings, renderer, sessionObservables);
         openXrSessionManager.window = windowHandle;
         openXrSessionManager.createOpenXRInstance();
         openXrSessionManager.determineOpenXRSystem();
@@ -197,8 +201,9 @@ public class OpenXrSessionManager{
     }
 
 
-    private OpenXrSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer){
+    private OpenXrSessionManager(XrSettings xrSettings, AppSettings regularSettings, Renderer renderer, XrSessionObservables sessionObservables){
         this.xrSettings = xrSettings;
+        this.sessionObservables = sessionObservables;
         this.regularSettings = regularSettings;
         this.renderer = renderer;
     }
@@ -212,7 +217,14 @@ public class OpenXrSessionManager{
     }
 
     public SessionState getSessionState(){
-        return sessionState;
+        return sessionObservables.getSessionState();
+    }
+
+    /**
+     * Provides subscriptions to session events (state changes, reference space changes, interaction profile changes)
+     */
+    public XrSessionObservables getSessionObservables(){
+        return sessionObservables;
     }
 
     public XrSession getXrSession(){
@@ -233,11 +245,11 @@ public class OpenXrSessionManager{
     }
 
     public boolean isSessionRunning(){
-        return sessionState.isAtLeastReady();
+        return getSessionState().isAtLeastReady();
     }
 
     public boolean isSessionFocused(){
-        return sessionState == SessionState.FOCUSED;
+        return getSessionState() == SessionState.FOCUSED;
     }
 
     public void setXrVrBlendMode(XrVrMode xrVrBlendMode){
@@ -545,6 +557,7 @@ public class OpenXrSessionManager{
             return false;
         }
 
+        boolean shouldExit = false;
         do {
             switch (event.type()) {
                 case XR10.XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
@@ -555,11 +568,20 @@ public class OpenXrSessionManager{
                 }
                 case XR10.XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
                     XrEventDataSessionStateChanged sessionStateChangedEvent = XrEventDataSessionStateChanged.create(event.address());
-                    return handleSessionStateChangedEvent(sessionStateChangedEvent);
-                }
-                case XR10.XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+                    shouldExit |= handleSessionStateChangedEvent(sessionStateChangedEvent);
                     break;
-                case XR10.XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
+                }
+                case XR10.XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED: {
+                    LOGGER.fine("Interaction profile changed");
+                    sessionObservables.fireInteractionProfileChanged();
+                    break;
+                }
+                case XR10.XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING: {
+                    XrEventDataReferenceSpaceChangePending referenceSpaceChangePending = XrEventDataReferenceSpaceChangePending.create(event.address());
+                    LOGGER.info("Reference space change pending for reference space type " + referenceSpaceChangePending.referenceSpaceType());
+                    sessionObservables.fireReferenceSpaceChangePending();
+                    break;
+                }
                 default: {
                     LOGGER.info("Ignoring event type: " + event.type());
                     break;
@@ -569,7 +591,7 @@ public class OpenXrSessionManager{
         }
         while (event != null);
 
-        return false;
+        return shouldExit;
     }
 
     private XrEventDataBaseHeader readNextOpenXREvent() {
@@ -597,8 +619,9 @@ public class OpenXrSessionManager{
             return false;
         }
 
-        SessionState oldState = sessionState;
-        sessionState = SessionState.fromXRValue(stateChangedEvent.state());
+        SessionState oldState = getSessionState();
+        SessionState sessionState = SessionState.fromXRValue(stateChangedEvent.state());
+        sessionObservables.setSessionState(sessionState);
 
         LOGGER.info("XrEventDataSessionStateChanged: state " + oldState + "->" + sessionState + " session=" + stateChangedEvent.session() + " time=" + stateChangedEvent.time());
 
@@ -685,7 +708,8 @@ public class OpenXrSessionManager{
 
             if ((viewState.viewStateFlags() & XR10.XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
                     (viewState.viewStateFlags() & XR10.XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
-                return InProgressXrRender.NO_XR_FRAME;  // There is no valid tracking poses for the views.
+                // There are no valid tracking poses for the views. The frame has been begun so must still be ended (with no layers)
+                return new InProgressXrRender(true, false, frameState.predictedDisplayTime(), InProgressXrRender.NO_EYE_POSITION, InProgressXrRender.NO_EYE_POSITION, null, null, -1, -1);
             }
 
             int viewCountOutput = pi.get(0);

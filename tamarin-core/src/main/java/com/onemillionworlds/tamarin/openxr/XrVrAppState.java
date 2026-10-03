@@ -14,6 +14,8 @@ import com.jme3.system.AppSettings;
 import com.jme3.texture.FrameBuffer;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.audio.VrAudioListenerState;
+import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
+import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportData;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
@@ -76,6 +78,12 @@ public abstract class XrVrAppState extends XrBaseAppState{
     private final Queue<Runnable> runOnceHaveCameraPositions = new LinkedList<>();
 
     private Consumer<ViewPort> newViewportConfiguration = viewPort -> {};
+
+    /**
+     * Session events (state changes etc.) are reported here by the session manager. It is owned by the app state
+     * (rather than the session manager) so that subscriptions can be made before the session has been created.
+     */
+    protected final XrSessionObservables sessionObservables = new XrSessionObservables();
 
     public XrVrAppState(XrSettings xrSettings){
         this.xrSettings = xrSettings;
@@ -365,5 +373,25 @@ public abstract class XrVrAppState extends XrBaseAppState{
     @Override
     public CameraResolution getCameraResolution(){
         return new CameraResolution(leftCamera.getWidth(), leftCamera.getWidth());
+    }
+
+    @Override
+    public SessionState getSessionState(){
+        return sessionObservables.getSessionState();
+    }
+
+    @Override
+    public ObservableValueSubscription<SessionState> subscribeToSessionState(){
+        return sessionObservables.subscribeToSessionState();
+    }
+
+    @Override
+    public ObservableValueSubscription<Boolean> subscribeToSessionFocused(){
+        return sessionObservables.subscribeToSessionFocused();
+    }
+
+    @Override
+    public ObservableEventSubscription subscribeToReferenceSpaceChangePending(){
+        return sessionObservables.subscribeToReferenceSpaceChangePending();
     }
 }
