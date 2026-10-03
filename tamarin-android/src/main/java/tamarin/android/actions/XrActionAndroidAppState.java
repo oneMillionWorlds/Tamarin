@@ -322,7 +322,6 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                         xrActionCreateInfo.subactionPaths(subActionsLongBuffer);
                     }else{
                         xrActionCreateInfo.subactionPaths(null);
-                        xrActionCreateInfo.countSubactionPaths(0);
                     }
 
                     XrAction.HandleBuffer actionPointer = XrAction.create(1, stack);
@@ -585,7 +584,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
 
             XrSpaceLocation spaceLocation = XrSpaceLocation.calloc(stack)
                     .type$Default()
-                    .next(spaceVelocity.address());
+                    .next(spaceVelocity);
 
             XrSpace poseSpace = getPoseSpace(action, handSide);
             XrSpace relativeToSpace = getOrCreateReferenceSpace(stageRelative ? XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE: XrReferenceSpaceType.REFERENCE_SPACE_TYPE_LOCAL);

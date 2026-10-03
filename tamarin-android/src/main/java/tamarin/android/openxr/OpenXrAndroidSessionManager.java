@@ -18,6 +18,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XR10;
 import com.onemillionworlds.tamarin.openxrbindings.XR10Constants;
 import com.onemillionworlds.tamarin.openxrbindings.XR10Utils;
 import com.onemillionworlds.tamarin.openxrbindings.XrApplicationInfo;
+import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerBaseHeader;
 import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjection;
 import com.onemillionworlds.tamarin.openxrbindings.XrCompositionLayerProjectionView;
 import com.onemillionworlds.tamarin.openxrbindings.XrEventDataBaseHeader;
@@ -278,13 +279,11 @@ public class OpenXrAndroidSessionManager {
             androidKHR.type$Default();
             androidKHR.applicationActivity(initialisationData.activityContext);
             androidKHR.applicationVM(initialisationData.javaVm);
-            androidKHR.next(NULL);
 
             XrInstanceCreateInfo createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type$Default()
-                    .next(androidKHR.address())
+                    .next(androidKHR)
                     .createFlags(0)
-                    .enabledApiLayerCount(0)
                     .enabledApiLayerNames(null)
                     .applicationInfo(XrApplicationInfo.calloc(stack)
                             .applicationName(stack.utf8(xrSettings.getApplicationName()))
@@ -402,7 +401,7 @@ public class OpenXrAndroidSessionManager {
                     xrInstance,
                     XrSessionCreateInfo.malloc(stack)
                             .type$Default()
-                            .next(graphicsBinding.address())
+                            .next(graphicsBinding)
                             .createFlags(0)
                             .systemId(systemID),
                     sessionPointerBuffer
@@ -610,7 +609,7 @@ public class OpenXrAndroidSessionManager {
         eventDataBuffer.type$Default();
         XrResult result = XR10.xrPollEvent(xrInstance, eventDataBuffer);
         if (result == XrResult.SUCCESS) {
-            XrEventDataBaseHeader event = XrEventDataBaseHeader.create(eventDataBuffer.address());
+            XrEventDataBaseHeader event = eventDataBuffer.asXrEventDataBaseHeader();
             if (event.type() == XrStructureType.XR_TYPE_EVENT_DATA_EVENTS_LOST) {
                 XrEventDataEventsLost dataEventsLost = event.asXrEventDataEventsLost();
                 LOGGER.info(dataEventsLost.lostEventCount() + " events lost");
@@ -861,8 +860,8 @@ public class OpenXrAndroidSessionManager {
             XrCompositionLayerProjection layerProjection = XrCompositionLayerProjection.calloc(stack)
                     .type$Default();
 
-            PointerBufferView layers = stack.callocPointer(1);
-            boolean didRender = false;
+            // stays null (no layers) if the runtime says not to render this frame
+            XrCompositionLayerBaseHeader.PointerBuffer layers = null;
 
             if (continuation.isShouldRender()) {
 
@@ -902,8 +901,8 @@ public class OpenXrAndroidSessionManager {
 
                 layerProjection.space(xrAppSpace);
                 layerProjection.views(projectionLayerViews);
-                layers.set(0, layerProjection.address());
-                didRender = true;
+                layers = XrCompositionLayerBaseHeader.PointerBuffer.calloc(1, stack);
+                layers.setByIndex(0, layerProjection);
             } else {
                 LOGGER.fine("Shouldn't render");
             }
@@ -915,8 +914,7 @@ public class OpenXrAndroidSessionManager {
                             .next(NULL)
                             .displayTime(continuation.getPredictedDisplayTime())
                             .environmentBlendMode(XrEnvironmentBlendMode.fromValue(xrVrBlendMode.getXrValue()))
-                            .layers(didRender ? layers.address() : NULL)
-                            .layerCount(didRender ? layers.capacity() : 0)
+                            .layers(layers)
             ));
         }
     }
