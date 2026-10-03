@@ -30,3 +30,4 @@ build
 /out
 /.profileconfig.json
 /local.properties
+/.claude/settings.local.json
