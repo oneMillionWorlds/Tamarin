@@ -10,28 +10,35 @@ import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
-import com.onemillionworlds.tamarin.observable.ObservableEvent;
+import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
+import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
 import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 public abstract class XrActionBaseAppState extends BaseAppState{
 
     public static final String ID = "OpenXrActionAppState";
 
-    private static final Logger LOGGER = Logger.getLogger(XrActionBaseAppState.class.getName());
+    private final InteractionProfileTracker interactionProfileTracker = new InteractionProfileTracker();
 
-    private final EnumMap<HandSide, String> currentInteractionProfiles = new EnumMap<>(HandSide.class);
-
-    private final ObservableEvent interactionProfileChanged = new ObservableEvent();
+    /**
+     * Time in seconds since this state started updating, used for the controller lost grace period
+     */
+    private double time = 0;
 
     public XrActionBaseAppState(){
         super(ID);
+    }
+
+    @Override
+    public void update(float tpf){
+        super.update(tpf);
+        time += tpf;
+        interactionProfileTracker.tick(isAlreadyPaused(), time);
     }
 
     /**
@@ -263,7 +270,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * </p>
      */
     public Optional<String> getCurrentInteractionProfile(HandSide handSide){
-        return Optional.ofNullable(currentInteractionProfiles.get(handSide));
+        return interactionProfileTracker.getCurrentProfile(handSide);
     }
 
     /**
@@ -272,20 +279,74 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * to get the new value(s).
      */
     public ObservableEventSubscription subscribeToInteractionProfileChanges(){
-        return interactionProfileChanged.subscribe();
+        return interactionProfileTracker.profileChanged.subscribe();
     }
 
     /**
-     * Updates the current interaction profiles, firing the change event if any have changed.
+     * Obtains a subscription that reports when a controller is lost, i.e. a hand that had a controller (an interaction
+     * profile) no longer has one, and hasn't got it back within the grace period (see {@link #setControllerLostGracePeriod(double)}).
+     * This is typically because the controller's battery has run out or it has been turned off. The data is the hand
+     * that lost its controller.
+     * <p>
+     *     Many applications will want to pause and show a message when this happens (which the user can dismiss, as
+     *     they may want to carry on without the controller). Unlike {@link com.onemillionworlds.tamarin.openxr.XrBaseAppState#subscribeToShouldPause()}
+     *     this doesn't clear itself, the application decides when to resume.
+     * </p>
+     * <p>
+     *     Notes:
+     * </p>
+     * <ul>
+     *     <li>A hand that never had a controller (e.g. the user started with only one) is never reported as lost.</li>
+     *     <li>A hand switching from a controller to hand tracking is not a loss (it still has a profile). However,
+     *     hand tracking only gets a profile if the action manifest has suggested bindings for a hand tracking
+     *     interaction profile, otherwise putting the controllers down to use hand tracking will look like a loss.</li>
+     *     <li>Controllers disappearing while {@link com.onemillionworlds.tamarin.openxr.XrBaseAppState#shouldPause()}
+     *     is already true are not reported. This is because taking the headset off causes controllers to sleep.</li>
+     *     <li>Never fires in desktop simulation mode.</li>
+     * </ul>
+     *
+     * @see #subscribeToControllerRegained()
+     */
+    public ObservableDataEventSubscription<HandSide> subscribeToControllerLost(){
+        return interactionProfileTracker.controllerLost.subscribe();
+    }
+
+    /**
+     * Obtains a subscription that reports when a controller that was previously reported lost (see
+     * {@link #subscribeToControllerLost()}) has come back. The data is the hand that regained its controller.
+     */
+    public ObservableDataEventSubscription<HandSide> subscribeToControllerRegained(){
+        return interactionProfileTracker.controllerRegained.subscribe();
+    }
+
+    /**
+     * Updates the current interaction profiles, firing the change (and controller lost/regained) events as appropriate.
      * @param newProfiles the profile for each hand. Hands with no profile should be absent.
      */
     protected void updateCurrentInteractionProfiles(Map<HandSide, String> newProfiles){
-        if (!currentInteractionProfiles.equals(newProfiles)){
-            LOGGER.info("Interaction profiles changed to " + newProfiles);
-            currentInteractionProfiles.clear();
-            currentInteractionProfiles.putAll(newProfiles);
-            interactionProfileChanged.fireEvent();
-        }
+        interactionProfileTracker.update(newProfiles, isAlreadyPaused(), time);
+    }
+
+    /**
+     * Sets how long (in seconds) a controller must be missing before it is reported as lost (see
+     * {@link #subscribeToControllerLost()}). Defaults to 2 seconds.
+     * <p>
+     *     This exists because runtimes briefly drop controllers. E.g. on the Quest when one controller's battery is
+     *     removed the runtime briefly reports that <i>both</i> controllers are gone, the remaining one returns about
+     *     a second later.
+     * </p>
+     */
+    public void setControllerLostGracePeriod(double seconds){
+        interactionProfileTracker.setLossGracePeriod(seconds);
+    }
+
+    public double getControllerLostGracePeriod(){
+        return interactionProfileTracker.getLossGracePeriod();
+    }
+
+    private boolean isAlreadyPaused(){
+        XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
+        return xrAppState != null && xrAppState.shouldPause();
     }
 
     /**
