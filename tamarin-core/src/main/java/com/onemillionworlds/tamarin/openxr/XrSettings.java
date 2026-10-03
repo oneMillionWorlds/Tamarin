@@ -31,10 +31,10 @@ public class XrSettings{
      * black/transparent if you choose one of the AR modes.
      * </p>
      * <p>
-     *     It is likely you'll need to add a passthrough extension, e.g. FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME
+     *     For passthrough (mixed reality) use {@link XrSettings#setPassthroughSupport(boolean)} and {@link XrBaseAppState#setPassthroughEnabled(boolean)} instead, which handle the details
      * </p>
      * <p>
-     *      <b>EXPERIMENTAL</b> Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     *      This is a low level setting. Modes the runtime doesn't support (see {@link XrBaseAppState#getSupportedXrVrModes()}) are ignored with a warning
      * </p>
      *
      */
@@ -55,6 +55,16 @@ public class XrSettings{
      * If true (the default) JME's LostFocusBehavior will be set to Disabled when the XR session starts (desktop only).
      */
     boolean overrideLostFocusBehaviour = true;
+
+    /**
+     * If true the session is set up so that passthrough can be turned on (and off) at runtime.
+     */
+    boolean passthroughSupport = false;
+
+    /**
+     * Primarily for testing, uses XR_FB_passthrough even if the runtime supports the standard alpha blend mode.
+     */
+    boolean preferFbPassthrough = false;
 
     public XRVersion xrApiVersion = new XRVersion(1, 0, 43);
 
@@ -154,7 +164,7 @@ public class XrSettings{
      * with the real world (e.g., virtual reality or augmented reality modes).
      *
      * <p>
-     *      <b>EXPERIMENTAL</b> Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     *      This is a low level setting. Modes the runtime doesn't support (see {@link XrBaseAppState#getSupportedXrVrModes()}) are ignored with a warning
      * </p>
      *
      * @return the initial XR/VR mode, represented as an instance of {@link XrVrMode}.
@@ -169,10 +179,10 @@ public class XrSettings{
      * with the real world, such as virtual reality (VR) or augmented reality (AR).
      *
      * <p>
-     *      <b>EXPERIMENTAL</b> Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     *      This is a low level setting. Modes the runtime doesn't support (see {@link XrBaseAppState#getSupportedXrVrModes()}) are ignored with a warning
      * </p>
      * <p>
-     *     It is likely you'll need to add a passthrough extension, e.g. FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME
+     *     For passthrough (mixed reality) use {@link XrSettings#setPassthroughSupport(boolean)} and {@link XrBaseAppState#setPassthroughEnabled(boolean)} instead, which handle the details
      * </p>
      * @param initialXrVrMode the mode (e.g., XR or VR) in which the application will start.
      *                        Represented as an instance of {@link XrVrMode}.
@@ -253,6 +263,48 @@ public class XrSettings{
      */
     public void setOverrideLostFocusBehaviour(boolean overrideLostFocusBehaviour){
         this.overrideLostFocusBehaviour = overrideLostFocusBehaviour;
+    }
+
+    public boolean isPassthroughSupport(){
+        return passthroughSupport;
+    }
+
+    /**
+     * Sets whether the application wants to be able to use passthrough (seeing the real world behind the virtual
+     * scene, aka mixed reality). This must be set before the XR session starts because it affects how the session is
+     * set up (e.g. the swapchain format needs a real alpha channel). Passthrough can then be turned on and off at
+     * runtime with {@link XrBaseAppState#setPassthroughEnabled(boolean)}, after checking
+     * {@link XrBaseAppState#isPassthroughAvailable()}.
+     * <p>
+     *     Tamarin uses the standard {@link XrVrMode#ENVIRONMENT_BLEND_MODE_ALPHA_BLEND} environment blend mode if the
+     *     runtime supports it, otherwise Meta's XR_FB_passthrough extension (which this setting requests).
+     * </p>
+     * <p>
+     *     On Quest the application must also declare passthrough in its AndroidManifest.xml:
+     * </p>
+     * <pre>{@code
+     * <uses-feature android:name="com.oculus.feature.PASSTHROUGH" android:required="false" />
+     * }</pre>
+     */
+    public void setPassthroughSupport(boolean passthroughSupport){
+        this.passthroughSupport = passthroughSupport;
+        if (passthroughSupport){
+            requiredXrExtensions.add("XR_FB_passthrough"); // see FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME
+        }else{
+            requiredXrExtensions.remove("XR_FB_passthrough");
+        }
+    }
+
+    public boolean isPreferFbPassthrough(){
+        return preferFbPassthrough;
+    }
+
+    /**
+     * Primarily for testing. If true then Meta's XR_FB_passthrough extension is used for passthrough even if the
+     * runtime supports the standard {@link XrVrMode#ENVIRONMENT_BLEND_MODE_ALPHA_BLEND} environment blend mode.
+     */
+    public void setPreferFbPassthrough(boolean preferFbPassthrough){
+        this.preferFbPassthrough = preferFbPassthrough;
     }
 
     /**

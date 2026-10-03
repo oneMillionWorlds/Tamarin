@@ -79,6 +79,11 @@ public class XrAppState extends XrVrAppState{
         return xrSession;
     }
 
+    @Override
+    protected PassthroughControl getPassthroughControl(){
+        return xrSession;
+    }
+
 
     @Override
     public String getSystemName(){

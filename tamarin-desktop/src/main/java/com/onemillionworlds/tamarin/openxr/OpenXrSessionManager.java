@@ -25,6 +25,13 @@ import org.lwjgl.openxr.XrEventDataInstanceLossPending;
 import org.lwjgl.openxr.XrEventDataReferenceSpaceChangePending;
 import org.lwjgl.openxr.XrEventDataUserPresenceChangedEXT;
 import org.lwjgl.openxr.EXTUserPresence;
+import org.lwjgl.openxr.FBPassthrough;
+import org.lwjgl.openxr.XrCompositionLayerPassthroughFB;
+import org.lwjgl.openxr.XrEventDataPassthroughStateChangedFB;
+import org.lwjgl.openxr.XrPassthroughCreateInfoFB;
+import org.lwjgl.openxr.XrPassthroughFB;
+import org.lwjgl.openxr.XrPassthroughLayerCreateInfoFB;
+import org.lwjgl.openxr.XrPassthroughLayerFB;
 import org.lwjgl.openxr.XrEventDataSessionStateChanged;
 import org.lwjgl.openxr.XrExtensionProperties;
 import org.lwjgl.openxr.XrFovf;
@@ -65,12 +72,15 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import static org.lwjgl.openxr.EXTDebugUtils.XR_EXT_DEBUG_UTILS_EXTENSION_NAME;
@@ -95,7 +105,7 @@ import org.lwjgl.system.Struct;
 
 import java.nio.LongBuffer;
 
-public class OpenXrSessionManager{
+public class OpenXrSessionManager implements PassthroughControl{
 
     /**
      * In pixels the width of the swapchain (aka the width of the eye-screen)
@@ -174,6 +184,20 @@ public class OpenXrSessionManager{
 
     private XrVrMode xrVrBlendMode = XrVrMode.ENVIRONMENT_BLEND_MODE_OPAQUE;
 
+    private final Set<XrVrMode> supportedBlendModes = EnumSet.noneOf(XrVrMode.class);
+
+    private PassthroughMethod passthroughMethod = PassthroughMethod.NONE;
+
+    private String passthroughUnavailableReason = "";
+
+    private boolean passthroughEnabled = false;
+
+    /**
+     * Only used if passthroughMethod is FB_PASSTHROUGH
+     */
+    private XrPassthroughFB fbPassthrough;
+    private XrPassthroughLayerFB fbPassthroughLayer;
+
     static {
         DESIRED_SWAPCHAIN_FORMATS.put(GL30.GL_RGBA16F, Image.Format.RGBA16F);
         DESIRED_SWAPCHAIN_FORMATS.put(GL11.GL_RGB10_A2, Image.Format.RGB10A2);
@@ -197,6 +221,8 @@ public class OpenXrSessionManager{
         openXrSessionManager.initializeAndBindOpenGL();
         openXrSessionManager.createXRReferenceSpace();
         openXrSessionManager.createXRSwapchains();
+        openXrSessionManager.determineSupportedBlendModes();
+        openXrSessionManager.initialisePassthrough();
 
         openXrSessionManager.pollEvents();
         return openXrSessionManager;
@@ -255,7 +281,148 @@ public class OpenXrSessionManager{
     }
 
     public void setXrVrBlendMode(XrVrMode xrVrBlendMode){
+        if (!supportedBlendModes.isEmpty() && !supportedBlendModes.contains(xrVrBlendMode)){
+            LOGGER.warning("Environment blend mode " + xrVrBlendMode + " is not supported by the runtime (supported: " + supportedBlendModes + "), ignoring");
+            return;
+        }
         this.xrVrBlendMode = xrVrBlendMode;
+    }
+
+    @Override
+    public Set<XrVrMode> getSupportedXrVrModes(){
+        return Collections.unmodifiableSet(supportedBlendModes);
+    }
+
+    @Override
+    public PassthroughMethod getPassthroughMethod(){
+        return passthroughMethod;
+    }
+
+    @Override
+    public String getPassthroughUnavailableReason(){
+        return passthroughUnavailableReason;
+    }
+
+    @Override
+    public boolean isPassthroughEnabled(){
+        return passthroughEnabled;
+    }
+
+    @Override
+    public void setPassthroughEnabled(boolean enabled){
+        if (enabled == passthroughEnabled){
+            return;
+        }
+        if (enabled && passthroughMethod == PassthroughMethod.NONE){
+            throw new IllegalStateException("Passthrough is not available: " + passthroughUnavailableReason);
+        }
+        if (passthroughMethod == PassthroughMethod.FB_PASSTHROUGH){
+            if (enabled){
+                checkResponseCode("xrPassthroughStartFB", FBPassthrough.xrPassthroughStartFB(fbPassthrough));
+                checkResponseCode("xrPassthroughLayerResumeFB", FBPassthrough.xrPassthroughLayerResumeFB(fbPassthroughLayer));
+            }else{
+                checkResponseCode("xrPassthroughLayerPauseFB", FBPassthrough.xrPassthroughLayerPauseFB(fbPassthroughLayer));
+                checkResponseCode("xrPassthroughPauseFB", FBPassthrough.xrPassthroughPauseFB(fbPassthrough));
+            }
+        }
+        LOGGER.info("Passthrough " + (enabled ? "enabled" : "disabled") + " using " + passthroughMethod);
+        passthroughEnabled = enabled;
+    }
+
+    private void determineSupportedBlendModes(){
+        try (MemoryStack stack = stackPush()) {
+            IntBuffer countPointer = stack.mallocInt(1);
+            checkResponseCode("xrEnumerateEnvironmentBlendModes", XR10.xrEnumerateEnvironmentBlendModes(xrInstance, systemID, viewConfigType, countPointer, null));
+            IntBuffer modes = stack.mallocInt(countPointer.get(0));
+            checkResponseCode("xrEnumerateEnvironmentBlendModes", XR10.xrEnumerateEnvironmentBlendModes(xrInstance, systemID, viewConfigType, countPointer, modes));
+            for (int i = 0; i < countPointer.get(0); i++){
+                XrVrMode.fromXrValue(modes.get(i)).ifPresent(supportedBlendModes::add);
+            }
+        }
+        LOGGER.info("Runtime supports environment blend modes " + supportedBlendModes);
+    }
+
+    /**
+     * Decides how passthrough will be provided (if at all) and, if using XR_FB_passthrough, creates the (paused)
+     * passthrough objects
+     */
+    private void initialisePassthrough(){
+        if (!xrSettings.isPassthroughSupport()){
+            passthroughUnavailableReason = "XrSettings#setPassthroughSupport(true) was not called before the XR session started";
+            return;
+        }
+        boolean alphaBlendSupported = supportedBlendModes.contains(XrVrMode.ENVIRONMENT_BLEND_MODE_ALPHA_BLEND);
+        boolean fbPassthroughLoaded = Boolean.TRUE.equals(extensionsLoaded.get(FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME));
+
+        if (alphaBlendSupported && !(xrSettings.isPreferFbPassthrough() && fbPassthroughLoaded)){
+            passthroughMethod = PassthroughMethod.ENVIRONMENT_BLEND_MODE;
+        } else if (fbPassthroughLoaded){
+            if (createFbPassthrough()){
+                passthroughMethod = PassthroughMethod.FB_PASSTHROUGH;
+            }else{
+                passthroughUnavailableReason = "The XR_FB_passthrough extension is loaded but creating passthrough failed (see the log)";
+            }
+        } else {
+            passthroughUnavailableReason = "The runtime supports neither the ALPHA_BLEND environment blend mode (it supports " + supportedBlendModes + ") nor the XR_FB_passthrough extension";
+        }
+
+        if (passthroughMethod == PassthroughMethod.NONE){
+            LOGGER.warning("Passthrough was requested but is not available: " + passthroughUnavailableReason);
+        }else{
+            passthroughUnavailableReason = "";
+            LOGGER.info("Passthrough is available using " + passthroughMethod);
+        }
+    }
+
+    private boolean createFbPassthrough(){
+        try (MemoryStack stack = stackPush()) {
+            PointerBuffer pointer = stack.mallocPointer(1);
+            checkResponseCode("xrCreatePassthroughFB", FBPassthrough.xrCreatePassthroughFB(
+                    xrSession,
+                    XrPassthroughCreateInfoFB.calloc(stack)
+                            .type$Default()
+                            .flags(0), // i.e. not running until passthrough is enabled
+                    pointer));
+            fbPassthrough = new XrPassthroughFB(pointer.get(0), xrSession);
+
+            checkResponseCode("xrCreatePassthroughLayerFB", FBPassthrough.xrCreatePassthroughLayerFB(
+                    xrSession,
+                    XrPassthroughLayerCreateInfoFB.calloc(stack)
+                            .type$Default()
+                            .passthrough(fbPassthrough)
+                            .flags(0) // i.e. paused until passthrough is enabled
+                            .purpose(FBPassthrough.XR_PASSTHROUGH_LAYER_PURPOSE_RECONSTRUCTION_FB),
+                    pointer));
+            fbPassthroughLayer = new XrPassthroughLayerFB(pointer.get(0), xrSession);
+            return true;
+        } catch (OpenXrException e){
+            LOGGER.warning("Failed to create XR_FB_passthrough passthrough: " + e.getMessage());
+            destroyFbPassthrough();
+            return false;
+        }
+    }
+
+    private static void logPassthroughStateChange(boolean nonRecoverableError, boolean recoverableError, boolean restored, long flags){
+        if (nonRecoverableError){
+            LOGGER.severe("XR_FB_passthrough reported a non recoverable error, passthrough will not work (flags " + flags + ")");
+        } else if (recoverableError){
+            LOGGER.warning("XR_FB_passthrough reported a recoverable error, passthrough is temporarily unavailable (flags " + flags + ")");
+        } else if (restored){
+            LOGGER.info("XR_FB_passthrough has recovered from an error (flags " + flags + ")");
+        } else {
+            LOGGER.info("XR_FB_passthrough state changed (flags " + flags + ")");
+        }
+    }
+
+    private void destroyFbPassthrough(){
+        if (fbPassthroughLayer != null){
+            FBPassthrough.xrDestroyPassthroughLayerFB(fbPassthroughLayer);
+            fbPassthroughLayer = null;
+        }
+        if (fbPassthrough != null){
+            FBPassthrough.xrDestroyPassthroughFB(fbPassthrough);
+            fbPassthrough = null;
+        }
     }
 
     private void createOpenXRInstance() {
@@ -493,7 +660,15 @@ public class OpenXrSessionManager{
                 availableFormats.add((int) swapchainFormats.get(i));
             }
 
-            for (int glFormatIter : DESIRED_SWAPCHAIN_FORMATS.keySet()) {
+            List<Integer> formatPreferenceOrder = new ArrayList<>();
+            if (xrSettings.isPassthroughSupport()){
+                // passthrough needs a real alpha channel (RGB10_A2 only has 2 bits of alpha)
+                formatPreferenceOrder.add(GL30.GL_RGBA16F);
+                formatPreferenceOrder.add(GL11.GL_RGBA8);
+            }
+            formatPreferenceOrder.addAll(DESIRED_SWAPCHAIN_FORMATS.keySet());
+
+            for (int glFormatIter : formatPreferenceOrder) {
                 if (availableFormats.contains(glFormatIter)){
                     glColorFormat = glFormatIter;
                     break;
@@ -582,6 +757,15 @@ public class OpenXrSessionManager{
                     XrEventDataReferenceSpaceChangePending referenceSpaceChangePending = XrEventDataReferenceSpaceChangePending.create(event.address());
                     LOGGER.info("Reference space change pending for reference space type " + referenceSpaceChangePending.referenceSpaceType());
                     sessionObservables.fireReferenceSpaceChangePending();
+                    break;
+                }
+                case FBPassthrough.XR_TYPE_EVENT_DATA_PASSTHROUGH_STATE_CHANGED_FB: {
+                    long flags = XrEventDataPassthroughStateChangedFB.create(event.address()).flags();
+                    logPassthroughStateChange(
+                            (flags & FBPassthrough.XR_PASSTHROUGH_STATE_CHANGED_NON_RECOVERABLE_ERROR_BIT_FB) != 0,
+                            (flags & FBPassthrough.XR_PASSTHROUGH_STATE_CHANGED_RECOVERABLE_ERROR_BIT_FB) != 0,
+                            (flags & FBPassthrough.XR_PASSTHROUGH_STATE_CHANGED_RESTORED_ERROR_BIT_FB) != 0,
+                            flags);
                     break;
                 }
                 case EXTUserPresence.XR_TYPE_EVENT_DATA_USER_PRESENCE_CHANGED_EXT: {
@@ -860,7 +1044,9 @@ public class OpenXrSessionManager{
             XrCompositionLayerProjection layerProjection = XrCompositionLayerProjection.calloc(stack)
                     .type$Default();
 
-            PointerBuffer layers = stack.callocPointer(1);
+            // with XR_FB_passthrough the passthrough is a layer of its own, underneath the application's layer
+            boolean submitFbPassthroughLayer = passthroughEnabled && passthroughMethod == PassthroughMethod.FB_PASSTHROUGH;
+            PointerBuffer layers = stack.callocPointer(submitFbPassthroughLayer ? 2 : 1);
             boolean didRender = false;
 
             if (continuation.isShouldRender()) {
@@ -905,11 +1091,28 @@ public class OpenXrSessionManager{
 
                 layerProjection.space(xrAppSpace);
                 layerProjection.views(projectionLayerViews);
-                layers.put(0, layerProjection.address());
+                if (passthroughEnabled){
+                    // without this the alpha channel is ignored, and the (transparent) background would be opaque black
+                    layerProjection.layerFlags(XR10.XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT);
+                }
+                if (submitFbPassthroughLayer){
+                    XrCompositionLayerPassthroughFB passthroughLayer = XrCompositionLayerPassthroughFB.calloc(stack)
+                            .type$Default()
+                            .flags(XR10.XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT)
+                            .layerHandle(fbPassthroughLayer);
+                    layers.put(0, passthroughLayer.address());
+                    layers.put(1, layerProjection.address());
+                }else{
+                    layers.put(0, layerProjection.address());
+                }
                 didRender = true;
             } else {
                 LOGGER.fine("Shouldn't render");
             }
+
+            XrVrMode blendMode = passthroughEnabled && passthroughMethod == PassthroughMethod.ENVIRONMENT_BLEND_MODE
+                    ? XrVrMode.ENVIRONMENT_BLEND_MODE_ALPHA_BLEND
+                    : xrVrBlendMode;
 
             checkResponseCode(XR10.xrEndFrame(
                     xrSession,
@@ -917,7 +1120,7 @@ public class OpenXrSessionManager{
                             .type$Default()
                             .next(NULL)
                             .displayTime(continuation.getPredictedDisplayTime())
-                            .environmentBlendMode(xrVrBlendMode.getXrValue())
+                            .environmentBlendMode(blendMode.getXrValue())
                             .layers(didRender ? layers : null)
                             .layerCount(didRender ? layers.remaining() : 0)
             ));
@@ -1035,6 +1238,7 @@ public class OpenXrSessionManager{
             XR10.xrDestroySwapchain(swapchain.handle);
             swapchain.images.free();
         }
+        destroyFbPassthrough();
         XR10.xrDestroySpace(xrAppSpace);
         if (xrDebugMessenger != null) {
             EXTDebugUtils.xrDestroyDebugUtilsMessengerEXT(xrDebugMessenger);

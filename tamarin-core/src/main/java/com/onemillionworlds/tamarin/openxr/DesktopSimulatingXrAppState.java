@@ -13,6 +13,7 @@ import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class DesktopSimulatingXrAppState extends XrBaseAppState{
@@ -281,6 +282,33 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
     @Override
     protected XrSessionObservables getSessionObservables(){
         return sessionObservables;
+    }
+
+    @Override
+    public Set<XrVrMode> getSupportedXrVrModes(){
+        return Set.of();
+    }
+
+    @Override
+    public PassthroughMethod getPassthroughMethod(){
+        return PassthroughMethod.NONE;
+    }
+
+    @Override
+    public String getPassthroughUnavailableReason(){
+        return "Passthrough is not available in desktop simulation mode";
+    }
+
+    @Override
+    public void setPassthroughEnabled(boolean enabled){
+        if (enabled){
+            throw new IllegalStateException("Passthrough is not available: " + getPassthroughUnavailableReason());
+        }
+    }
+
+    @Override
+    public boolean isPassthroughEnabled(){
+        return false;
     }
 
     private static XrSessionObservables alwaysFocusedSessionObservables(){

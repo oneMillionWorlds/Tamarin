@@ -6,6 +6,7 @@ import android.opengl.EGL14;
 
 import com.jme3.app.Application;
 import com.jme3.system.AppSettings;
+import com.onemillionworlds.tamarin.openxr.PassthroughControl;
 import com.onemillionworlds.tamarin.openxr.XrSettings;
 import com.onemillionworlds.tamarin.openxr.XrVrAppState;
 import com.onemillionworlds.tamarin.openxr.XrVrMode;
@@ -47,6 +48,11 @@ public class XrAndroidAppState extends XrVrAppState {
     }
 
     public OpenXrAndroidSessionManager getXrSession(){
+        return xrSession;
+    }
+
+    @Override
+    protected PassthroughControl getPassthroughControl(){
         return xrSession;
     }
 

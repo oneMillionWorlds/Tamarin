@@ -4,6 +4,7 @@ import com.jme3.app.Application;
 import com.jme3.app.FlyCamAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.audio.AudioListenerState;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -24,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
@@ -33,6 +35,8 @@ import java.util.logging.Logger;
 public abstract class XrVrAppState extends XrBaseAppState{
 
     private static final Logger LOGGER = Logger.getLogger(XrVrAppState.class.getName());
+
+    private static final ColorRGBA TRANSPARENT = new ColorRGBA(0, 0, 0, 0);
 
     Camera leftCamera;
     Camera rightCamera;
@@ -82,6 +86,11 @@ public abstract class XrVrAppState extends XrBaseAppState{
      * (rather than the session manager) so that subscriptions can be made before the session has been created.
      */
     protected final XrSessionObservables sessionObservables = new XrSessionObservables();
+
+    /**
+     * While passthrough is enabled the eye viewports clear to transparent, these are their original colours
+     */
+    private final Map<ViewPort, ColorRGBA> backgroundsBeforePassthrough = new HashMap<>();
 
     public XrVrAppState(XrSettings xrSettings){
         this.xrSettings = xrSettings;
@@ -158,6 +167,9 @@ public abstract class XrVrAppState extends XrBaseAppState{
         newViewport.setClearFlags(true, true, true);
         newViewport.attachScene(((SimpleApplication) getApplication()).getRootNode());
         this.newViewportConfiguration.accept(newViewport);
+        if (isPassthroughEnabled()){
+            applyPassthroughBackground(newViewport);
+        }
         return newViewport;
     }
 
@@ -165,6 +177,15 @@ public abstract class XrVrAppState extends XrBaseAppState{
     public void setMainViewportConfiguration(Consumer<ViewPort> configureViewport){
         viewPorts.values().forEach(configureViewport);
         this.newViewportConfiguration = configureViewport;
+        if (isPassthroughEnabled()){
+            // the configuration may have set a background colour, that becomes the colour to restore when passthrough ends
+            for(ViewPort viewPort : viewPorts.values()){
+                if (!viewPort.getBackgroundColor().equals(TRANSPARENT)){
+                    backgroundsBeforePassthrough.put(viewPort, viewPort.getBackgroundColor().clone());
+                    viewPort.setBackgroundColor(TRANSPARENT.clone());
+                }
+            }
+        }
     }
 
 
@@ -376,5 +397,60 @@ public abstract class XrVrAppState extends XrBaseAppState{
     @Override
     protected XrSessionObservables getSessionObservables(){
         return sessionObservables;
+    }
+
+    /**
+     * @return the session manager's passthrough control, or null if the session hasn't been created yet
+     */
+    protected abstract PassthroughControl getPassthroughControl();
+
+    @Override
+    public Set<XrVrMode> getSupportedXrVrModes(){
+        PassthroughControl control = getPassthroughControl();
+        return control == null ? Set.of() : control.getSupportedXrVrModes();
+    }
+
+    @Override
+    public PassthroughMethod getPassthroughMethod(){
+        PassthroughControl control = getPassthroughControl();
+        return control == null ? PassthroughMethod.NONE : control.getPassthroughMethod();
+    }
+
+    @Override
+    public String getPassthroughUnavailableReason(){
+        PassthroughControl control = getPassthroughControl();
+        return control == null ? "The XR session has not started yet" : control.getPassthroughUnavailableReason();
+    }
+
+    @Override
+    public void setPassthroughEnabled(boolean enabled){
+        PassthroughControl control = getPassthroughControl();
+        if (control == null){
+            if (enabled){
+                throw new IllegalStateException("Passthrough is not available: " + getPassthroughUnavailableReason());
+            }
+            return;
+        }
+        if (enabled == control.isPassthroughEnabled()){
+            return;
+        }
+        control.setPassthroughEnabled(enabled); // throws (before changing anything) if not available
+        if (enabled){
+            viewPorts.values().forEach(this::applyPassthroughBackground);
+        }else{
+            backgroundsBeforePassthrough.forEach(ViewPort::setBackgroundColor);
+            backgroundsBeforePassthrough.clear();
+        }
+    }
+
+    @Override
+    public boolean isPassthroughEnabled(){
+        PassthroughControl control = getPassthroughControl();
+        return control != null && control.isPassthroughEnabled();
+    }
+
+    private void applyPassthroughBackground(ViewPort viewPort){
+        backgroundsBeforePassthrough.putIfAbsent(viewPort, viewPort.getBackgroundColor().clone());
+        viewPort.setBackgroundColor(TRANSPARENT.clone());
     }
 }

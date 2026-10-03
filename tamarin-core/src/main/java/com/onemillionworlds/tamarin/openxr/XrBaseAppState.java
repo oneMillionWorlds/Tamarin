@@ -12,6 +12,7 @@ import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
 import com.onemillionworlds.tamarin.viewports.ViewportConfigurator;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -228,16 +229,66 @@ public abstract class XrBaseAppState extends BaseAppState{
      * then black/transparent pixels may show through to the real world (based on the mode)
      *
      * <p>
-     *     It is likely you'll need to add a passthrough extension, e.g. FBPassthrough.XR_FB_PASSTHROUGH_EXTENSION_NAME
+     *     For passthrough (mixed reality) use {@link XrSettings#setPassthroughSupport(boolean)} and {@link XrBaseAppState#setPassthroughEnabled(boolean)} instead, which handle the details
      * </p>
      * <p>
-     *      <b>EXPERIMENTAL</b> Note; this feature is currently untested and may not work. Many headsets do not yet support AR
+     *      This is a low level setting. Modes the runtime doesn't support (see {@link XrBaseAppState#getSupportedXrVrModes()}) are ignored with a warning
      * </p>
      *
      * @param xrVrMode the XR/VR mode to set, which defines the behavior and configuration
      *                 of the application in the XR/VR environment.
      */
     public abstract void setXrVrMode(XrVrMode xrVrMode);
+
+    /**
+     * @return the environment blend modes the runtime supports (empty before the session has started, and in desktop
+     * simulation mode)
+     */
+    public abstract Set<XrVrMode> getSupportedXrVrModes();
+
+    /**
+     * Returns true if passthrough (seeing the real world behind the virtual scene, aka mixed reality) can be turned
+     * on with {@link #setPassthroughEnabled(boolean)}.
+     * <p>
+     *     Requires {@link XrSettings#setPassthroughSupport(boolean)} to have been set before the session started, and
+     *     a runtime that supports passthrough. Always false before the session has started (see
+     *     {@link #runAfterInitialisation(Runnable)}) and in desktop simulation mode.
+     * </p>
+     * <p>
+     *     Applications should check this before offering passthrough to the user, {@link #setPassthroughEnabled(boolean)}
+     *     throws if passthrough isn't available.
+     * </p>
+     */
+    public boolean isPassthroughAvailable(){
+        return getPassthroughMethod() != PassthroughMethod.NONE;
+    }
+
+    /**
+     * @return how passthrough is (or would be, if enabled) provided. {@link PassthroughMethod#NONE} if it isn't available.
+     */
+    public abstract PassthroughMethod getPassthroughMethod();
+
+    /**
+     * @return a human-readable explanation of why passthrough isn't available (an empty string if it is)
+     */
+    public abstract String getPassthroughUnavailableReason();
+
+    /**
+     * Turns passthrough (seeing the real world behind the virtual scene, aka mixed reality) on or off. This can be
+     * done at any time once the session has started.
+     * <p>
+     *     While passthrough is on the eye viewports clear to transparent so that the real world shows wherever nothing
+     *     has been rendered (the original background colour is restored when passthrough is turned off). Anything else
+     *     that covers the whole view (e.g. a sky box or a floor) will hide the real world, and some post-processing
+     *     filters write an opaque alpha which will also hide it.
+     * </p>
+     *
+     * @param enabled true to show the real world, false to return to VR
+     * @throws IllegalStateException if enabling and passthrough isn't available (check {@link #isPassthroughAvailable()} first)
+     */
+    public abstract void setPassthroughEnabled(boolean enabled);
+
+    public abstract boolean isPassthroughEnabled();
 
     public abstract CameraResolution getCameraResolution();
 

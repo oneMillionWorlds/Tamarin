@@ -1,5 +1,7 @@
 package com.onemillionworlds.tamarin.openxr;
 
+import java.util.Optional;
+
 /**
  * This determines how the composited image will be blended with the real world behind the display (if at all).
  * <p>
@@ -14,7 +16,7 @@ public enum XrVrMode{
      * This is the typical mode for VR experiences, although this mode can also be supported on
      * devices that support video passthrough.
      */
-    ENVIRONMENT_BLEND_MODE_OPAQUE(1), // aka XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
+    ENVIRONMENT_BLEND_MODE_OPAQUE(1), // aka XR_ENVIRONMENT_BLEND_MODE_OPAQUE
 
     /**
      * The composition layers will be additively blended with the real world behind the display.
@@ -41,6 +43,18 @@ public enum XrVrMode{
 
     public int getXrValue(){
         return xrValue;
+    }
+
+    /**
+     * @return the mode for the OpenXR value, or empty if it isn't one Tamarin knows about (e.g. a vendor extension's mode)
+     */
+    public static Optional<XrVrMode> fromXrValue(int xrValue){
+        for(XrVrMode mode : values()){
+            if (mode.xrValue == xrValue){
+                return Optional.of(mode);
+            }
+        }
+        return Optional.empty();
     }
 
 
