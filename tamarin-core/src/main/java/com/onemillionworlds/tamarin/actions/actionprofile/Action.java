@@ -4,6 +4,7 @@ import com.jme3.input.controls.KeyTrigger;
 import com.onemillionworlds.tamarin.actions.ActionType;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.controllerprofile.GoogleDaydreamController;
+import com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt;
 import com.onemillionworlds.tamarin.actions.controllerprofile.HtcProVive;
 import com.onemillionworlds.tamarin.actions.controllerprofile.HtcViveController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.KhronosSimpleController;
@@ -250,6 +251,8 @@ public class Action{
             withSuggestedBinding(OculusGoController.PROFILE, OculusGoController.pathBuilder().rightHand().gripPose());
             withSuggestedBinding(GoogleDaydreamController.PROFILE, GoogleDaydreamController.pathBuilder().rightHand().gripPose());
             withSuggestedBinding(GoogleDaydreamController.PROFILE, GoogleDaydreamController.pathBuilder().leftHand().gripPose());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().leftHand().gripPose());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().rightHand().gripPose());
             return this;
         }
 
@@ -287,6 +290,56 @@ public class Action{
             withSuggestedBinding(OculusGoController.PROFILE, OculusGoController.pathBuilder().rightHand().aimPose());
             withSuggestedBinding(GoogleDaydreamController.PROFILE, GoogleDaydreamController.pathBuilder().leftHand().aimPose());
             withSuggestedBinding(GoogleDaydreamController.PROFILE, GoogleDaydreamController.pathBuilder().rightHand().aimPose());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().leftHand().aimPose());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().rightHand().aimPose());
+            return this;
+        }
+
+        /**
+         * Binds the "select" input of all the devices this library knows about to this action for both hands. That is
+         * the trigger on controllers, and a pinch (thumb and index finger together) for hand tracking.
+         * <p>
+         *     This should be used with a {@link ActionType#FLOAT} action (some of the bindings are analog).
+         * </p>
+         */
+        public ActionBuilder withSuggestAllKnownSelectBindings(){
+            withSuggestedBinding(OculusTouchController.PROFILE, OculusTouchController.pathBuilder().leftHand().triggerValue());
+            withSuggestedBinding(OculusTouchController.PROFILE, OculusTouchController.pathBuilder().rightHand().triggerValue());
+            withSuggestedBinding(HtcViveController.PROFILE, HtcViveController.pathBuilder().leftHand().triggerValue());
+            withSuggestedBinding(HtcViveController.PROFILE, HtcViveController.pathBuilder().rightHand().triggerValue());
+            withSuggestedBinding(KhronosSimpleController.PROFILE, KhronosSimpleController.pathBuilder().leftHand().selectClick());
+            withSuggestedBinding(KhronosSimpleController.PROFILE, KhronosSimpleController.pathBuilder().rightHand().selectClick());
+            withSuggestedBinding(MixedRealityMotionController.PROFILE, MixedRealityMotionController.pathBuilder().leftHand().triggerValue());
+            withSuggestedBinding(MixedRealityMotionController.PROFILE, MixedRealityMotionController.pathBuilder().rightHand().triggerValue());
+            withSuggestedBinding(ValveIndexController.PROFILE, ValveIndexController.pathBuilder().leftHand().triggerValue());
+            withSuggestedBinding(ValveIndexController.PROFILE, ValveIndexController.pathBuilder().rightHand().triggerValue());
+            withSuggestedBinding(OculusGoController.PROFILE, OculusGoController.pathBuilder().leftHand().triggerClick());
+            withSuggestedBinding(OculusGoController.PROFILE, OculusGoController.pathBuilder().rightHand().triggerClick());
+            withSuggestedBinding(GoogleDaydreamController.PROFILE, GoogleDaydreamController.pathBuilder().leftHand().selectClick());
+            withSuggestedBinding(GoogleDaydreamController.PROFILE, GoogleDaydreamController.pathBuilder().rightHand().selectClick());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().leftHand().pinchValue());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().rightHand().pinchValue());
+            return this;
+        }
+
+        /**
+         * Binds the "grab" input of all the devices this library knows about (and that have one) to this action for
+         * both hands. That is the squeeze (grip button) on controllers, and a grasp (closing the hand) for hand tracking.
+         * <p>
+         *     This should be used with a {@link ActionType#FLOAT} action (some of the bindings are analog).
+         * </p>
+         */
+        public ActionBuilder withSuggestAllKnownGrabBindings(){
+            withSuggestedBinding(OculusTouchController.PROFILE, OculusTouchController.pathBuilder().leftHand().squeeze());
+            withSuggestedBinding(OculusTouchController.PROFILE, OculusTouchController.pathBuilder().rightHand().squeeze());
+            withSuggestedBinding(HtcViveController.PROFILE, HtcViveController.pathBuilder().leftHand().squeezeClick());
+            withSuggestedBinding(HtcViveController.PROFILE, HtcViveController.pathBuilder().rightHand().squeezeClick());
+            withSuggestedBinding(MixedRealityMotionController.PROFILE, MixedRealityMotionController.pathBuilder().leftHand().squeezeClick());
+            withSuggestedBinding(MixedRealityMotionController.PROFILE, MixedRealityMotionController.pathBuilder().rightHand().squeezeClick());
+            withSuggestedBinding(ValveIndexController.PROFILE, ValveIndexController.pathBuilder().leftHand().squeezeValue());
+            withSuggestedBinding(ValveIndexController.PROFILE, ValveIndexController.pathBuilder().rightHand().squeezeValue());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().leftHand().graspValue());
+            withSuggestedBinding(HandInteractionExt.PROFILE, HandInteractionExt.pathBuilder().rightHand().graspValue());
             return this;
         }
 
