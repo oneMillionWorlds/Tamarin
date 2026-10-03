@@ -2,20 +2,23 @@
 
 A VR library for JMonkeyEngine (JME) built on OpenXR. It is published to Maven Central as `com.onemillionworlds:tamarin`
 (desktop), `tamarin-android` and `tamarin-core`. User docs are on the GitHub wiki, and example usage is in the separate
-TamarinTestBed repo (https://github.com/oneMillionWorlds/TamarinTestBed). This repo has no runnable app.
+repos TamarinTestBed (PCVR) and TamarinTestBedAndroid (Quest), which are normally checked out as siblings of this
+repo. This repo has no runnable app. New features usually get an example in both testbeds; see the `testbed-example`
+skill.
 
 ## Build and test
 
 ```
 ./gradlew :tamarin-core:test          # fast; nearly all unit tests live here
 ./gradlew build                       # all modules, what CI runs (JDK 17 on ubuntu)
-./gradlew publishToMavenLocal         # to try changes in TamarinTestBed (add mavenLocal() there)
+./gradlew publishToMavenLocal         # for the testbeds, which resolve from mavenLocal
 ```
 
 - The Android module needs an Android SDK (`local.properties` -> `sdk.dir`, not committed).
 - Signing only happens when `signing.keyId` is configured, so local publishing works without GPG.
-- The version is in `gradle.properties`. The release GitHub action bumps it, so don't change it unless asked.
-  Release and publishing steps are in `README.md`.
+- The version is in `gradle.properties`. During development it is an alpha (`3.2.0-alpha9`). Increment the alpha
+  number when publishing to mavenLocal for testbed testing. Don't otherwise change it; the release GitHub action
+  handles release versions. Release and publishing steps are in `README.md`.
 - Dependency versions are in `gradle/libs.versions.toml`. `lwjgl3` must match the LWJGL version JME ships with.
 
 ## Modules
