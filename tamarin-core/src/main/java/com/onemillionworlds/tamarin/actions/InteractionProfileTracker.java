@@ -20,9 +20,8 @@ import java.util.logging.Logger;
  *     profile to another (e.g. from a controller to hand tracking) is not a loss.
  * </p>
  * <p>
- *     The grace period exists because runtimes briefly drop profiles. E.g. on the Quest when one controller's
- *     battery is removed the runtime briefly reports that <i>both</i> hands have no profile, the remaining hand
- *     returns about a second later.
+ *     The grace period is a debounce, so that a controller that disappears only momentarily (e.g. it is briefly put
+ *     down and picked up again) isn't reported as lost.
  * </p>
  * <p>
  *     A lost controller is "regained" when that hand gets a profile again. A hand gaining a profile for the first time

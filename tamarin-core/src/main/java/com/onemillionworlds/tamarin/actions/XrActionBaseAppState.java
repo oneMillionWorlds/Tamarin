@@ -12,6 +12,7 @@ import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
+import com.onemillionworlds.tamarin.openxr.GameplayInterrupt;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
 import java.util.Arrays;
@@ -30,6 +31,12 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      */
     private double time = 0;
 
+    /*
+     * These are used to forward controller lost/regained events on to the XrBaseAppState's gameplay interrupts
+     */
+    private final ObservableDataEventSubscription<HandSide> controllerLostForInterrupts = interactionProfileTracker.controllerLost.subscribe();
+    private final ObservableDataEventSubscription<HandSide> controllerRegainedForInterrupts = interactionProfileTracker.controllerRegained.subscribe();
+
     public XrActionBaseAppState(){
         super(ID);
     }
@@ -39,6 +46,21 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         super.update(tpf);
         time += tpf;
         interactionProfileTracker.tick(isAlreadyPaused(), time);
+        forwardControllerInterrupts();
+    }
+
+    private void forwardControllerInterrupts(){
+        List<HandSide> lost = controllerLostForInterrupts.pollEvents();
+        List<HandSide> regained = controllerRegainedForInterrupts.pollEvents();
+        if (lost.isEmpty() && regained.isEmpty()){
+            return;
+        }
+        XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
+        if (xrAppState == null){
+            return;
+        }
+        lost.forEach(hand -> xrAppState.reportGameplayInterrupt(GameplayInterrupt.controllerLost(GameplayInterrupt.Phase.STARTED, hand)));
+        regained.forEach(hand -> xrAppState.reportGameplayInterrupt(GameplayInterrupt.controllerLost(GameplayInterrupt.Phase.ENDED, hand)));
     }
 
     /**
@@ -325,15 +347,15 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      */
     protected void updateCurrentInteractionProfiles(Map<HandSide, String> newProfiles){
         interactionProfileTracker.update(newProfiles, isAlreadyPaused(), time);
+        forwardControllerInterrupts();
     }
 
     /**
      * Sets how long (in seconds) a controller must be missing before it is reported as lost (see
-     * {@link #subscribeToControllerLost()}). Defaults to 2 seconds.
+     * {@link #subscribeToControllerLost()}). Defaults to 1 second.
      * <p>
-     *     This exists because runtimes briefly drop controllers. E.g. on the Quest when one controller's battery is
-     *     removed the runtime briefly reports that <i>both</i> controllers are gone, the remaining one returns about
-     *     a second later.
+     *     This is a debounce, so that a controller that disappears only momentarily (e.g. it is briefly put down and
+     *     picked up again) isn't reported as lost.
      * </p>
      */
     public void setControllerLostGracePeriod(double seconds){

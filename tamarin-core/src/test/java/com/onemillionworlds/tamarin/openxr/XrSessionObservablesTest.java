@@ -3,6 +3,8 @@ package com.onemillionworlds.tamarin.openxr;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class XrSessionObservablesTest{
@@ -64,6 +66,33 @@ class XrSessionObservablesTest{
         observables.setSessionState(SessionState.FOCUSED);
         assertTrue(shouldPauseSubscription.checkHasChanged());
         assertFalse(shouldPauseSubscription.get());
+    }
+
+    @Test
+    void focusAndPresenceChangesAreReportedAsGameplayInterrupts(){
+        XrSessionObservables observables = new XrSessionObservables();
+        var interrupts = observables.subscribeToGameplayInterrupts();
+
+        observables.setSessionState(SessionState.READY);
+        observables.setSessionState(SessionState.SYNCHRONIZED);
+        observables.setSessionState(SessionState.VISIBLE);
+        observables.setSessionState(SessionState.FOCUSED);
+        assertEquals(List.of(), interrupts.pollEvents(), "Starting up isn't an interrupt");
+
+        observables.setSessionState(SessionState.VISIBLE);
+        observables.setSessionState(SessionState.FOCUSED);
+        assertEquals(List.of(
+                GameplayInterrupt.sessionNotFocused(GameplayInterrupt.Phase.STARTED),
+                GameplayInterrupt.sessionNotFocused(GameplayInterrupt.Phase.ENDED)
+        ), interrupts.pollEvents());
+
+        observables.setUserPresent(false);
+        observables.setUserPresent(false);
+        observables.setUserPresent(true);
+        assertEquals(List.of(
+                GameplayInterrupt.headsetRemoved(GameplayInterrupt.Phase.STARTED),
+                GameplayInterrupt.headsetRemoved(GameplayInterrupt.Phase.ENDED)
+        ), interrupts.pollEvents());
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 import com.onemillionworlds.tamarin.viewports.AdditionalViewportRequest;
@@ -354,6 +355,51 @@ public abstract class XrBaseAppState extends BaseAppState{
      */
     public ObservableValueSubscription<Boolean> subscribeToShouldPause(){
         return getSessionObservables().subscribeToShouldPause();
+    }
+
+    /**
+     * Obtains a subscription that reports everything that interrupts the user's gameplay: the session losing focus
+     * (e.g. the system menu being opened), the headset being taken off, and a controller being lost (e.g. its battery
+     * dying). Each interrupt is reported when it {@link GameplayInterrupt.Phase#STARTED starts} and when it
+     * {@link GameplayInterrupt.Phase#ENDED ends}.
+     * <p>
+     *     This is an alternative to {@link #subscribeToShouldPause()} for applications that want to pause and let the
+     *     user decide when to resume (e.g. a pause menu with a "Continue" button) rather than resuming automatically.
+     *     It is also the only one of the two that includes lost controllers, which don't end by themselves (the user
+     *     may want to carry on without the controller).
+     * </p>
+     * <p>
+     *     Example:
+     * </p>
+     * <pre>{@code
+     * ObservableDataEventSubscription<GameplayInterrupt> interrupts = xrAppState.subscribeToGameplayInterrupts();
+     * ...
+     * public void update(float tpf){
+     *     for(GameplayInterrupt interrupt : interrupts.pollEvents()){
+     *         if (interrupt.isStarted()){
+     *             showPauseMenu(interrupt); // which pauses the game until the user presses continue
+     *         }
+     *     }
+     * }
+     * }</pre>
+     * <p>
+     *     Controller interrupts require an {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState} to be
+     *     attached. Nothing is ever reported in desktop simulation mode.
+     * </p>
+     */
+    public ObservableDataEventSubscription<GameplayInterrupt> subscribeToGameplayInterrupts(){
+        return getSessionObservables().subscribeToGameplayInterrupts();
+    }
+
+    /**
+     * Reports a gameplay interrupt to subscribers of {@link #subscribeToGameplayInterrupts()}.
+     * <p>
+     *     This is primarily used internally (by the action state to report lost controllers), applications don't
+     *     normally need to call it.
+     * </p>
+     */
+    public void reportGameplayInterrupt(GameplayInterrupt interrupt){
+        getSessionObservables().fireGameplayInterrupt(interrupt);
     }
 
     /**

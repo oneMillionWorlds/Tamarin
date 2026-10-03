@@ -38,16 +38,17 @@ class InteractionProfileTrackerTest{
     @Test
     void controllerIsOnlyLostAfterTheGracePeriod(){
         InteractionProfileTracker tracker = new InteractionProfileTracker();
+        double gracePeriod = InteractionProfileTracker.DEFAULT_LOSS_GRACE_PERIOD;
         ObservableDataEventSubscription<HandSide> lost = tracker.controllerLost.subscribe();
 
         tracker.update(BOTH, false, 0);
         tracker.update(RIGHT_ONLY, false, 10);
         assertTrue(tracker.getCurrentProfile(HandSide.LEFT).isEmpty(), "The profile itself should update immediately");
 
-        tracker.tick(false, 11.9);
+        tracker.tick(false, 10 + gracePeriod - 0.01);
         assertEquals(List.of(), lost.pollEvents());
 
-        tracker.tick(false, 12);
+        tracker.tick(false, 10 + gracePeriod);
         assertEquals(List.of(HandSide.LEFT), lost.pollEvents());
 
         tracker.tick(false, 20);
@@ -68,21 +69,25 @@ class InteractionProfileTrackerTest{
     }
 
     /**
-     * This replicates what the Quest does when the right controller's battery is removed: both controllers vanish,
-     * then the left one returns about a second later
+     * Both controllers vanish, then the left one returns shortly afterwards (ticking every frame, as in real use)
      */
     @Test
-    void briefLossOfTheOtherControllerIsNotReported(){
+    void controllerReturningWithinTheGracePeriodIsNotReported(){
         InteractionProfileTracker tracker = new InteractionProfileTracker();
+        tracker.setLossGracePeriod(1);
         ObservableDataEventSubscription<HandSide> lost = tracker.controllerLost.subscribe();
         ObservableDataEventSubscription<HandSide> regained = tracker.controllerRegained.subscribe();
 
         tracker.update(BOTH, false, 0);
-        tracker.update(NONE, false, 48.6);
-        tracker.tick(false, 49.0);
-        tracker.update(LEFT_ONLY, false, 49.75);
-        tracker.tick(false, 49.8);
-        tracker.tick(false, 51);
+        double time = 10;
+        tracker.update(NONE, false, time);
+        for(; time < 10.9; time += 0.011){
+            tracker.tick(false, time);
+        }
+        tracker.update(LEFT_ONLY, false, time);
+        for(; time < 12; time += 0.011){
+            tracker.tick(false, time);
+        }
 
         assertEquals(List.of(HandSide.RIGHT), lost.pollEvents());
         assertEquals(List.of(), regained.pollEvents(), "Returning within the grace period isn't a regain");

@@ -1,11 +1,14 @@
 package com.onemillionworlds.tamarin.openxr;
 
+import com.onemillionworlds.tamarin.observable.ObservableDataEvent;
+import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableEvent;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableValue;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
 
 import java.util.Objects;
+import java.util.logging.Logger;
 
 /**
  * Holds the observable state that an OpenXR session manager reports to the rest of Tamarin (and the application).
@@ -14,6 +17,8 @@ import java.util.Objects;
  * </p>
  */
 public class XrSessionObservables{
+
+    private static final Logger LOGGER = Logger.getLogger(XrSessionObservables.class.getName());
 
     private final ObservableValue<SessionState> sessionState = new ObservableValue<>(SessionState.UNKNOWN);
 
@@ -32,6 +37,13 @@ public class XrSessionObservables{
     private final ObservableEvent referenceSpaceChangePending = new ObservableEvent();
 
     private final ObservableEvent interactionProfileChanged = new ObservableEvent();
+
+    private final ObservableDataEvent<GameplayInterrupt> gameplayInterrupts = new ObservableDataEvent<>();
+
+    /**
+     * Focus changes are only interrupts once the session has been focused at least once (start up isn't an interrupt)
+     */
+    private boolean hasEverBeenFocused = false;
 
     public SessionState getSessionState(){
         return sessionState.get();
@@ -55,7 +67,15 @@ public class XrSessionObservables{
      */
     public void setSessionState(SessionState newState){
         setIfChanged(sessionState, newState);
-        setIfChanged(sessionFocused, newState == SessionState.FOCUSED);
+        boolean focused = newState == SessionState.FOCUSED;
+        if (setIfChanged(sessionFocused, focused)){
+            if (focused && !hasEverBeenFocused){
+                // the session becoming focused at start up isn't the end of an interrupt
+                hasEverBeenFocused = true;
+            } else if (hasEverBeenFocused){
+                fireGameplayInterrupt(GameplayInterrupt.sessionNotFocused(focused ? GameplayInterrupt.Phase.ENDED : GameplayInterrupt.Phase.STARTED));
+            }
+        }
         updateShouldPause();
     }
 
@@ -64,18 +84,38 @@ public class XrSessionObservables{
      * actually changes.
      */
     public void setUserPresent(boolean present){
-        setIfChanged(userPresent, present);
+        if (setIfChanged(userPresent, present)){
+            fireGameplayInterrupt(GameplayInterrupt.headsetRemoved(present ? GameplayInterrupt.Phase.ENDED : GameplayInterrupt.Phase.STARTED));
+        }
         updateShouldPause();
+    }
+
+    /**
+     * Reports a gameplay interrupt to subscribers of {@link #subscribeToGameplayInterrupts()}. Session and presence
+     * interrupts are fired automatically by this class, controller interrupts are reported by the action state.
+     */
+    public void fireGameplayInterrupt(GameplayInterrupt interrupt){
+        LOGGER.info("Gameplay interrupt: " + interrupt);
+        gameplayInterrupts.fireEvent(interrupt);
+    }
+
+    public ObservableDataEventSubscription<GameplayInterrupt> subscribeToGameplayInterrupts(){
+        return gameplayInterrupts.subscribe();
     }
 
     private void updateShouldPause(){
         setIfChanged(shouldPause, !(sessionFocused.get() && userPresent.get()));
     }
 
-    private static <T> void setIfChanged(ObservableValue<T> observableValue, T newValue){
+    /**
+     * @return true if the value changed
+     */
+    private static <T> boolean setIfChanged(ObservableValue<T> observableValue, T newValue){
         if (!Objects.equals(observableValue.get(), newValue)){
             observableValue.set(newValue);
+            return true;
         }
+        return false;
     }
 
     public void fireReferenceSpaceChangePending(){
