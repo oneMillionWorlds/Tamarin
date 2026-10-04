@@ -1,5 +1,8 @@
 package com.onemillionworlds.tamarin.openxr;
 
+import com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt;
+import com.onemillionworlds.tamarin.actions.controllerprofile.MetaHandMicrogestures;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -76,6 +79,8 @@ public class XrSettings{
         requiredXrExtensions.add("XR_EXT_dpad_binding"); //treating joysticks as dpads. See EXTDpadBinding.XR_EXT_DPAD_BINDING_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_user_presence"); //detecting the headset being taken off. See EXTUserPresence.XR_EXT_USER_PRESENCE_EXTENSION_NAME
         requiredXrExtensions.add("XR_EXT_hand_interaction"); //hand tracking gestures (pinch, grasp) as action inputs. See HandInteractionExt
+        requiredXrExtensions.add("XR_META_hand_tracking_microgestures"); //META ONLY thumb tap/swipe gestures as action inputs (needs XR_EXT_hand_interaction). See MetaHandMicrogestures
+        requiredXrExtensions.add("XR_FB_hand_tracking_aim"); //META ONLY per finger pinch strength and stabilised aim. See FBHandTrackingAim.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME and XrActionBaseAppState#getHandTrackingAimState
     }
 
     /**
@@ -90,11 +95,18 @@ public class XrSettings{
 
     /**
      * Primarily for testing purposes, this allows you to remove an extension that would otherwise be requested to be used.
+     * <p>
+     * Removing XR_EXT_hand_interaction also removes XR_META_hand_tracking_microgestures, because the runtime refuses
+     * to start if the latter is requested without the former.
+     * </p>
      * @param extensionName the extension to not use
      */
     @SuppressWarnings("unused")
     public void removeRequiredExtension(String extensionName){
         requiredXrExtensions.remove(extensionName);
+        if (extensionName.equals(HandInteractionExt.REQUIRED_EXTENSION)){
+            requiredXrExtensions.remove(MetaHandMicrogestures.REQUIRED_EXTENSION);
+        }
     }
 
     public Set<String> getRequiredXrExtensions(){

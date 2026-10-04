@@ -8,6 +8,7 @@ import com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt
 import com.onemillionworlds.tamarin.actions.controllerprofile.HtcProVive;
 import com.onemillionworlds.tamarin.actions.controllerprofile.HtcViveController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.KhronosSimpleController;
+import com.onemillionworlds.tamarin.actions.controllerprofile.MetaHandMicrogestures;
 import com.onemillionworlds.tamarin.actions.controllerprofile.MixedRealityMotionController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusGoController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusTouchController;
@@ -173,9 +174,11 @@ public class Action{
          * Tamarin provided profiles are:
          * <ul>
          *     <li>{@link GoogleDaydreamController#PROFILE}</li>
+         *     <li>{@link HandInteractionExt#PROFILE} - bare hands (hand tracking)</li>
          *     <li>{@link HtcProVive#PROFILE} - note this is the headset itself</li>
          *     <li>{@link HtcViveController#PROFILE}</li>
          *     <li>{@link KhronosSimpleController#PROFILE}</li>
+         *     <li>{@link MetaHandMicrogestures#PROFILE} - META ONLY thumb tap/swipe gestures on bare hands (extra inputs on the hand interaction profile)</li>
          *     <li>{@link MixedRealityMotionController#PROFILE}</li>
          *     <li>{@link OculusGoController#PROFILE}</li>
          *     <li>{@link OculusTouchController#PROFILE}</li>

@@ -7,6 +7,7 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
+import com.onemillionworlds.tamarin.actions.state.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
@@ -164,6 +165,28 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @param handSide the handside to get the joint positions for
      */
     public abstract Optional<Map<HandJoint, BonePose>> getSkeleton(ActionHandle poseAction, HandSide handSide);
+
+    /**
+     * <b>META ONLY.</b> Gets the extra gesture information a Meta runtime provides for a bare (tracked) hand: the pinch
+     * strength of each finger against the thumb, the runtime's own decision on whether each finger is pinching, and a
+     * stabilised aim pose. This comes from the XR_FB_hand_tracking_aim extension (which Tamarin requests by default).
+     * <p>
+     *     This doesn't go through the action system, so it can't be rebound by the user and isn't affected by action
+     *     sets being active or not. Prefer actions (e.g. {@link com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt}
+     *     pinch) where they can express what is needed. This is most useful for things the action system can't express,
+     *     like the thumb pinching the middle, ring or little finger.
+     * </p>
+     * <p>
+     *     Returns empty if the extension isn't available (any non-Meta runtime, or desktop simulation), if hand tracking
+     *     isn't available, or if the hand isn't currently being tracked (including when the user is holding a
+     *     controller).
+     * </p>
+     * @param handSide the hand to get the state for
+     * @return the aim state, if available
+     */
+    public Optional<HandTrackingAimState> getHandTrackingAimState(HandSide handSide){
+        return Optional.empty();
+    }
 
     /**
      * Gets the current state of the action (abstract version of a button press).

@@ -12,10 +12,10 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.actionprofile.SuggestedBindingsProfileView;
-import com.onemillionworlds.tamarin.actions.controllerprofile.InteractionProfileExtensions;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
+import com.onemillionworlds.tamarin.actions.state.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
@@ -38,6 +38,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrHandJointLocationEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandJointLocationsEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandJointsLocateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackerCreateInfoEXT;
+import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackingAimStateFB;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticActionInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticVibration;
 import com.onemillionworlds.tamarin.openxrbindings.XrInputSourceLocalizedNameGetInfo;
@@ -77,11 +78,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -367,19 +366,16 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             Collection<SuggestedBindingsProfileView> suggestedBindingsGroupedByProfile = manifest.getSuggestedBindingsGroupedByProfile();
 
             for(SuggestedBindingsProfileView profile : suggestedBindingsGroupedByProfile){
-                Optional<String> requiredExtension = InteractionProfileExtensions.requiredExtension(profile.getProfileName());
-                if (requiredExtension.isPresent() && !xrAppState.checkExtensionLoaded(requiredExtension.get())){
-                    LOGGER.info("Skipping suggested bindings for " + profile.getProfileName() + " as it requires the " + requiredExtension.get() + " extension, which isn't loaded");
+                List<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindings = profile.getBindingsWithLoadedExtensions(xrAppState::checkExtensionLoaded);
+                if (suggestedBindings.isEmpty()){
                     continue;
                 }
                 long deviceProfileHandle = pathToLong(profile.getProfileName(), false);
 
-                Set<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindings = profile.getSetToActionToBindingMap().entrySet();
                 XrActionSuggestedBinding.Buffer suggestedBindingsBuffer = XrActionSuggestedBinding.malloc(suggestedBindings.size(), stack);
 
-                Iterator<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindingIterator = suggestedBindings.iterator();
                 for(int i = 0; i < suggestedBindings.size(); i++){
-                    Map.Entry<SuggestedBindingsProfileView.ActionData, String> actionAndBinding = suggestedBindingIterator.next();
+                    Map.Entry<SuggestedBindingsProfileView.ActionData, String> actionAndBinding = suggestedBindings.get(i);
                     LongBufferView bindingHandleBuffer = stack.callocLong(1);
                     checkResponseCode("xrStringToPath:" + actionAndBinding.getValue(), XR10.xrStringToPath(xrInstance, stack.utf8(actionAndBinding.getValue()), bindingHandleBuffer));
 
@@ -684,6 +680,60 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 LOGGER.warning("No hand tracker for handSide " + handSide);
                 return Optional.empty();
             }
+        }
+    }
+
+    @Override
+    public Optional<HandTrackingAimState> getHandTrackingAimState(HandSide handSide){
+        if (!isReady() || !xrAppState.checkExtensionLoaded(XR10Constants.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME)){
+            return Optional.empty();
+        }
+        XrHandTrackerEXT handTracker = handTrackers.get(handSide);
+        if (handTracker == null){
+            return Optional.empty();
+        }
+
+        try(MemoryStack stack = MemoryStack.stackGet().push()) {
+            long predictedTime = openXRGL.getPredictedFrameTime();
+            if (predictedTime == 0) {
+                //not set up yet
+                return Optional.empty();
+            }
+
+            XrHandTrackingAimStateFB aimState = XrHandTrackingAimStateFB.calloc(stack)
+                    .type$Default();
+
+            // the aim state is chained onto a normal joint location request, the joints themselves are not used
+            XrHandJointLocationsEXT handJointLocations = XrHandJointLocationsEXT.calloc(stack)
+                    .type$Default()
+                    .next(aimState)
+                    .jointLocations(XrHandJointLocationEXT.calloc(XR10Constants.XR_HAND_JOINT_COUNT_EXT, stack));
+
+            XrSpace stageSpace = getOrCreateReferenceSpace(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE);
+
+            XrHandJointsLocateInfoEXT locateInfo = XrHandJointsLocateInfoEXT.calloc(stack)
+                    .type$Default()
+                    .baseSpace(stageSpace)
+                    .time(predictedTime);
+
+            boolean success = withResponseCodeLogging("Get hand tracking aim state", XR10.xrLocateHandJointsEXT(handTracker, locateInfo, handJointLocations));
+            if (!success || handJointLocations.isActive() == XR10Constants.XR_FALSE){
+                return Optional.empty();
+            }
+
+            Node observer = xrAppState.getObserver();
+            Vector3f aimPosition = observer.localToWorld(xrVector3fToJME(aimState.aimPose().position$()), null);
+            Quaternion aimOrientation = observer.getWorldRotation().mult(xrQuaternionToJme(aimState.aimPose().orientation()));
+
+            return Optional.of(new HandTrackingAimState(
+                    aimState.status(),
+                    aimPosition,
+                    aimOrientation,
+                    aimState.pinchStrengthIndex(),
+                    aimState.pinchStrengthMiddle(),
+                    aimState.pinchStrengthRing(),
+                    aimState.pinchStrengthLittle()
+            ));
         }
     }
 
