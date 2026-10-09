@@ -295,6 +295,8 @@ public class XrActionAppState extends XrActionBaseAppState{
 
         assert actionSets == null: "Actions have already been registered, consider using action sets and activating and deactivating them as required";
 
+        registerGestureBindings(manifest);
+
         if (startingActionSets.isEmpty()){
             LOGGER.log(Level.WARNING, "No starting action sets specified, that means no actions will be usable. Probably not what you want.");
         }
@@ -562,7 +564,7 @@ public class XrActionAppState extends XrActionBaseAppState{
             }
             checkResponseCode("getActionState", responseCode);
 
-            return new BooleanActionState(actionState.currentState(), actionState.changedSinceLastSync());
+            return combineWithTamarinGestures(action, restrictToInput, new BooleanActionState(actionState.currentState(), actionState.changedSinceLastSync()));
         }
 
     }
@@ -666,6 +668,20 @@ public class XrActionAppState extends XrActionBaseAppState{
             return Optional.empty();
         }
 
+        long spaceHandle;
+        try {
+            spaceHandle = poseActionInputSpaceHandles.get(poseAction).get(handSide.restrictToInputString);
+        } catch (NullPointerException nullPointerException) {
+            throw new RuntimeException("No pose action found for " + poseAction + " and handSide " + handSide + ". Have you registered it in the manifest?", nullPointerException);
+        }
+        return locateHandJoints(handSide, new XrSpace(spaceHandle, xrSessionHandle));
+    }
+
+    /**
+     * Gets the joint positions of the hand relative to the base space. Also records the hand's data source (see
+     * {@link #getHandJointsDataSource}).
+     */
+    private Optional<Map<HandJoint, BonePose>> locateHandJoints(HandSide handSide, XrSpace baseSpace){
         try(MemoryStack stack = stackPush()) {
 
             long predictedTime = openXRGL.getPredictedFrameTime();
@@ -673,16 +689,6 @@ public class XrActionAppState extends XrActionBaseAppState{
                 //not set up yet
                 return Optional.empty();
             }
-
-            long spaceHandle;
-            try {
-                spaceHandle = poseActionInputSpaceHandles.get(poseAction).get(handSide.restrictToInputString);
-            } catch (NullPointerException nullPointerException) {
-                throw new RuntimeException("No pose action found for " + poseAction + " and handSide " + handSide + ". Have you registered it in the manifest?", nullPointerException);
-            }
-
-
-            XrSpace poseSpace = new XrSpace(spaceHandle, xrSessionHandle);
 
             XrHandJointLocationsEXT handJointLocations = XrHandJointLocationsEXT.calloc(stack)
                     .type$Default()
@@ -694,7 +700,7 @@ public class XrActionAppState extends XrActionBaseAppState{
 
             XrHandJointsLocateInfoEXT locateInfo = XrHandJointsLocateInfoEXT.calloc(stack)
                     .type$Default()
-                    .baseSpace(poseSpace)
+                    .baseSpace(baseSpace)
                     .time(predictedTime);
             if (handTrackers.containsKey(handSide)) {
                 Map<HandJoint, BonePose> results = new HashMap<>();
@@ -848,6 +854,7 @@ public class XrActionAppState extends XrActionBaseAppState{
     public void update(float tpf){
         super.update(tpf);
         if (!sessionFocussed()){
+            updateTamarinGestures(false);
             return;
         }
 
@@ -872,6 +879,25 @@ public class XrActionAppState extends XrActionBaseAppState{
                 runAfterActionsSync.forEach(Runnable::run);
                 runAfterActionsSync.clear();
             }
+        }
+        updateTamarinGestures(true);
+    }
+
+    /**
+     * Feeds bare hand joints to Tamarin's gesture detection (only if the manifest has gestures in it).
+     * @param handsAvailable false if the hands definitely shouldn't be used (e.g. the session isn't focussed)
+     */
+    private void updateTamarinGestures(boolean handsAvailable){
+        if (!tamarinGesturesNeeded()){
+            return;
+        }
+        for(HandSide handSide : HandSide.values()){
+            Optional<Map<HandJoint, BonePose>> joints = Optional.empty();
+            if (handsAvailable && isReady() && handTrackers.containsKey(handSide)){
+                joints = locateHandJoints(handSide, new XrSpace(getOrCreateReferenceSpaceHandle(XR10.XR_REFERENCE_SPACE_TYPE_STAGE), xrSessionHandle))
+                        .filter(j -> getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND);
+            }
+            updateTamarinGestures(handSide, joints);
         }
     }
 

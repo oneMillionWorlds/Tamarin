@@ -28,14 +28,14 @@ public enum Gesture {
             "XR_FB_hand_tracking_aim"
     ),
     PINCH_RING(
-            "Pinch Thumb and middle finger",
+            "Pinch Thumb and ring finger",
             state -> state.isPinching(Finger.RING),
             state -> state.getPinchStrength(Finger.RING),
             null,
             "XR_FB_hand_tracking_aim"
     ),
     PINCH_LITTLE_FINGER(
-            "Pinch Thumb and middle finger",
+            "Pinch Thumb and little finger",
             state -> state.isPinching(Finger.LITTLE),
             state -> state.getPinchStrength(Finger.LITTLE),
             null,
