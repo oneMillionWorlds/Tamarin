@@ -521,7 +521,7 @@ public class XrActionAppState extends XrActionBaseAppState{
         return combineBooleanWithGestureBindings(action, restrictToInput, subActionPath -> runtimeBooleanActionState(action, subActionPath));
     }
 
-    private RuntimeActionState runtimeBooleanActionState(ActionHandle action, String restrictToInput){
+    private ActionSourceState runtimeBooleanActionState(ActionHandle action, String restrictToInput){
         try(MemoryStack stack = stackPush()){
 
             XrActionStateBoolean actionState = XrActionStateBoolean.calloc(stack);
@@ -540,7 +540,7 @@ public class XrActionAppState extends XrActionBaseAppState{
             }
             checkResponseCode("getActionState", responseCode);
 
-            return RuntimeActionState.ofBoolean(actionState.currentState(), actionState.changedSinceLastSync(), actionState.isActive());
+            return ActionSourceState.ofBoolean(actionState.currentState(), actionState.changedSinceLastSync(), actionState.isActive());
         }
     }
 
@@ -786,7 +786,7 @@ public class XrActionAppState extends XrActionBaseAppState{
         return combineFloatWithGestureBindings(action, restrictToInput, subActionPath -> runtimeFloatActionState(action, subActionPath));
     }
 
-    private RuntimeActionState runtimeFloatActionState(ActionHandle action, String restrictToInput){
+    private ActionSourceState runtimeFloatActionState(ActionHandle action, String restrictToInput){
         try(MemoryStack stack = stackPush()) {
 
             XrActionStateFloat actionState = XrActionStateFloat.calloc(stack);
@@ -803,7 +803,7 @@ public class XrActionAppState extends XrActionBaseAppState{
                 throw new IncorrectActionTypeException("Called for the float action but the action is not of that type");
             }
             checkResponseCode("getActionState", responseCode);
-            return new RuntimeActionState(actionState.currentState(), actionState.changedSinceLastSync(), actionState.isActive());
+            return new ActionSourceState(actionState.currentState(), actionState.changedSinceLastSync(), actionState.isActive());
         }
     }
 

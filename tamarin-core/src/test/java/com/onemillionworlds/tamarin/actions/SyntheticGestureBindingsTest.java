@@ -5,20 +5,15 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusTouchController;
-import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
-import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.handgestures.HandGestureSource;
-import com.onemillionworlds.tamarin.handgestures.HandGestureSourcePreference;
 import com.onemillionworlds.tamarin.handgestures.HandGestureState;
 import com.onemillionworlds.tamarin.handgestures.HandGestures;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,145 +26,89 @@ class SyntheticGestureBindingsTest{
     private static final ActionHandle UNBOUND = new ActionHandle("main", "unbound");
     private static final ActionHandle OTHER_SET_ACTION = new ActionHandle("other", "other_reset");
 
-    private static final String LEFT = HandSide.LEFT.restrictToInputString;
-    private static final String RIGHT = HandSide.RIGHT.restrictToInputString;
-
-    /**
-     * Nothing bound in the runtime is available (e.g. the action is only bound to controller buttons and hands are in use)
-     */
-    private static final RuntimeActionState RUNTIME_INACTIVE = RuntimeActionState.ofBoolean(false, false, false);
-    private static final RuntimeActionState RUNTIME_ACTIVE_OFF = RuntimeActionState.ofBoolean(false, false, true);
-    private static final RuntimeActionState RUNTIME_ACTIVE_ON = RuntimeActionState.ofBoolean(true, false, true);
-    private static final RuntimeActionState RUNTIME_ACTIVE_JUST_ON = RuntimeActionState.ofBoolean(true, true, true);
-
     private final SyntheticGestureBindings bindings = new SyntheticGestureBindings(manifest());
 
     private final Map<HandSide, Optional<HandGestureState>> handStates = new EnumMap<>(HandSide.class);
 
     @Test
     void aGestureTurnsABooleanActionOnAndReportsTheChangeOnce(){
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, false));
-        BooleanActionState state = bindings.combineBoolean(RESET, null, allHands(RUNTIME_INACTIVE));
-        assertTrue(state.getState());
-        assertTrue(state.hasChangedToTrue());
+        update(thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, false));
+        ActionSourceState state = bindings.getBooleanState(RESET, HandSide.LEFT);
+        assertTrue(state.getBooleanValue());
+        assertTrue(state.isChangedSinceLastSync());
+        assertTrue(state.isActive());
 
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, false));
-        state = bindings.combineBoolean(RESET, null, allHands(RUNTIME_INACTIVE));
-        assertTrue(state.getState());
-        assertFalse(state.hasChanged());
+        update(thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, false));
+        state = bindings.getBooleanState(RESET, HandSide.LEFT);
+        assertTrue(state.getBooleanValue());
+        assertFalse(state.isChangedSinceLastSync());
 
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, false), thumbsUp(HandSide.RIGHT, false));
-        assertTrue(bindings.combineBoolean(RESET, null, allHands(RUNTIME_INACTIVE)).hasChangedToFalse());
+        update(thumbsUp(HandSide.LEFT, false), thumbsUp(HandSide.RIGHT, false));
+        state = bindings.getBooleanState(RESET, HandSide.LEFT);
+        assertFalse(state.getBooleanValue());
+        assertTrue(state.isChangedSinceLastSync());
     }
 
     @Test
-    void automaticCombinesTheRuntimeAndTheGesture(){
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, true), Optional.empty());
-        assertTrue(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_ACTIVE_OFF)).getState(), "the gesture is on");
-
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, false), Optional.empty());
-        assertTrue(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_ACTIVE_ON)).getState(), "the runtime is on");
+    void eachHandHasItsOwnState(){
+        update(thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, false));
+        assertTrue(bindings.getBooleanState(RESET, HandSide.LEFT).getBooleanValue());
+        assertFalse(bindings.getBooleanState(RESET, HandSide.RIGHT).getBooleanValue());
     }
 
     @Test
-    void automaticRuntimeTurningOnWhileTheGestureIsAlreadyOnIsNotAChange(){
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, true), Optional.empty());
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, true), Optional.empty());
+    void anUntrackedHandIsInactive(){
+        update(thumbsUp(HandSide.LEFT, true), Optional.empty());
+        update(Optional.empty(), Optional.empty());
 
-        BooleanActionState state = bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_ACTIVE_JUST_ON));
-        assertTrue(state.getState());
-        assertFalse(state.hasChanged());
+        ActionSourceState state = bindings.getBooleanState(RESET, HandSide.LEFT);
+        assertFalse(state.isActive());
+        assertFalse(state.getBooleanValue());
+        assertTrue(state.isChangedSinceLastSync(), "it was on before the hand was lost");
     }
 
     @Test
-    void runtimeOnlyGivesAnActiveRuntimeBindingPrecedence(){
-        update(HandGestureSourcePreference.RUNTIME_ONLY, thumbsUp(HandSide.LEFT, true), Optional.empty());
-        assertFalse(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_ACTIVE_OFF)).getState());
-    }
-
-    @Test
-    void runtimeOnlyUsesTheGestureIfTheRuntimeIsInactive(){
-        update(HandGestureSourcePreference.RUNTIME_ONLY, thumbsUp(HandSide.LEFT, true), Optional.empty());
-        assertTrue(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_INACTIVE)).getState());
-    }
-
-    @Test
-    void tamarinOnlyGivesTheGesturePrecedenceWhenTheHandIsTracked(){
-        update(HandGestureSourcePreference.TAMARIN_ONLY, thumbsUp(HandSide.LEFT, false), Optional.empty());
-        assertFalse(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_ACTIVE_ON)).getState());
-    }
-
-    @Test
-    void controllersStillWorkWhateverThePreference(){
-        for(HandGestureSourcePreference preference : HandGestureSourcePreference.values()){
-            // the hand isn't tracked as a bare hand, it is holding a controller
-            update(preference, Optional.empty(), Optional.empty());
-            assertTrue(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_ACTIVE_ON)).getState(), preference.name());
-        }
-    }
-
-    @Test
-    void theSystemGestureLeavesTheHandToTheRuntime(){
+    void theSystemGestureMakesTheHandInactive(){
         HandGestureState systemGesture = HandGestureState.builder(HandSide.LEFT, HandGestureSource.RUNTIME)
                 .thumbsUp(1, true)
                 .runtimeFlags(true, false, false)
                 .build();
-        update(HandGestureSourcePreference.TAMARIN_ONLY, Optional.of(systemGesture), Optional.empty());
-        assertFalse(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_INACTIVE)).getState());
+        update(Optional.of(systemGesture), Optional.empty());
+
+        ActionSourceState state = bindings.getBooleanState(RESET, HandSide.LEFT);
+        assertFalse(state.isActive());
+        assertFalse(state.getBooleanValue());
     }
 
     @Test
-    void readingBothHandsCombinesEachHandsResult(){
-        // left: Tamarin precedence, gesture on. Right: not tracked, so the runtime (off)
-        update(HandGestureSourcePreference.TAMARIN_ONLY, thumbsUp(HandSide.LEFT, true), Optional.empty());
-        Map<String, RuntimeActionState> runtime = new HashMap<>();
-        runtime.put(LEFT, RUNTIME_ACTIVE_OFF);
-        runtime.put(RIGHT, RUNTIME_ACTIVE_OFF);
-        assertTrue(bindings.combineBoolean(RESET, null, runtime::get).getState());
-        assertFalse(bindings.combineBoolean(RESET, RIGHT, runtime::get).getState());
-    }
-
-    @Test
-    void gestureBindingsOnlyApplyToTheirOwnHand(){
-        update(HandGestureSourcePreference.AUTOMATIC, thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, false));
-
-        assertTrue(bindings.combineBoolean(RESET, LEFT, allHands(RUNTIME_INACTIVE)).getState());
-        assertFalse(bindings.combineBoolean(RESET, RIGHT, allHands(RUNTIME_INACTIVE)).getState());
-    }
-
-    @Test
-    void gesturesInInactiveActionSetsAreIgnored(){
+    void gesturesInInactiveActionSetsAreInactive(){
         handStates.put(HandSide.LEFT, thumbsUp(HandSide.LEFT, true));
         handStates.put(HandSide.RIGHT, Optional.empty());
-        bindings.update(this::stateFor, List.of("main"), HandGestureSourcePreference.AUTOMATIC);
+        bindings.update(this::stateFor, List.of("main"));
 
-        assertFalse(bindings.combineBoolean(OTHER_SET_ACTION, null, allHands(RUNTIME_INACTIVE)).getState());
-        assertTrue(bindings.combineBoolean(RESET, null, allHands(RUNTIME_INACTIVE)).getState());
+        assertFalse(bindings.getBooleanState(OTHER_SET_ACTION, HandSide.LEFT).isActive());
+        assertTrue(bindings.getBooleanState(RESET, HandSide.LEFT).getBooleanValue());
     }
 
     @Test
-    void floatActionsTakeTheLargerValueInAutomatic(){
-        update(HandGestureSourcePreference.AUTOMATIC, fist(HandSide.LEFT, 0.6f), Optional.empty());
-
-        FloatActionState state = bindings.combineFloat(SQUEEZE, LEFT, allHands(new RuntimeActionState(0.2f, false, true)));
-        assertEquals(0.6f, state.getState());
-        assertTrue(state.hasChanged());
-
-        assertEquals(0.9f, bindings.combineFloat(SQUEEZE, LEFT, allHands(new RuntimeActionState(0.9f, false, true))).getState());
+    void aHandWithoutGestureBindingsIsInactive(){
+        update(fist(HandSide.LEFT, 1), fist(HandSide.RIGHT, 1));
+        // squeeze only has a left hand gesture binding
+        assertFalse(bindings.getFloatState(SQUEEZE, HandSide.RIGHT).isActive());
+        assertFalse(bindings.getBooleanState(UNBOUND, HandSide.LEFT).isActive());
+        assertFalse(bindings.hasGestureBindings(UNBOUND));
+        assertTrue(bindings.hasGestureBindings(SQUEEZE));
     }
 
     @Test
-    void floatActionsUseTheRuntimeValueWhenItHasPrecedence(){
-        update(HandGestureSourcePreference.RUNTIME_ONLY, fist(HandSide.LEFT, 0.6f), Optional.empty());
-        assertEquals(0.2f, bindings.combineFloat(SQUEEZE, LEFT, allHands(new RuntimeActionState(0.2f, false, true))).getState());
-    }
+    void floatActionsUseTheGestureStrength(){
+        update(fist(HandSide.LEFT, 0.6f), Optional.empty());
+        ActionSourceState state = bindings.getFloatState(SQUEEZE, HandSide.LEFT);
+        assertEquals(0.6f, state.getValue());
+        assertTrue(state.isChangedSinceLastSync());
 
-    @Test
-    void actionsWithoutGestureBindingsAreTheRuntimeState(){
-        update(HandGestureSourcePreference.TAMARIN_ONLY, thumbsUp(HandSide.LEFT, true), thumbsUp(HandSide.RIGHT, true));
-        BooleanActionState state = bindings.combineBoolean(UNBOUND, null, allHands(RuntimeActionState.ofBoolean(false, true, true)));
-        assertFalse(state.getState());
-        assertTrue(state.hasChangedToFalse());
+        update(fist(HandSide.LEFT, 0.6f), Optional.empty());
+        assertFalse(bindings.getFloatState(SQUEEZE, HandSide.LEFT).isChangedSinceLastSync());
     }
 
     @Test
@@ -177,18 +116,14 @@ class SyntheticGestureBindingsTest{
         assertEquals(List.of("Left Hand Thumbs up (gesture)", "Right Hand Thumbs up (gesture)"), bindings.describe(RESET));
     }
 
-    private void update(HandGestureSourcePreference preference, Optional<HandGestureState> left, Optional<HandGestureState> right){
+    private void update(Optional<HandGestureState> left, Optional<HandGestureState> right){
         handStates.put(HandSide.LEFT, left);
         handStates.put(HandSide.RIGHT, right);
-        bindings.update(this::stateFor, List.of("main", "other"), preference);
+        bindings.update(this::stateFor, List.of("main", "other"));
     }
 
     private Optional<HandGestureState> stateFor(HandSide handSide){
         return handStates.getOrDefault(handSide, Optional.empty());
-    }
-
-    private static Function<String, RuntimeActionState> allHands(RuntimeActionState state){
-        return subActionPath -> state;
     }
 
     private static Optional<HandGestureState> thumbsUp(HandSide handSide, boolean thumbsUp){

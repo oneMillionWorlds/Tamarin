@@ -6,7 +6,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.actions.ActionType;
 import com.onemillionworlds.tamarin.actions.HandSide;
-import com.onemillionworlds.tamarin.actions.RuntimeActionState;
+import com.onemillionworlds.tamarin.actions.ActionSourceState;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.Action;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -523,7 +523,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         return combineBooleanWithGestureBindings(action, restrictToInput, subActionPath -> runtimeBooleanActionState(action, subActionPath));
     }
 
-    private RuntimeActionState runtimeBooleanActionState(ActionHandle action, String restrictToInput){
+    private ActionSourceState runtimeBooleanActionState(ActionHandle action, String restrictToInput){
         try(MemoryStack stack = MemoryStack.stackGet().push()){
             XrActionStateBoolean actionState = XrActionStateBoolean.calloc(stack);
             actionState.type$Default();
@@ -541,7 +541,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             }
             checkResponseCode("getActionState", responseCode);
 
-            return RuntimeActionState.ofBoolean(actionState.currentState() != 0, actionState.changedSinceLastSync() != 0, actionState.isActive() != 0);
+            return ActionSourceState.ofBoolean(actionState.currentState() != 0, actionState.changedSinceLastSync() != 0, actionState.isActive() != 0);
         }
     }
 
@@ -785,7 +785,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         return combineFloatWithGestureBindings(action, restrictToInput, subActionPath -> runtimeFloatActionState(action, subActionPath));
     }
 
-    private RuntimeActionState runtimeFloatActionState(ActionHandle action, String restrictToInput){
+    private ActionSourceState runtimeFloatActionState(ActionHandle action, String restrictToInput){
         try(MemoryStack stack = MemoryStack.stackGet().push()) {
             XrActionStateFloat actionState = XrActionStateFloat.calloc(stack);
             actionState.type$Default();
@@ -801,7 +801,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 throw new IncorrectActionTypeException("Called for the float action but the action is not of that type");
             }
             checkResponseCode("getActionState", responseCode);
-            return new RuntimeActionState(actionState.currentState(), actionState.changedSinceLastSync() == XR10Constants.XR_TRUE, actionState.isActive() == XR10Constants.XR_TRUE);
+            return new ActionSourceState(actionState.currentState(), actionState.changedSinceLastSync() == XR10Constants.XR_TRUE, actionState.isActive() == XR10Constants.XR_TRUE);
         }
     }
 

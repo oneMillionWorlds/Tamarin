@@ -59,6 +59,10 @@ The key thing to understand. Each XR concept has an abstract base in core, then 
   press, Lemur click, ring menu, climbing), `grabbing.*` controls with move restrictions and snap-to points,
   `touching.*` (mechanical buttons and toggles), skeleton synthesis for runtimes without hand skeletons.
 - `observable`: the change-notification pattern used for app-facing state (see below).
+- `handgestures`: bare-hand gesture recognition. `HandGestureState` is one API over the runtime's gestures
+  (`XR_FB_hand_tracking_aim`) and Tamarin's own bone-based ones (`JointGestureCalculations`). It also holds the
+  `HandGesture`s that can be bound to actions (evaluated by `actions.SyntheticGestureBindings`, combined with the runtime by
+  `actions.ActionSourceCombiner`).
 - `lemursupport`, `miniesupport`: optional integrations. `com.simsilica.lemur.event.LemurProtectedSupport` deliberately
   sits in Lemur's package to reach package-private API.
 - `viewports`, `vinette`, `audio`, `debug`, `debugwindow`, `deferredattachment`, `math`.

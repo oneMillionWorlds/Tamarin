@@ -5,8 +5,10 @@ import com.jme3.anim.Joint;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.onemillionworlds.tamarin.actions.actionprofile.Action;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -23,8 +25,10 @@ import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.openxr.GameplayInterrupt;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,6 +64,11 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     private SyntheticGestureBindings syntheticGestureBindings = SyntheticGestureBindings.none();
 
     private List<String> activeActionSetNames = List.of();
+
+    /**
+     * The sub action paths (usually the hands) of each action, needed to work out actions with gesture bindings hand by hand
+     */
+    private Map<ActionHandle, List<String>> subActionPathsByAction = Map.of();
 
     public XrActionBaseAppState(){
         super(ID);
@@ -99,7 +108,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         for(HandSide handSide : HandSide.values()){
             handGestureTrackers.get(handSide).update(trackedHands.get(handSide), headPosition, headRotation, tpf);
         }
-        syntheticGestureBindings.update(handSide -> handGestureTrackers.get(handSide).getState(handGestureSourcePreference), activeActionSetNames, handGestureSourcePreference);
+        syntheticGestureBindings.update(handSide -> handGestureTrackers.get(handSide).getState(handGestureSourcePreference), activeActionSetNames);
     }
 
     private void forwardControllerInterrupts(){
@@ -307,6 +316,12 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      */
     protected void registerGestureBindings(ActionManifest manifest){
         this.syntheticGestureBindings = new SyntheticGestureBindings(manifest);
+        this.subActionPathsByAction = new HashMap<>();
+        for(ActionSet actionSet : manifest.getActionSets()){
+            for(Action action : actionSet.getActions()){
+                subActionPathsByAction.put(action.getActionHandle(), action.getSupportedSubActionPaths());
+            }
+        }
     }
 
     /**
@@ -322,8 +337,22 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      *
      * @param runtimeState gets the runtime's state of the action for a sub action path (or null for all)
      */
-    protected BooleanActionState combineBooleanWithGestureBindings(ActionHandle action, String restrictToInput, Function<String, RuntimeActionState> runtimeState){
-        return syntheticGestureBindings.combineBoolean(action, restrictToInput, runtimeState);
+    protected BooleanActionState combineBooleanWithGestureBindings(ActionHandle action, String restrictToInput, Function<String, ActionSourceState> runtimeState){
+        if (!syntheticGestureBindings.hasGestureBindings(action)){
+            ActionSourceState runtime = runtimeState.apply(restrictToInput);
+            return new BooleanActionState(runtime.getBooleanValue(), runtime.isChangedSinceLastSync());
+        }
+        // gesture bindings are per hand (and which source wins can differ per hand) so each hand is worked out
+        // separately, then combined the way OpenXR would if the action was read for all hands
+        List<BooleanActionState> subActionStates = new ArrayList<>();
+        for(String subActionPath : subActionPathsToRead(action, restrictToInput)){
+            ActionSourceState runtime = runtimeState.apply(subActionPath);
+            ActionSourceState gesture = handFor(subActionPath)
+                    .map(hand -> syntheticGestureBindings.getBooleanState(action, hand))
+                    .orElse(ActionSourceState.INACTIVE);
+            subActionStates.add(ActionSourceCombiner.combineBoolean(runtime, gesture, handGestureSourcePreference));
+        }
+        return ActionSourceCombiner.anyOf(subActionStates);
     }
 
     /**
@@ -332,8 +361,37 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      *
      * @param runtimeState gets the runtime's state of the action for a sub action path (or null for all)
      */
-    protected FloatActionState combineFloatWithGestureBindings(ActionHandle action, String restrictToInput, Function<String, RuntimeActionState> runtimeState){
-        return syntheticGestureBindings.combineFloat(action, restrictToInput, runtimeState);
+    protected FloatActionState combineFloatWithGestureBindings(ActionHandle action, String restrictToInput, Function<String, ActionSourceState> runtimeState){
+        if (!syntheticGestureBindings.hasGestureBindings(action)){
+            ActionSourceState runtime = runtimeState.apply(restrictToInput);
+            return new FloatActionState(runtime.getValue(), runtime.isChangedSinceLastSync());
+        }
+        // see combineBooleanWithGestureBindings
+        List<FloatActionState> subActionStates = new ArrayList<>();
+        for(String subActionPath : subActionPathsToRead(action, restrictToInput)){
+            ActionSourceState runtime = runtimeState.apply(subActionPath);
+            ActionSourceState gesture = handFor(subActionPath)
+                    .map(hand -> syntheticGestureBindings.getFloatState(action, hand))
+                    .orElse(ActionSourceState.INACTIVE);
+            subActionStates.add(ActionSourceCombiner.combineFloat(runtime, gesture, handGestureSourcePreference));
+        }
+        return ActionSourceCombiner.largestOf(subActionStates);
+    }
+
+    private List<String> subActionPathsToRead(ActionHandle action, String restrictToInput){
+        if (restrictToInput != null){
+            return List.of(restrictToInput);
+        }
+        return subActionPathsByAction.getOrDefault(action, Action.DEFAULT_SUB_ACTIONS);
+    }
+
+    private static Optional<HandSide> handFor(String subActionPath){
+        for(HandSide handSide : HandSide.values()){
+            if (handSide.restrictToInputString.equals(subActionPath)){
+                return Optional.of(handSide);
+            }
+        }
+        return Optional.empty();
     }
 
     /**
