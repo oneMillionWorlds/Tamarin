@@ -1,7 +1,6 @@
 package com.onemillionworlds.tamarin.handgestures;
 
 import com.jme3.math.FastMath;
-import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
@@ -16,7 +15,7 @@ import java.util.Map;
  *     The same API is used whichever runtime the application is on:
  * </p>
  * <ul>
- *     <li><b>Pinches and aim</b> come from the runtime's own gesture recognition if it is available (currently
+ *     <li><b>Pinches</b> come from the runtime's own gesture recognition if it is available (currently
  *     Meta runtimes, via XR_FB_hand_tracking_aim), otherwise Tamarin works them out from the hand joints. See
  *     {@link #getSource()} and {@link HandGestureSourcePreference}.</li>
  *     <li><b>Everything else</b> (finger curl, fist, point, thumbs up, palm normal) is always worked out by Tamarin
@@ -47,10 +46,6 @@ public final class HandGestureState{
     private final float[] pinchStrengths;
     private final boolean[] pinching;
 
-    private final boolean aimValid;
-    private final Vector3f aimPosition;
-    private final Quaternion aimOrientation;
-
     private final boolean systemGestureActive;
     private final boolean menuPressed;
     private final boolean dominantHand;
@@ -77,9 +72,6 @@ public final class HandGestureState{
         this.source = builder.source;
         this.pinchStrengths = builder.pinchStrengths.clone();
         this.pinching = builder.pinching.clone();
-        this.aimValid = builder.aimValid;
-        this.aimPosition = builder.aimPosition;
-        this.aimOrientation = builder.aimOrientation;
         this.systemGestureActive = builder.systemGestureActive;
         this.menuPressed = builder.menuPressed;
         this.dominantHand = builder.dominantHand;
@@ -100,7 +92,7 @@ public final class HandGestureState{
     }
 
     /**
-     * Where the pinch and aim information came from (the runtime, or Tamarin's own detection from the hand joints).
+     * Where the pinch information came from (the runtime, or Tamarin's own detection from the hand joints).
      */
     public HandGestureSource getSource(){
         return source;
@@ -135,37 +127,6 @@ public final class HandGestureState{
     public boolean isPinching(Finger finger){
         Finger.assertCanPinch(finger);
         return pinching[finger.ordinal() - 1];
-    }
-
-    /**
-     * If {@link #getAimPosition()} and {@link #getAimOrientation()} are valid. If false they should not be used.
-     */
-    public boolean isAimValid(){
-        return aimValid;
-    }
-
-    /**
-     * The start of a stabilised pointing ray for the hand (in world coordinates). With a {@link HandGestureSource#RUNTIME}
-     * source this is the runtime's own aim, with {@link HandGestureSource#TAMARIN} it is estimated as a ray from the
-     * shoulder through the base of the index finger. Only meaningful if {@link #isAimValid()}.
-     */
-    public Vector3f getAimPosition(){
-        return aimPosition;
-    }
-
-    /**
-     * The orientation of the stabilised pointing ray (in world coordinates). The ray points along the negative z axis
-     * of this rotation (the OpenXR convention). Only meaningful if {@link #isAimValid()}.
-     */
-    public Quaternion getAimOrientation(){
-        return aimOrientation;
-    }
-
-    /**
-     * The direction of the stabilised pointing ray (in world coordinates). Only meaningful if {@link #isAimValid()}.
-     */
-    public Vector3f getAimDirection(){
-        return aimOrientation.mult(Vector3f.UNIT_Z.negate());
     }
 
     /**
@@ -297,9 +258,6 @@ public final class HandGestureState{
         private final HandGestureSource source;
         private final float[] pinchStrengths = new float[Finger.PINCHING_FINGERS.length];
         private final boolean[] pinching = new boolean[Finger.PINCHING_FINGERS.length];
-        private boolean aimValid = false;
-        private Vector3f aimPosition = new Vector3f();
-        private Quaternion aimOrientation = new Quaternion();
         private boolean systemGestureActive;
         private boolean menuPressed;
         private boolean dominantHand;
@@ -323,13 +281,6 @@ public final class HandGestureState{
             Finger.assertCanPinch(finger);
             pinchStrengths[finger.ordinal() - 1] = strength;
             pinching[finger.ordinal() - 1] = isPinching;
-            return this;
-        }
-
-        public Builder aim(Vector3f position, Quaternion orientation){
-            this.aimValid = true;
-            this.aimPosition = position;
-            this.aimOrientation = orientation;
             return this;
         }
 

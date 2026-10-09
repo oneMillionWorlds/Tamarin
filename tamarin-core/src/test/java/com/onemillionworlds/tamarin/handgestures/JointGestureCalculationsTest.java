@@ -1,9 +1,6 @@
 package com.onemillionworlds.tamarin.handgestures;
 
-import com.jme3.math.Quaternion;
-import com.jme3.math.Transform;
 import com.jme3.math.Vector3f;
-import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import org.junit.jupiter.api.Test;
@@ -150,22 +147,5 @@ class JointGestureCalculationsTest{
     void palmNormalPointsAwayFromTheBackOfTheHand(){
         // the synthetic hand's palm joint has an identity rotation, so the back of the hand (+Y) is up
         Vector3fAsserts.assertEquals(new Vector3f(0, -1, 0), JointGestureCalculations.palmNormal(SyntheticHand.openRightHand().build()), TOLERANCE);
-    }
-
-    @Test
-    void approximateAimIsARayFromTheShoulderThroughTheBaseOfTheIndexFinger(){
-        Map<HandJoint, BonePose> joints = SyntheticHand.openRightHand().build();
-        Vector3f headPosition = new Vector3f(0.1f, 0.4f, 0.3f);
-        Quaternion headRotation = new Quaternion(); // so head left is +X
-
-        Transform aim = JointGestureCalculations.approximateAim(joints, HandSide.RIGHT, headPosition, headRotation);
-
-        Vector3f expectedShoulder = headPosition.add(-JointGestureCalculations.SHOULDER_HALF_WIDTH, -JointGestureCalculations.SHOULDER_DROP, 0);
-        Vector3f expectedOrigin = joints.get(HandJoint.INDEX_PROXIMAL_EXT).position().add(joints.get(HandJoint.THUMB_PROXIMAL_EXT).position()).mult(0.5f);
-        Vector3f expectedDirection = expectedOrigin.subtract(expectedShoulder).normalize();
-
-        Vector3fAsserts.assertEquals(expectedOrigin, aim.getTranslation(), TOLERANCE);
-        Vector3fAsserts.assertEquals(expectedDirection, aim.getRotation().mult(Vector3f.UNIT_Z.negate()), TOLERANCE);
-        assertTrue(aim.getRotation().mult(Vector3f.UNIT_Y).y > 0, "the aim should be roughly upright");
     }
 }

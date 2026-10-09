@@ -1,9 +1,5 @@
 package com.onemillionworlds.tamarin.handgestures;
 
-import com.jme3.math.FastMath;
-import com.jme3.math.Quaternion;
-import com.jme3.math.Transform;
-import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.HandTrackingAimState;
@@ -14,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Tracks the gestures of one hand over time (which is needed for hysteresis and smoothing). Call
+ * Tracks the gestures of one hand over time (which is needed for hysteresis). Call
  * {@link #update} once per frame, then read the results with {@link #getState}.
  * <p>
  *     Each frame it produces up to two states: one using Tamarin's own gesture recognition and (if the runtime
@@ -43,12 +39,6 @@ public class HandGestureTracker{
     static final float GESTURE_ACTIVATE = 0.75f;
     static final float GESTURE_DEACTIVATE = 0.55f;
 
-    /**
-     * The time constant (in seconds) of the smoothing applied to Tamarin's estimated aim ray. Larger is smoother but
-     * lags more.
-     */
-    static final float AIM_SMOOTHING_TIME = 0.04f;
-
     private final HandSide handSide;
 
     /**
@@ -58,12 +48,6 @@ public class HandGestureTracker{
     private final Hysteresis fistHysteresis = new Hysteresis(GESTURE_ACTIVATE, GESTURE_DEACTIVATE);
     private final Hysteresis pointHysteresis = new Hysteresis(GESTURE_ACTIVATE, GESTURE_DEACTIVATE);
     private final Hysteresis thumbsUpHysteresis = new Hysteresis(GESTURE_ACTIVATE, GESTURE_DEACTIVATE);
-
-    /**
-     * Null when there is no previous value to smooth from
-     */
-    private Vector3f smoothedAimOrigin;
-    private Vector3f smoothedAimDirection;
 
     private Optional<HandGestureState> tamarinState = Optional.empty();
     private Optional<HandGestureState> runtimeState = Optional.empty();
@@ -76,11 +60,8 @@ public class HandGestureTracker{
      * @param trackedHand the hand's data this frame, or empty if the hand isn't currently tracked. Joints that come from
      *                    a held controller ({@link HandTrackingDataSource#CONTROLLER}) are treated as not tracked, as the
      *                    hand isn't free to make gestures
-     * @param headPosition the head position in world coordinates (used to estimate an aim ray)
-     * @param headRotation the head rotation in world coordinates (used to estimate an aim ray)
-     * @param tpf time since the last update, in seconds
      */
-    public void update(Optional<TrackedHand> trackedHand, Vector3f headPosition, Quaternion headRotation, float tpf){
+    public void update(Optional<TrackedHand> trackedHand){
         if (!trackedHand.isPresent() || trackedHand.get().getDataSource() == HandTrackingDataSource.CONTROLLER){
             reset();
             return;
@@ -95,20 +76,18 @@ public class HandGestureTracker{
         HandGestureState.Builder tamarinBuilder = HandGestureState.builder(handSide, HandGestureSource.TAMARIN);
         addTamarinOnlyGestures(tamarinBuilder, joints);
         addTamarinPinches(tamarinBuilder, joints);
-        Transform aim = smoothAim(JointGestureCalculations.approximateAim(joints, handSide, headPosition, headRotation), tpf);
-        tamarinBuilder.aim(aim.getTranslation(), aim.getRotation());
         tamarinState = Optional.of(tamarinBuilder.build());
 
         runtimeState = trackedHand.get().getRuntimeAimState().map(runtimeAimState -> {
             HandGestureState.Builder runtimeBuilder = HandGestureState.builder(handSide, HandGestureSource.RUNTIME);
             addTamarinOnlyGestures(runtimeBuilder, joints);
-            addRuntimePinchesAndAim(runtimeBuilder, runtimeAimState);
+            addRuntimePinches(runtimeBuilder, runtimeAimState);
             return runtimeBuilder.build();
         });
     }
 
     /**
-     * @param preference which source to use for the pinches and aim
+     * @param preference which source to use for the pinches
      * @return the hand's gestures, or empty if the hand isn't tracked (or the preference is
      *         {@link HandGestureSourcePreference#RUNTIME_ONLY} and the runtime doesn't provide gestures)
      */
@@ -129,8 +108,6 @@ public class HandGestureTracker{
         fistHysteresis.reset();
         pointHysteresis.reset();
         thumbsUpHysteresis.reset();
-        smoothedAimOrigin = null;
-        smoothedAimDirection = null;
         tamarinState = Optional.empty();
         runtimeState = Optional.empty();
     }
@@ -194,30 +171,10 @@ public class HandGestureTracker{
         return strongest;
     }
 
-    private static void addRuntimePinchesAndAim(HandGestureState.Builder builder, HandTrackingAimState runtimeAimState){
+    private static void addRuntimePinches(HandGestureState.Builder builder, HandTrackingAimState runtimeAimState){
         for(Finger finger : Finger.PINCHING_FINGERS){
             builder.pinch(finger, runtimeAimState.getPinchStrength(finger), runtimeAimState.isPinching(finger));
         }
-        if (runtimeAimState.isAimValid()){
-            builder.aim(runtimeAimState.getAimPosition(), runtimeAimState.getAimOrientation());
-        }
         builder.runtimeFlags(runtimeAimState.isSystemGestureActive(), runtimeAimState.isMenuPressed(), runtimeAimState.isDominantHand());
-    }
-
-    /**
-     * Exponentially smooths the estimated aim ray, as joint positions jitter slightly frame to frame.
-     */
-    private Transform smoothAim(Transform rawAim, float tpf){
-        Vector3f rawOrigin = rawAim.getTranslation();
-        Vector3f rawDirection = rawAim.getRotation().mult(Vector3f.UNIT_Z.negate());
-        if (smoothedAimOrigin == null || smoothedAimDirection == null){
-            smoothedAimOrigin = rawOrigin.clone();
-            smoothedAimDirection = rawDirection.clone();
-        } else{
-            float blend = 1 - FastMath.exp(-tpf / AIM_SMOOTHING_TIME);
-            smoothedAimOrigin.interpolateLocal(rawOrigin, blend);
-            smoothedAimDirection.interpolateLocal(rawDirection, blend).normalizeLocal();
-        }
-        return new Transform(smoothedAimOrigin.clone(), JointGestureCalculations.aimOrientationFromDirection(smoothedAimDirection));
     }
 }

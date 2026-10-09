@@ -3,8 +3,6 @@ package com.onemillionworlds.tamarin.actions;
 import com.jme3.anim.Armature;
 import com.jme3.anim.Joint;
 import com.jme3.app.state.BaseAppState;
-import com.jme3.math.Quaternion;
-import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.actionprofile.Action;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
@@ -90,32 +88,20 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         time += tpf;
         interactionProfileTracker.tick(isAlreadyPaused(), time);
         forwardControllerInterrupts();
-        updateHandTracking(tpf);
+        updateHandTracking();
     }
 
     /**
      * Locates the hands (once per frame, the getters use the cached result) and updates the hand gestures.
      */
-    private void updateHandTracking(float tpf){
+    private void updateHandTracking(){
         if (!handTrackingRequested && !syntheticGestureBindings.hasAny()){
             return;
         }
-        boolean anyTracked = false;
         for(HandSide handSide : HandSide.values()){
             Optional<TrackedHand> trackedHand = locateTrackedHand(handSide);
             latestTrackedHands.put(handSide, trackedHand);
-            anyTracked |= trackedHand.isPresent();
-        }
-
-        Vector3f headPosition = new Vector3f();
-        Quaternion headRotation = new Quaternion();
-        XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
-        if (anyTracked && xrAppState != null){
-            headPosition = xrAppState.getVrCameraPosition();
-            headRotation = xrAppState.getVrCameraRotation();
-        }
-        for(HandSide handSide : HandSide.values()){
-            handGestureTrackers.get(handSide).update(latestTrackedHands.get(handSide), headPosition, headRotation, tpf);
+            handGestureTrackers.get(handSide).update(trackedHand);
         }
         syntheticGestureBindings.update(handSide -> handGestureTrackers.get(handSide).getState(handGestureSourcePreference), activeActionSetNames);
     }
@@ -238,8 +224,8 @@ public abstract class XrActionBaseAppState extends BaseAppState{
 
     /**
      * <b>META ONLY.</b> Gets the extra gesture information a Meta runtime provides for a bare (tracked) hand: the pinch
-     * strength of each finger against the thumb, the runtime's own decision on whether each finger is pinching, and a
-     * stabilised aim pose. This comes from the XR_FB_hand_tracking_aim extension (which Tamarin requests by default).
+     * strength of each finger against the thumb, and the runtime's own decision on whether each finger is pinching. This
+     * comes from the XR_FB_hand_tracking_aim extension (which Tamarin requests by default).
      * <p>
      *     This doesn't go through the action system, so it can't be rebound by the user and isn't affected by action
      *     sets being active or not. Prefer actions (e.g. {@link com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt}
@@ -287,10 +273,10 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     }
 
     /**
-     * Gets the gestures a bare (tracked) hand is making: per finger pinches, an aim ray, finger curl, fist, point,
+     * Gets the gestures a bare (tracked) hand is making: per finger pinches, finger curl, fist, point,
      * thumbs up and palm direction. See {@link HandGestureState} for details.
      * <p>
-     *     Pinches and the aim ray come from the runtime's own gesture recognition where available (currently Meta
+     *     Pinches come from the runtime's own gesture recognition where available (currently Meta
      *     runtimes), otherwise from Tamarin's own recognition based on the positions of the hand's joints. This can be
      *     controlled with {@link #setHandGestureSourcePreference}. Everything else is always Tamarin's.
      * </p>
@@ -312,12 +298,12 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     }
 
     /**
-     * As {@link #getHandGestureState(HandSide)}, but forces a particular source for the pinches and aim ray for
+     * As {@link #getHandGestureState(HandSide)}, but forces a particular source for the pinches for
      * this call only (ignoring {@link #setHandGestureSourcePreference}). Mostly useful for comparing the runtime's
      * and Tamarin's gesture recognition.
      *
      * @param handSide the hand
-     * @param preference which source to use for pinches and aim
+     * @param preference which source to use for pinches
      * @return the hand's gestures, if available
      */
     public Optional<HandGestureState> getHandGestureState(HandSide handSide, HandGestureSourcePreference preference){
@@ -326,7 +312,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     }
 
     /**
-     * Controls where the pinches and aim ray in {@link #getHandGestureState(HandSide)} come from, and whether actions
+     * Controls where the pinches in {@link #getHandGestureState(HandSide)} come from, and whether actions
      * with gesture bindings combine them with the runtime's bindings or give one precedence. See
      * {@link HandGestureSourcePreference}. Defaults to {@link HandGestureSourcePreference#AUTOMATIC}.
      */

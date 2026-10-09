@@ -809,8 +809,6 @@ public class XrActionAppState extends XrActionBaseAppState{
             if (aimState != null){
                 runtimeAimState = Optional.of(new HandTrackingAimState(
                         aimState.status(),
-                        observer.localToWorld(xrVector3fToJME(aimState.aimPose().position$()), null),
-                        observerRotation.mult(xrQuaternionToJme(aimState.aimPose().orientation())),
                         aimState.pinchStrengthIndex(),
                         aimState.pinchStrengthMiddle(),
                         aimState.pinchStrengthRing(),

@@ -1,7 +1,7 @@
 package com.onemillionworlds.tamarin.handgestures;
 
 /**
- * Where the pinch and aim information in a {@link HandGestureState} came from.
+ * Where the pinch information in a {@link HandGestureState} came from.
  */
 public enum HandGestureSource{
     /**
