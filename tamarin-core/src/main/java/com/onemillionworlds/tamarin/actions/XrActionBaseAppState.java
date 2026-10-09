@@ -4,6 +4,7 @@ import com.jme3.anim.Armature;
 import com.jme3.anim.Joint;
 import com.jme3.app.state.BaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -164,6 +165,28 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @param handSide the handside to get the joint positions for
      */
     public abstract Optional<Map<HandJoint, BonePose>> getSkeleton(ActionHandle poseAction, HandSide handSide);
+
+    /**
+     * Where the hand joints (see {@link #getSkeleton}) for this hand are currently coming from. For example, a bare
+     * hand being tracked by cameras, or a controller that senses the fingers (like a Valve Index controller). This
+     * matters for things like hand gestures, which shouldn't be detected from a hand that is wrapped around a
+     * controller.
+     * <p>
+     *     This is only known if the runtime supports XR_EXT_hand_tracking_data_source (requested by default),
+     *     otherwise it is {@link HandJointsDataSource#UNKNOWN} whenever joints are available.
+     * </p>
+     * <p>
+     *     This is updated whenever {@link #getSkeleton} is called for this hand (it comes along with the joints), and
+     *     is just a stored value so it is cheap to call many times a frame. {@link com.onemillionworlds.tamarin.vrhands.VRHandsAppState}
+     *     calls {@link #getSkeleton} every frame for bound hands, but if nothing is calling it this will be out of date.
+     * </p>
+     * <p>
+     *     Always {@link HandJointsDataSource#HAND_TRACKING_UNSUPPORTED} in desktop simulation mode.
+     * </p>
+     */
+    public HandJointsDataSource getHandJointsDataSource(HandSide handSide){
+        return HandJointsDataSource.HAND_TRACKING_UNSUPPORTED;
+    }
 
     /**
      * Gets the current state of the action (abstract version of a button press).

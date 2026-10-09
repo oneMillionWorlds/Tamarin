@@ -13,6 +13,7 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.actionprofile.SuggestedBindingsProfileView;
 import com.onemillionworlds.tamarin.actions.controllerprofile.InteractionProfileExtensions;
+import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -38,6 +39,8 @@ import com.onemillionworlds.tamarin.openxrbindings.XrHandJointLocationEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandJointLocationsEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandJointsLocateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackerCreateInfoEXT;
+import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackingDataSourceInfoEXT;
+import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackingDataSourceStateEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticActionInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticVibration;
 import com.onemillionworlds.tamarin.openxrbindings.XrInputSourceLocalizedNameGetInfo;
@@ -53,6 +56,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrVector3f;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrActionType;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrHandEXT;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrHandJointSetEXT;
+import com.onemillionworlds.tamarin.openxrbindings.enums.XrHandTrackingDataSourceEXT;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrReferenceSpaceType;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrResult;
 import com.onemillionworlds.tamarin.openxrbindings.enums.XrStructureType;
@@ -141,6 +145,17 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     private Map<String, Map<String, XrAction>> actions;
 
     private final EnumMap<HandSide, XrHandTrackerEXT> handTrackers = new EnumMap<>(HandSide.class);
+
+    /**
+     * If the hand trackers were created with XR_EXT_hand_tracking_data_source (so the data source can be asked for
+     * when locating joints).
+     */
+    private boolean handTrackersReportDataSource = false;
+
+    /**
+     * The data source as of the last {@link #getSkeleton} call for each hand.
+     */
+    private final EnumMap<HandSide, HandJointsDataSource> handJointsDataSources = new EnumMap<>(HandSide.class);
 
     /**
      * Contains the currently active profiles
@@ -427,12 +442,24 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             setActiveActionSets(startingActionSets);
 
             if(xrAppState.checkExtensionLoaded(XR10Constants.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+                handTrackersReportDataSource = xrAppState.checkExtensionLoaded(XR10Constants.XR_EXT_HAND_TRACKING_DATA_SOURCE_EXTENSION_NAME);
                 for(HandSide handSide : HandSide.values()){
                     XrHandTrackerCreateInfoEXT createHandTracking = XrHandTrackerCreateInfoEXT.malloc(stack)
                             .type(XrStructureType.XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT)
                             .next(NULL)
                             .hand(XrHandEXT.fromValue(handSide.skeletonIndex)) // Indicate which hand to track
                             .handJointSet(XrHandJointSetEXT.HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
+
+                    if (handTrackersReportDataSource){
+                        // accept joints from both bare hands and controllers, then report which it was via getHandJointsDataSource
+                        IntBufferView requestedDataSources = stack.mallocInt(2);
+                        requestedDataSources.set(0, XrHandTrackingDataSourceEXT.HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT.getValue());
+                        requestedDataSources.set(1, XrHandTrackingDataSourceEXT.HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT.getValue());
+                        createHandTracking.next(XrHandTrackingDataSourceInfoEXT.calloc(stack)
+                                .type$Default()
+                                .next(NULL)
+                                .requestedDataSources(requestedDataSources));
+                    }
 
                     XrHandTrackerEXT.HandleBuffer handTrackingPointerBuffer = XrHandTrackerEXT.create(1);
                     // some runtimes (e.g. Monado with HTV Vive) report that they have the EXT_HAND_TRACKING_EXTENSION but
@@ -654,6 +681,10 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             XrHandJointLocationsEXT handJointLocations = XrHandJointLocationsEXT.calloc(stack)
                     .type$Default()
                     .jointLocations(XrHandJointLocationEXT.calloc(XR10Constants.XR_HAND_JOINT_COUNT_EXT, stack));
+            XrHandTrackingDataSourceStateEXT dataSourceState = XrHandTrackingDataSourceStateEXT.calloc(stack).type$Default();
+            if (handTrackersReportDataSource){
+                handJointLocations.next(dataSourceState);
+            }
 
             XrHandJointsLocateInfoEXT locateInfo = XrHandJointsLocateInfoEXT.calloc(stack)
                     .type$Default()
@@ -662,7 +693,15 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             if (handTrackers.containsKey(handSide)) {
                 Map<HandJoint, BonePose> results = new HashMap<>();
 
-                withResponseCodeLogging("Get joint locations", XR10.xrLocateHandJointsEXT(handTrackers.get(handSide), locateInfo, handJointLocations));
+                boolean success = withResponseCodeLogging("Get joint locations", XR10.xrLocateHandJointsEXT(handTrackers.get(handSide), locateInfo, handJointLocations));
+                XrHandTrackingDataSourceEXT dataSource = dataSourceState.dataSource();
+                handJointsDataSources.put(handSide, success
+                        ? HandJointsDataSource.fromRuntimeState(
+                                handJointLocations.isActive() != XR10Constants.XR_FALSE,
+                                handTrackersReportDataSource,
+                                dataSourceState.isActive() != XR10Constants.XR_FALSE,
+                                dataSource == null ? 0 : dataSource.getValue())
+                        : HandJointsDataSource.NOT_TRACKED);
 
                 if(handJointLocations.isActive() == XR10Constants.XR_FALSE){
                     SINGLE_LOGGER.info("xrLocateHandJointsEXT reporting inactive hand tracking");
@@ -685,6 +724,14 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 return Optional.empty();
             }
         }
+    }
+
+    @Override
+    public HandJointsDataSource getHandJointsDataSource(HandSide handSide){
+        if (!xrAppState.checkExtensionLoaded(XR10Constants.XR_EXT_HAND_TRACKING_EXTENSION_NAME)){
+            return HandJointsDataSource.HAND_TRACKING_UNSUPPORTED;
+        }
+        return handJointsDataSources.getOrDefault(handSide, HandJointsDataSource.NOT_TRACKED);
     }
 
     @Override
