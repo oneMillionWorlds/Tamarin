@@ -65,6 +65,29 @@ class SyntheticHand{
         return this;
     }
 
+    /**
+     * Moves the finger (from the knuckle to the tip) up, out of the way of the thumb.
+     */
+    SyntheticHand liftFinger(Finger finger, float height){
+        HandJoint[] joints = finger.getJoints();
+        for(int i = 1; i < joints.length; i++){
+            positions.put(joints[i], positions.get(joints[i]).add(0, height, 0));
+        }
+        return this;
+    }
+
+    /**
+     * Lifts every finger except the given one out of the way of the thumb (as people tend to when pinching).
+     */
+    SyntheticHand liftAllFingersExcept(Finger pinchingFinger){
+        for(Finger finger : Finger.PINCHING_FINGERS){
+            if (finger != pinchingFinger){
+                liftFinger(finger, 0.04f);
+            }
+        }
+        return this;
+    }
+
     SyntheticHand curlAllFingers(float degreesPerKnuckle){
         for(Finger finger : Finger.PINCHING_FINGERS){
             curlFinger(finger, degreesPerKnuckle);

@@ -30,16 +30,16 @@ public class HandGestureTracker{
     static final float PINCH_ACTIVATE = 0.85f;
     static final float PINCH_DEACTIVATE = 0.65f;
     /**
-     * To start a pinch, the pinching finger's tip must be at least this much closer to the thumb (at the reference
-     * hand size) than any other finger's. Otherwise it is ambiguous which finger is pinching (e.g. all the fingers
-     * bunched together against the thumb) and it isn't a pinch at all.
+     * To start a pinch, every other finger's pinch strength must be at most this. If two fingers are pinching (or
+     * nearly pinching) at once it is ambiguous which finger is meant (e.g. all the fingers bunched together against the
+     * thumb) and it isn't a pinch at all.
      */
-    static final float PINCH_START_SEPARATION = 0.007f;
+    static final float PINCH_OTHER_FINGERS_MAX_TO_START = 0.4f;
     /**
-     * A pinch is released if another finger's tip comes within this distance (at the reference hand size) of being as
-     * close to the thumb as the pinching finger's.
+     * A pinch is released if any other finger's pinch strength goes above this (higher than the start threshold, so
+     * the pinch doesn't flicker on and off).
      */
-    static final float PINCH_RELEASE_SEPARATION = 0.002f;
+    static final float PINCH_OTHER_FINGERS_MAX_TO_CONTINUE = 0.6f;
     static final float GESTURE_ACTIVATE = 0.75f;
     static final float GESTURE_DEACTIVATE = 0.55f;
 
@@ -150,36 +150,29 @@ public class HandGestureTracker{
     }
 
     /**
-     * Like the runtime's, Tamarin's pinches are exclusive: at most one finger is pinching, and if it's ambiguous which
-     * finger the thumb is pinching (e.g. all the fingers bunched together) then none are. The strengths are not
-     * exclusive (they are just how close each finger is).
+     * Like the runtime's, Tamarin's pinches are exclusive: a finger is only pinching if no other finger is pinching or
+     * nearly pinching. If two are, neither counts (rather than the strongest winning). The strengths are not exclusive
+     * (they are just how close each finger is to the thumb).
      */
     private void addTamarinPinches(HandGestureState.Builder builder, Map<HandJoint, BonePose> joints){
-        float handScale = JointGestureCalculations.handScale(joints);
-        Map<Finger, Float> scaledGaps = new EnumMap<>(Finger.class);
         Map<Finger, Float> strengths = new EnumMap<>(Finger.class);
         for(Finger finger : Finger.PINCHING_FINGERS){
-            scaledGaps.put(finger, JointGestureCalculations.pinchGap(joints, finger) / handScale);
             strengths.put(finger, JointGestureCalculations.pinchStrength(joints, finger));
         }
 
         if (activePinch != null){
             boolean stillStrong = strengths.get(activePinch) >= PINCH_DEACTIVATE;
-            boolean stillDistinct = separationFromOtherFingers(scaledGaps, activePinch) >= PINCH_RELEASE_SEPARATION;
-            if (!stillStrong || !stillDistinct){
+            boolean othersStillWeak = strongestOtherFinger(strengths, activePinch) <= PINCH_OTHER_FINGERS_MAX_TO_CONTINUE;
+            if (!stillStrong || !othersStillWeak){
                 activePinch = null;
             }
         } else{
-            Finger closestFinger = Finger.INDEX;
             for(Finger finger : Finger.PINCHING_FINGERS){
-                if (scaledGaps.get(finger) < scaledGaps.get(closestFinger)){
-                    closestFinger = finger;
+                boolean strong = strengths.get(finger) >= PINCH_ACTIVATE;
+                boolean othersWeak = strongestOtherFinger(strengths, finger) <= PINCH_OTHER_FINGERS_MAX_TO_START;
+                if (strong && othersWeak){
+                    activePinch = finger;
                 }
-            }
-            boolean strong = strengths.get(closestFinger) >= PINCH_ACTIVATE;
-            boolean distinct = separationFromOtherFingers(scaledGaps, closestFinger) >= PINCH_START_SEPARATION;
-            if (strong && distinct){
-                activePinch = closestFinger;
             }
         }
 
@@ -189,17 +182,16 @@ public class HandGestureTracker{
     }
 
     /**
-     * How much closer the finger's tip is to the thumb than the next closest finger's tip (negative if another finger
-     * is closer).
+     * The largest pinch strength of the fingers other than the given one.
      */
-    private static float separationFromOtherFingers(Map<Finger, Float> scaledGaps, Finger finger){
-        float closestOtherGap = Float.MAX_VALUE;
+    private static float strongestOtherFinger(Map<Finger, Float> strengths, Finger finger){
+        float strongest = 0;
         for(Finger other : Finger.PINCHING_FINGERS){
             if (other != finger){
-                closestOtherGap = Math.min(closestOtherGap, scaledGaps.get(other));
+                strongest = Math.max(strongest, strengths.get(other));
             }
         }
-        return closestOtherGap - scaledGaps.get(finger);
+        return strongest;
     }
 
     private static void addRuntimePinchesAndAim(HandGestureState.Builder builder, HandTrackingAimState runtimeAimState){

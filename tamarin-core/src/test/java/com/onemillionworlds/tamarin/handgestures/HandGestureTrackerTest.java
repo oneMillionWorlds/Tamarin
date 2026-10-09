@@ -86,7 +86,7 @@ class HandGestureTrackerTest{
     @Test
     void aClearPinchOnOneFingerIsOnlyThatFinger(){
         HandGestureTracker tracker = new HandGestureTracker(HandSide.RIGHT);
-        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, 0).build(), Optional.empty()));
+        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, 0).liftAllFingersExcept(Finger.MIDDLE).build(), Optional.empty()));
 
         HandGestureState state = tamarinState(tracker);
         assertTrue(state.isPinching(Finger.MIDDLE));
@@ -110,27 +110,32 @@ class HandGestureTrackerTest{
     }
 
     @Test
-    void atMostOneFingerPinchesAtATime(){
+    void anotherFingerNearlyPinchingMeansNeitherIsPinching(){
         HandGestureTracker tracker = new HandGestureTracker(HandSide.RIGHT);
-        Vector3f below = new Vector3f(0, -0.015f, 0);
-        Vector3f start = fingerTip(Finger.MIDDLE).add(below);
-        Vector3f end = fingerTip(Finger.INDEX).add(below);
+        // the thumb is touching the middle finger, but the index finger (not lifted out of the way) is nearly touching too
+        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, 0).liftFinger(Finger.RING, 0.04f).liftFinger(Finger.LITTLE, 0.04f).build(), Optional.empty()));
 
-        boolean everPinchedMiddle = false;
-        for(int step = 0; step <= 20; step++){
-            Vector3f thumbTip = start.clone().interpolateLocal(end, step / 20f);
-            update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipAt(thumbTip).build(), Optional.empty()));
-
-            HandGestureState state = tamarinState(tracker);
-            int pinchingCount = 0;
-            for(Finger finger : Finger.PINCHING_FINGERS){
-                pinchingCount += state.isPinching(finger) ? 1 : 0;
-            }
-            assertTrue(pinchingCount <= 1, "step " + step + " has " + pinchingCount + " fingers pinching");
-            everPinchedMiddle |= state.isPinching(Finger.MIDDLE);
+        HandGestureState state = tamarinState(tracker);
+        assertTrue(state.getPinchStrength(Finger.MIDDLE) >= HandGestureTracker.PINCH_ACTIVATE, "test setup: the middle finger is pinching");
+        assertTrue(state.getPinchStrength(Finger.INDEX) > HandGestureTracker.PINCH_OTHER_FINGERS_MAX_TO_START, "test setup: the index finger is nearly pinching");
+        for(Finger finger : Finger.PINCHING_FINGERS){
+            assertFalse(state.isPinching(finger), finger.name());
         }
-        assertTrue(everPinchedMiddle, "should have started pinching the middle finger");
-        assertTrue(tamarinState(tracker).isPinching(Finger.INDEX), "should have ended up pinching the index finger");
+    }
+
+    @Test
+    void anotherFingerApproachingReleasesAPinch(){
+        HandGestureTracker tracker = new HandGestureTracker(HandSide.RIGHT);
+        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, 0).liftAllFingersExcept(Finger.MIDDLE).build(), Optional.empty()));
+        assertTrue(tamarinState(tracker).isPinching(Finger.MIDDLE), "test setup: a clean middle finger pinch");
+
+        // the index finger comes back down next to the middle finger
+        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, 0).liftFinger(Finger.RING, 0.04f).liftFinger(Finger.LITTLE, 0.04f).build(), Optional.empty()));
+        HandGestureState state = tamarinState(tracker);
+        assertTrue(state.getPinchStrength(Finger.INDEX) > HandGestureTracker.PINCH_OTHER_FINGERS_MAX_TO_CONTINUE, "test setup: the index finger is nearly pinching");
+        for(Finger finger : Finger.PINCHING_FINGERS){
+            assertFalse(state.isPinching(finger), finger.name());
+        }
     }
 
     private static Vector3f fingerTip(Finger finger){
@@ -173,7 +178,7 @@ class HandGestureTrackerTest{
 
     private static void updateWithMiddlePinchStrength(HandGestureTracker tracker, float strength){
         float gap = JointGestureCalculations.PINCH_FULL_GAP + (1 - strength) * (JointGestureCalculations.PINCH_ZERO_GAP - JointGestureCalculations.PINCH_FULL_GAP);
-        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, gap).build(), Optional.empty()));
+        update(tracker, new TrackedHand(SyntheticHand.openRightHand().thumbTipGapToFingerTip(Finger.MIDDLE, gap).liftAllFingersExcept(Finger.MIDDLE).build(), Optional.empty()));
     }
 
     private static HandGestureState tamarinState(HandGestureTracker tracker){

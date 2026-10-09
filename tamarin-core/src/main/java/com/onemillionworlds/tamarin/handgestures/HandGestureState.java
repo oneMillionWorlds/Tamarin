@@ -121,8 +121,8 @@ public final class HandGestureState{
      * If the thumb is pinching the given finger (on/off, with hysteresis). Prefer this over applying your own
      * threshold to {@link #getPinchStrength}.
      * <p>
-     *     Pinches are exclusive: at most one finger is pinching at a time, and if it is ambiguous which finger the
-     *     thumb is pinching (e.g. all the fingers bunched together against the thumb) none are. The strengths are not
+     *     Pinches are exclusive: a finger is only pinching if no other finger is pinching or nearly pinching. If two
+     *     are (e.g. all the fingers bunched together against the thumb) neither counts. The strengths are not
      *     exclusive.
      * </p>
      * <p>
