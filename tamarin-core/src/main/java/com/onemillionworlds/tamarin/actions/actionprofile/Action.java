@@ -426,7 +426,6 @@ public class Action{
          * </p>
          * <ul>
          *     <li>Only boolean and float actions can have gesture bindings.</li>
-         *     <li>Gesture bindings respect the active action sets, like normal bindings.</li>
          *     <li>The runtime doesn't know about these bindings, so they won't appear in its rebinding UI (but they are
          *     included in {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#getLocalisedButtonNameForAction}).</li>
          *     <li>Gestures only work when the hand is being tracked as a bare hand (not holding a controller). Some
@@ -434,7 +433,6 @@ public class Action{
          *     case gestures may also trigger while holding the controller.</li>
          *     <li>Prefer a runtime binding where one exists (e.g. {@link HandInteractionExt} pinch or grasp), it
          *     will be better tuned.</li>
-         *     <li>An action may have only gesture bindings (no suggested bindings).</li>
          * </ul>
          *
          * @param handSide the hand that makes the gesture
