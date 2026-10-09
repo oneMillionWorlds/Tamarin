@@ -918,8 +918,13 @@ public class XrActionAppState extends XrActionBaseAppState{
             Optional<Map<HandJoint, BonePose>> joints = Optional.empty();
             Optional<HandTrackingAimState> aimState = Optional.empty();
             if (handsAvailable && isReady() && handTrackers.containsKey(handSide)){
-                joints = locateHandJoints(handSide, new XrSpace(getOrCreateReferenceSpaceHandle(XR10.XR_REFERENCE_SPACE_TYPE_STAGE), xrSessionHandle))
-                        .filter(j -> getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND);
+                // locating the joints also records this frame's data source and aim state for the hand
+                Optional<Map<HandJoint, BonePose>> locatedJoints = locateHandJoints(handSide, new XrSpace(getOrCreateReferenceSpaceHandle(XR10.XR_REFERENCE_SPACE_TYPE_STAGE), xrSessionHandle));
+
+                boolean bonesEligibleForGestures = getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND;
+                if (bonesEligibleForGestures){
+                    joints = locatedJoints;
+                }
                 aimState = Optional.ofNullable(handTrackingAimStates.get(handSide));
             }
             updateHandGestures(handSide, joints, aimState);

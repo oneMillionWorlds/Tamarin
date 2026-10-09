@@ -907,21 +907,18 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         if (!handGesturesNeeded()){
             return;
         }
-        boolean aimStateLoaded = xrAppState.checkExtensionLoaded(XR10Constants.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
         for(HandSide handSide : HandSide.values()){
             Optional<Map<HandJoint, BonePose>> joints = Optional.empty();
             Optional<HandTrackingAimState> aimState = Optional.empty();
             if (handsAvailable && isReady() && handTrackers.containsKey(handSide)){
-                boolean bonesEligibleForGestures = getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND;
+                // locating the joints also records this frame's data source and aim state for the hand
+                Optional<Map<HandJoint, BonePose>> locatedJoints = locateHandJoints(handSide, getOrCreateReferenceSpace(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE));
 
-                if(bonesEligibleForGestures || aimStateLoaded){
-                    // the aim state comes along with the joints
-                    Optional<Map<HandJoint, BonePose>> locatedJoints = locateHandJoints(handSide, getOrCreateReferenceSpace(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE));
-                    if (bonesEligibleForGestures){
-                        joints = locatedJoints;
-                    }
-                    aimState = Optional.ofNullable(handTrackingAimStates.get(handSide));
+                boolean bonesEligibleForGestures = getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND;
+                if (bonesEligibleForGestures){
+                    joints = locatedJoints;
                 }
+                aimState = Optional.ofNullable(handTrackingAimStates.get(handSide));
             }
             updateHandGestures(handSide, joints, aimState);
         }
