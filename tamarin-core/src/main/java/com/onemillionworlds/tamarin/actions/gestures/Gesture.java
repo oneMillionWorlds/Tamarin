@@ -128,7 +128,9 @@ public enum Gesture {
             case TAMARIN_ONLY:
                 return true;
             case RUNTIME_ONLY:
-                return false;
+                // gestures with a runtime version are left to the runtime (even if it can't provide them), the rest
+                // only Tamarin can detect
+                return !runtimeEquivalentRequiredExtension.isPresent();
             case AUTOMATIC:
             default:
                 return !runtimeEquivalentRequiredExtension.filter(isExtensionLoaded).isPresent();

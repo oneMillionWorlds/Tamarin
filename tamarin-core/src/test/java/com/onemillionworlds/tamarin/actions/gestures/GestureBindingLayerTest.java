@@ -232,12 +232,24 @@ class GestureBindingLayerTest{
     }
 
     @Test
-    void runtimeOnlyLeavesTamarinWithNoGestures(){
+    void runtimeOnlyStillHasTamarinDetectGesturesTheRuntimeCannot(){
         GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(ALL_EXTENSIONS, HandGestureSourcePreference.RUNTIME_ONLY);
         tamarinLayer.update(HandSide.LEFT, Optional.of(FIST));
 
-        assertFalse(tamarinLayer.hasGestures());
-        assertFalse(tamarinLayer.combine(FIST_ACTION, null, RUNTIME_OFF).getState());
+        assertTrue(tamarinLayer.combine(FIST_ACTION, null, RUNTIME_OFF).getState());
+    }
+
+    @Test
+    void runtimeOnlyNeverHasTamarinDetectGesturesWithARuntimeVersion(){
+        // even though the runtime's extensions aren't loaded, so nothing provides these gestures
+        GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(NO_EXTENSIONS, HandGestureSourcePreference.RUNTIME_ONLY);
+        tamarinLayer.update(HandSide.LEFT, Optional.of(HandGestureTamarinProvidedState.builder()
+                .pinch(Finger.INDEX, 1, true)
+                .pinch(Finger.MIDDLE, 1, true)
+                .build()));
+
+        assertFalse(tamarinLayer.combine(PINCH_INDEX_ACTION, null, RUNTIME_OFF).getState());
+        assertFalse(tamarinLayer.combine(PINCH_MIDDLE_ACTION, null, RUNTIME_OFF).getState());
     }
 
     @Test
@@ -261,14 +273,15 @@ class GestureBindingLayerTest{
 
     @Test
     void changingThePreferenceKeepsTheHandStates(){
+        HandGestureTamarinProvidedState indexPinch = HandGestureTamarinProvidedState.builder().pinch(Finger.INDEX, 1, true).build();
         GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(NO_EXTENSIONS, HandGestureSourcePreference.RUNTIME_ONLY);
-        tamarinLayer.update(HandSide.LEFT, Optional.of(FIST));
-        tamarinLayer.update(HandSide.LEFT, Optional.of(FIST));
+        tamarinLayer.update(HandSide.LEFT, Optional.of(indexPinch));
+        tamarinLayer.update(HandSide.LEFT, Optional.of(indexPinch));
 
         tamarinLayer.setBindings(manifest(), NO_EXTENSIONS, HandGestureSourcePreference.AUTOMATIC);
 
-        // the fist was already being made last frame, so the newly bound action is on but not newly changed
-        assertState(true, false, tamarinLayer.combine(FIST_ACTION, null, RUNTIME_OFF));
+        // the pinch was already being made last frame, so the newly bound action is on but not newly changed
+        assertState(true, false, tamarinLayer.combine(PINCH_INDEX_ACTION, null, RUNTIME_OFF));
     }
 
     private static GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer(Predicate<String> isExtensionLoaded){

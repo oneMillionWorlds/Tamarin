@@ -12,7 +12,9 @@ public enum HandGestureSourcePreference{
      */
     AUTOMATIC,
     /**
-     * Only the runtime's gestures. Gestures the runtime doesn't recognise (e.g. a fist) never activate.
+     * Gestures that have a runtime version (e.g. the pinches) only come from the runtime, so if the runtime can't
+     * provide them (its extension isn't loaded) they never activate. Gestures only Tamarin can detect (e.g. a fist)
+     * still come from Tamarin.
      */
     RUNTIME_ONLY,
     /**
