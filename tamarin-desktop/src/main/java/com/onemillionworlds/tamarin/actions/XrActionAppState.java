@@ -12,6 +12,7 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.actionprofile.SuggestedBindingsProfileView;
 import com.onemillionworlds.tamarin.actions.controllerprofile.InteractionProfileExtensions;
 import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
+import com.onemillionworlds.tamarin.actions.gestures.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
@@ -44,6 +45,7 @@ import org.lwjgl.openxr.XrHandJointsLocateInfoEXT;
 import org.lwjgl.openxr.XrHandTrackerCreateInfoEXT;
 import org.lwjgl.openxr.XrHandTrackerEXT;
 import org.lwjgl.openxr.XrHandTrackingDataSourceInfoEXT;
+import org.lwjgl.openxr.XrHandTrackingAimStateFB;
 import org.lwjgl.openxr.XrHandTrackingDataSourceStateEXT;
 import org.lwjgl.openxr.XrHapticActionInfo;
 import org.lwjgl.openxr.XrHapticBaseHeader;
@@ -82,6 +84,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.lwjgl.openxr.EXTHandTracking;
 import org.lwjgl.openxr.EXTHandTrackingDataSource;
+import org.lwjgl.openxr.FBHandTrackingAim;
 
 import com.onemillionworlds.tamarin.logging.SingleOccurrenceLog;
 
@@ -149,6 +152,11 @@ public class XrActionAppState extends XrActionBaseAppState{
      * The data source as of the last {@link #getSkeleton} call for each hand.
      */
     private final EnumMap<HandSide, HandJointsDataSource> handJointsDataSources = new EnumMap<>(HandSide.class);
+
+    /**
+     * The (valid) XR_FB_hand_tracking_aim state as of the last time the joints were located for each hand.
+     */
+    private final EnumMap<HandSide, HandTrackingAimState> handTrackingAimStates = new EnumMap<>(HandSide.class);
 
     /**
      * Contains the currently active profiles
@@ -564,7 +572,7 @@ public class XrActionAppState extends XrActionBaseAppState{
             }
             checkResponseCode("getActionState", responseCode);
 
-            return combineWithTamarinGestures(action, restrictToInput, new BooleanActionState(actionState.currentState(), actionState.changedSinceLastSync()));
+            return combineWithGestures(action, restrictToInput, new BooleanActionState(actionState.currentState(), actionState.changedSinceLastSync()));
         }
 
     }
@@ -697,6 +705,11 @@ public class XrActionAppState extends XrActionBaseAppState{
             if (handTrackersReportDataSource){
                 handJointLocations.next(dataSourceState);
             }
+            boolean aimStateLoaded = xrAppState.checkExtensionLoaded(FBHandTrackingAim.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
+            XrHandTrackingAimStateFB aimState = XrHandTrackingAimStateFB.calloc(stack).type$Default();
+            if (aimStateLoaded){
+                handJointLocations.next(aimState);
+            }
 
             XrHandJointsLocateInfoEXT locateInfo = XrHandJointsLocateInfoEXT.calloc(stack)
                     .type$Default()
@@ -710,9 +723,18 @@ public class XrActionAppState extends XrActionBaseAppState{
                         ? HandJointsDataSource.fromRuntimeState(handJointLocations.isActive(), handTrackersReportDataSource, dataSourceState.isActive(), dataSourceState.dataSource())
                         : HandJointsDataSource.NOT_TRACKED);
 
+                handTrackingAimStates.remove(handSide);
                 if (!success || !handJointLocations.isActive()){
                     singleLog.info("xrLocateHandJointsEXT reporting inactive hand tracking");
                     return Optional.empty();
+                }
+
+                if (aimStateLoaded){
+                    HandTrackingAimState handTrackingAimState = new HandTrackingAimState(aimState.status(),
+                            aimState.pinchStrengthIndex(), aimState.pinchStrengthMiddle(), aimState.pinchStrengthRing(), aimState.pinchStrengthLittle());
+                    if (handTrackingAimState.isValid()){
+                        handTrackingAimStates.put(handSide, handTrackingAimState);
+                    }
                 }
 
                 XrHandJointLocationEXT.Buffer xrHandJointLocationEXTS = handJointLocations.jointLocations();
@@ -854,7 +876,7 @@ public class XrActionAppState extends XrActionBaseAppState{
     public void update(float tpf){
         super.update(tpf);
         if (!sessionFocussed()){
-            updateTamarinGestures(false);
+            updateHandGestures(false);
             return;
         }
 
@@ -880,24 +902,27 @@ public class XrActionAppState extends XrActionBaseAppState{
                 runAfterActionsSync.clear();
             }
         }
-        updateTamarinGestures(true);
+        updateHandGestures(true);
     }
 
     /**
-     * Feeds bare hand joints to Tamarin's gesture detection (only if the manifest has gestures in it).
+     * Feeds the hands to gesture detection (only if the manifest has gestures in it): bare hand joints for Tamarin's
+     * own detection, and the runtime's XR_FB_hand_tracking_aim state.
      * @param handsAvailable false if the hands definitely shouldn't be used (e.g. the session isn't focussed)
      */
-    private void updateTamarinGestures(boolean handsAvailable){
-        if (!tamarinGesturesNeeded()){
+    private void updateHandGestures(boolean handsAvailable){
+        if (!handGesturesNeeded()){
             return;
         }
         for(HandSide handSide : HandSide.values()){
             Optional<Map<HandJoint, BonePose>> joints = Optional.empty();
+            Optional<HandTrackingAimState> aimState = Optional.empty();
             if (handsAvailable && isReady() && handTrackers.containsKey(handSide)){
                 joints = locateHandJoints(handSide, new XrSpace(getOrCreateReferenceSpaceHandle(XR10.XR_REFERENCE_SPACE_TYPE_STAGE), xrSessionHandle))
                         .filter(j -> getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND);
+                aimState = Optional.ofNullable(handTrackingAimStates.get(handSide));
             }
-            updateTamarinGestures(handSide, joints);
+            updateHandGestures(handSide, joints, aimState);
         }
     }
 

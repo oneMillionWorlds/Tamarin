@@ -14,6 +14,7 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.actionprofile.SuggestedBindingsProfileView;
 import com.onemillionworlds.tamarin.actions.controllerprofile.InteractionProfileExtensions;
 import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
+import com.onemillionworlds.tamarin.actions.gestures.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -40,6 +41,7 @@ import com.onemillionworlds.tamarin.openxrbindings.XrHandJointLocationsEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandJointsLocateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackerCreateInfoEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackingDataSourceInfoEXT;
+import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackingAimStateFB;
 import com.onemillionworlds.tamarin.openxrbindings.XrHandTrackingDataSourceStateEXT;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticActionInfo;
 import com.onemillionworlds.tamarin.openxrbindings.XrHapticVibration;
@@ -156,6 +158,11 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
      * The data source as of the last {@link #getSkeleton} call for each hand.
      */
     private final EnumMap<HandSide, HandJointsDataSource> handJointsDataSources = new EnumMap<>(HandSide.class);
+
+    /**
+     * The (valid) XR_FB_hand_tracking_aim state as of the last time the joints were located for each hand.
+     */
+    private final EnumMap<HandSide, HandTrackingAimState> handTrackingAimStates = new EnumMap<>(HandSide.class);
 
     /**
      * Contains the currently active profiles
@@ -566,7 +573,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             }
             checkResponseCode("getActionState", responseCode);
 
-            return combineWithTamarinGestures(action, restrictToInput, new BooleanActionState(actionState.currentState() !=0, actionState.changedSinceLastSync() !=0));
+            return combineWithGestures(action, restrictToInput, new BooleanActionState(actionState.currentState() !=0, actionState.changedSinceLastSync() !=0));
         }
     }
 
@@ -692,6 +699,11 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             if (handTrackersReportDataSource){
                 handJointLocations.next(dataSourceState);
             }
+            boolean aimStateLoaded = xrAppState.checkExtensionLoaded(XR10Constants.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
+            XrHandTrackingAimStateFB aimState = XrHandTrackingAimStateFB.calloc(stack).type$Default();
+            if (aimStateLoaded){
+                handJointLocations.next(aimState);
+            }
 
             XrHandJointsLocateInfoEXT locateInfo = XrHandJointsLocateInfoEXT.calloc(stack)
                     .type$Default()
@@ -710,9 +722,18 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                                 dataSource == null ? 0 : dataSource.getValue())
                         : HandJointsDataSource.NOT_TRACKED);
 
-                if(handJointLocations.isActive() == XR10Constants.XR_FALSE){
+                handTrackingAimStates.remove(handSide);
+                if(!success || handJointLocations.isActive() == XR10Constants.XR_FALSE){
                     SINGLE_LOGGER.info("xrLocateHandJointsEXT reporting inactive hand tracking");
                     return Optional.empty();
+                }
+
+                if (aimStateLoaded){
+                    HandTrackingAimState handTrackingAimState = new HandTrackingAimState(aimState.status(),
+                            aimState.pinchStrengthIndex(), aimState.pinchStrengthMiddle(), aimState.pinchStrengthRing(), aimState.pinchStrengthLittle());
+                    if (handTrackingAimState.isValid()){
+                        handTrackingAimStates.put(handSide, handTrackingAimState);
+                    }
                 }
 
                 XrHandJointLocationEXT.Buffer xrHandJointLocationEXTS = handJointLocations.jointLocations();
@@ -848,7 +869,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
     public void update(float tpf){
         super.update(tpf);
         if (!sessionFocussed()){
-            updateTamarinGestures(false);
+            updateHandGestures(false);
             return;
         }
 
@@ -874,27 +895,35 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 runAfterActionsSync.clear();
             }
         }
-        updateTamarinGestures(true);
+        updateHandGestures(true);
     }
 
     /**
-     * Feeds bare hand joints to Tamarin's gesture detection (only if the manifest has gestures in it).
+     * Feeds the hands to gesture detection (only if the manifest has gestures in it): bare hand joints for Tamarin's
+     * own detection, and the runtime's XR_FB_hand_tracking_aim state.
      * @param handsAvailable false if the hands definitely shouldn't be used (e.g. the session isn't focussed)
      */
-    private void updateTamarinGestures(boolean handsAvailable){
-        if (!tamarinGesturesNeeded()){
+    private void updateHandGestures(boolean handsAvailable){
+        if (!handGesturesNeeded()){
             return;
         }
+        boolean aimStateLoaded = xrAppState.checkExtensionLoaded(XR10Constants.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
         for(HandSide handSide : HandSide.values()){
             Optional<Map<HandJoint, BonePose>> joints = Optional.empty();
+            Optional<HandTrackingAimState> aimState = Optional.empty();
             if (handsAvailable && isReady() && handTrackers.containsKey(handSide)){
                 boolean bonesEligibleForGestures = getHandJointsDataSource(handSide) == HandJointsDataSource.BARE_HAND;
 
-                if(bonesEligibleForGestures){
-                    joints = locateHandJoints(handSide, getOrCreateReferenceSpace(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE));
+                if(bonesEligibleForGestures || aimStateLoaded){
+                    // the aim state comes along with the joints
+                    Optional<Map<HandJoint, BonePose>> locatedJoints = locateHandJoints(handSide, getOrCreateReferenceSpace(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE));
+                    if (bonesEligibleForGestures){
+                        joints = locatedJoints;
+                    }
+                    aimState = Optional.ofNullable(handTrackingAimStates.get(handSide));
                 }
             }
-            updateTamarinGestures(handSide, joints);
+            updateHandGestures(handSide, joints, aimState);
         }
     }
 

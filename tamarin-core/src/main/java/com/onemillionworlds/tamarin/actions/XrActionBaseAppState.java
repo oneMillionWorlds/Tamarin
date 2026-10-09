@@ -7,7 +7,10 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
 import com.onemillionworlds.tamarin.actions.gestures.HandGestureTamarinProvidedState;
 import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
-import com.onemillionworlds.tamarin.actions.gestures.TamarinGestureActions;
+import com.onemillionworlds.tamarin.actions.gestures.GestureBindingLayer;
+import com.onemillionworlds.tamarin.actions.gestures.HandGestureRules;
+import com.onemillionworlds.tamarin.actions.gestures.HandJointMeasurements;
+import com.onemillionworlds.tamarin.actions.gestures.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -20,6 +23,7 @@ import com.onemillionworlds.tamarin.openxr.GameplayInterrupt;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +34,9 @@ public abstract class XrActionBaseAppState extends BaseAppState{
 
     private final InteractionProfileTracker interactionProfileTracker = new InteractionProfileTracker();
 
-    private TamarinGestureActions tamarinGestures = new TamarinGestureActions(new ActionManifest(List.of()), extension -> false);
+    private GestureBindingLayer<HandGestureTamarinProvidedState> tamarinGestures = GestureBindingLayer.none();
+    private GestureBindingLayer<HandTrackingAimState> aimStateGestures = GestureBindingLayer.none();
+    private final EnumMap<HandSide, HandGestureRules> gestureRules = new EnumMap<>(Map.of(HandSide.LEFT, new HandGestureRules(), HandSide.RIGHT, new HandGestureRules()));
 
     /**
      * Time in seconds since this state started updating, used for the controller lost grace period
@@ -200,8 +206,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * used for that gesture's bindings instead).
      * <p>
      *     Empty unless the hand is tracked as a bare hand (see {@link #getHandJointsDataSource}), and only worked out
-     *     if the action manifest has at least one gesture binding that Tamarin detects itself. Always empty in desktop
-     *     simulation mode.
+     *     if the action manifest has at least one gesture binding. Always empty in desktop simulation mode.
      * </p>
      */
     public Optional<HandGestureTamarinProvidedState> getTamarinGestureState(HandSide handSide){
@@ -209,37 +214,59 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     }
 
     /**
+     * The runtime's own gesture recognition for this hand this frame, from the XR_FB_hand_tracking_aim extension (Meta
+     * runtimes only). Gesture bindings in the action manifest use this for the gestures it provides (e.g. pinching the
+     * middle finger), if the extension is loaded.
+     * <p>
+     *     Empty if the extension isn't loaded, the runtime doesn't have a valid state for the hand (e.g. it isn't
+     *     tracked) and only worked out if the action manifest has at least one gesture binding. Always empty in desktop
+     *     simulation mode.
+     * </p>
+     */
+    public Optional<HandTrackingAimState> getHandTrackingAimState(HandSide handSide){
+        return aimStateGestures.getState(handSide);
+    }
+
+    /**
      * Implementations should call this when the action manifest is registered with the runtime.
      */
     protected void registerGestureBindings(ActionManifest manifest){
         XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
-        tamarinGestures = new TamarinGestureActions(manifest, xrAppState::checkExtensionLoaded);
+        tamarinGestures = GestureBindingLayer.tamarinDetected(manifest, xrAppState::checkExtensionLoaded);
+        aimStateGestures = GestureBindingLayer.aimStateDetected(manifest, xrAppState::checkExtensionLoaded);
     }
 
     /**
-     * If any action has a gesture bound to it, so implementations need to call {@link #updateTamarinGestures} each
-     * frame.
+     * If any action has a gesture bound to it, so implementations need to call {@link #updateHandGestures} each frame.
      */
-    protected boolean tamarinGesturesNeeded(){
-        return tamarinGestures.hasGestures();
+    protected boolean handGesturesNeeded(){
+        return tamarinGestures.hasGestures() || aimStateGestures.hasGestures();
     }
 
     /**
-     * Implementations should call this once per frame for each hand (if {@link #tamarinGesturesNeeded()}).
+     * Implementations should call this once per frame for each hand (if {@link #handGesturesNeeded()}).
      *
      * @param stageRelativeJoints the hand's joints relative to the stage, or empty if the hand isn't tracked as a bare
      *                            hand
+     * @param aimState the runtime's XR_FB_hand_tracking_aim state, or empty if it isn't available or valid
      */
-    protected void updateTamarinGestures(HandSide handSide, Optional<Map<HandJoint, BonePose>> stageRelativeJoints){
-        tamarinGestures.update(handSide, stageRelativeJoints);
+    protected void updateHandGestures(HandSide handSide, Optional<Map<HandJoint, BonePose>> stageRelativeJoints, Optional<HandTrackingAimState> aimState){
+        HandGestureRules rules = gestureRules.get(handSide);
+        if (!stageRelativeJoints.isPresent()){
+            rules.reset();
+        }
+        tamarinGestures.update(handSide, stageRelativeJoints.map(joints -> rules.apply(new HandJointMeasurements(joints))));
+        aimStateGestures.update(handSide, aimState);
     }
 
     /**
      * Implementations should pass the runtime's state for a boolean action through this, so that gestures bound to
-     * the action (and detected by Tamarin) also activate it.
+     * the action also activate it. Gestures come from (whichever are available) Tamarin's own detection and the
+     * runtime's XR_FB_hand_tracking_aim state, layered on top of the action's ordinary bindings.
      */
-    protected BooleanActionState combineWithTamarinGestures(ActionHandle action, String restrictToInput, BooleanActionState runtimeState){
-        return tamarinGestures.combine(action, restrictToInput, runtimeState);
+    protected BooleanActionState combineWithGestures(ActionHandle action, String restrictToInput, BooleanActionState runtimeState){
+        BooleanActionState withTamarinGestures = tamarinGestures.combine(action, restrictToInput, runtimeState);
+        return aimStateGestures.combine(action, restrictToInput, withTamarinGestures);
     }
 
     /**

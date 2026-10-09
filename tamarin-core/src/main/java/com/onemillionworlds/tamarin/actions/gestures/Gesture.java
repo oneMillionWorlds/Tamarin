@@ -7,6 +7,7 @@ import com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public enum Gesture {
 
@@ -24,22 +25,19 @@ public enum Gesture {
             "Pinch Thumb and middle finger",
             state -> state.isPinching(Finger.MIDDLE),
             state -> state.getPinchStrength(Finger.MIDDLE),
-            null,
-            "XR_FB_hand_tracking_aim"
+            aimState -> aimState.isPinching(Finger.MIDDLE)
     ),
     PINCH_RING(
             "Pinch Thumb and ring finger",
             state -> state.isPinching(Finger.RING),
             state -> state.getPinchStrength(Finger.RING),
-            null,
-            "XR_FB_hand_tracking_aim"
+            aimState -> aimState.isPinching(Finger.RING)
     ),
     PINCH_LITTLE_FINGER(
             "Pinch Thumb and little finger",
             state -> state.isPinching(Finger.LITTLE),
             state -> state.getPinchStrength(Finger.LITTLE),
-            null,
-            "XR_FB_hand_tracking_aim"
+            aimState -> aimState.isPinching(Finger.LITTLE)
     ),
 
     FIST("Fist",
@@ -65,25 +63,65 @@ public enum Gesture {
 
     final Optional<Map<HandSide, SuggestedBinding>> runtimeEquivalentBinding;
 
+    /**
+     * How to read this gesture from the runtime's {@link HandTrackingAimState} (if the runtime equivalent is
+     * XR_FB_hand_tracking_aim).
+     */
+    final Optional<Function<HandTrackingAimState, Boolean>> aimStateBooleanEvaluator;
+
     final Optional<String> runtimeEquivalentRequiredExtension;
 
+    /**
+     * A gesture that only Tamarin detects.
+     */
     Gesture(String description, Function<HandGestureTamarinProvidedState, Boolean> booleanEvaluator, Function<HandGestureTamarinProvidedState, Float> floatEvaluator) {
         this.booleanEvaluator = booleanEvaluator;
         this.description = description;
         this.floatEvaluator = floatEvaluator;
         this.runtimeEquivalentBinding = Optional.empty();
+        this.aimStateBooleanEvaluator = Optional.empty();
         this.runtimeEquivalentRequiredExtension = Optional.empty();
     }
 
+    /**
+     * A gesture the runtime can detect via a suggested binding (if the extension is loaded).
+     */
     Gesture(String description, Function<HandGestureTamarinProvidedState, Boolean> booleanEvaluator, Function<HandGestureTamarinProvidedState, Float> floatEvaluator, Map<HandSide, SuggestedBinding> runtimeEquivalentBinding, String runtimeEquivalentRequiredExtension) {
         this.description = description;
         this.booleanEvaluator = booleanEvaluator;
         this.floatEvaluator = floatEvaluator;
-        this.runtimeEquivalentBinding = Optional.ofNullable(runtimeEquivalentBinding);
-        this.runtimeEquivalentRequiredExtension = Optional.ofNullable(runtimeEquivalentRequiredExtension);
+        this.runtimeEquivalentBinding = Optional.of(runtimeEquivalentBinding);
+        this.aimStateBooleanEvaluator = Optional.empty();
+        this.runtimeEquivalentRequiredExtension = Optional.of(runtimeEquivalentRequiredExtension);
+    }
+
+    /**
+     * A gesture the runtime can detect via XR_FB_hand_tracking_aim (if the extension is loaded).
+     */
+    Gesture(String description, Function<HandGestureTamarinProvidedState, Boolean> booleanEvaluator, Function<HandGestureTamarinProvidedState, Float> floatEvaluator, Function<HandTrackingAimState, Boolean> aimStateBooleanEvaluator) {
+        this.description = description;
+        this.booleanEvaluator = booleanEvaluator;
+        this.floatEvaluator = floatEvaluator;
+        this.runtimeEquivalentBinding = Optional.empty();
+        this.aimStateBooleanEvaluator = Optional.of(aimStateBooleanEvaluator);
+        this.runtimeEquivalentRequiredExtension = Optional.of(HandTrackingAimState.REQUIRED_EXTENSION);
     }
 
     public Optional<SuggestedBinding> getRuntimeEquivalentBinding(HandSide handSide){
         return runtimeEquivalentBinding.map(m ->m.get(handSide));
+    }
+
+    /**
+     * If Tamarin should detect this gesture itself, which it does unless the runtime can.
+     */
+    boolean isDetectedByTamarin(Predicate<String> isExtensionLoaded){
+        return !runtimeEquivalentRequiredExtension.filter(isExtensionLoaded).isPresent();
+    }
+
+    /**
+     * If this gesture should be read from the runtime's {@link HandTrackingAimState}.
+     */
+    boolean isDetectedByAimState(Predicate<String> isExtensionLoaded){
+        return aimStateBooleanEvaluator.isPresent() && isExtensionLoaded.test(HandTrackingAimState.REQUIRED_EXTENSION);
     }
 }
