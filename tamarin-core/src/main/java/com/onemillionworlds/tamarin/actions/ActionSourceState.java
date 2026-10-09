@@ -48,7 +48,7 @@ public final class ActionSourceState{
      * For a boolean action, what the value was at the previous sync.
      */
     public boolean getPreviousBooleanValue(){
-        return changedSinceLastSync != getBooleanValue();
+        return changedSinceLastSync ? !getBooleanValue() : getBooleanValue();
     }
 
     public boolean isChangedSinceLastSync(){

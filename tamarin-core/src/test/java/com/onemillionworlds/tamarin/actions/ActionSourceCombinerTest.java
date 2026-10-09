@@ -19,38 +19,31 @@ class ActionSourceCombinerTest{
     private static final ActionSourceState ON = ActionSourceState.ofBoolean(true, false, true);
     private static final ActionSourceState JUST_ON = ActionSourceState.ofBoolean(true, true, true);
     private static final ActionSourceState OFF = ActionSourceState.ofBoolean(false, false, true);
-    private static final ActionSourceState JUST_OFF = ActionSourceState.ofBoolean(false, true, true);
     private static final ActionSourceState INACTIVE = ActionSourceState.INACTIVE;
 
     @Test
-    void automaticIsOnIfEitherIsOn(){
-        assertTrue(ActionSourceCombiner.combineBoolean(ON, OFF, AUTOMATIC).getState());
-        assertTrue(ActionSourceCombiner.combineBoolean(OFF, ON, AUTOMATIC).getState());
-        assertFalse(ActionSourceCombiner.combineBoolean(OFF, OFF, AUTOMATIC).getState());
+    void automaticAndRuntimeOnlyUseAnActiveRuntime(){
+        for(HandGestureSourcePreference preference : List.of(AUTOMATIC, RUNTIME_ONLY)){
+            assertFalse(ActionSourceCombiner.combineBoolean(OFF, ON, preference).getState(), preference.name());
+            assertTrue(ActionSourceCombiner.combineBoolean(ON, OFF, preference).getState(), preference.name());
+        }
     }
 
     @Test
-    void automaticOnlyReportsAChangeIfTheCombinedValueChanged(){
-        // the runtime turns on while the gesture is already on
-        BooleanActionState state = ActionSourceCombiner.combineBoolean(JUST_ON, ON, AUTOMATIC);
+    void automaticAndRuntimeOnlyUseTheGestureIfTheRuntimeIsInactive(){
+        for(HandGestureSourcePreference preference : List.of(AUTOMATIC, RUNTIME_ONLY)){
+            BooleanActionState state = ActionSourceCombiner.combineBoolean(INACTIVE, JUST_ON, preference);
+            assertTrue(state.getState(), preference.name());
+            assertTrue(state.hasChanged(), preference.name());
+        }
+    }
+
+    @Test
+    void aSlightlyDifferentGestureDoesNotAffectAnActiveRuntime(){
+        // the runtime and Tamarin disagree slightly about when the pinch started, only the runtime's edge is reported
+        BooleanActionState state = ActionSourceCombiner.combineBoolean(ON, JUST_ON, AUTOMATIC);
         assertTrue(state.getState());
         assertFalse(state.hasChanged());
-
-        // the gesture turns off while the runtime is still on
-        assertFalse(ActionSourceCombiner.combineBoolean(ON, JUST_OFF, AUTOMATIC).hasChanged());
-
-        // the gesture turns on while the runtime is off
-        assertTrue(ActionSourceCombiner.combineBoolean(OFF, JUST_ON, AUTOMATIC).hasChangedToTrue());
-    }
-
-    @Test
-    void runtimeOnlyUsesAnActiveRuntime(){
-        assertFalse(ActionSourceCombiner.combineBoolean(OFF, ON, RUNTIME_ONLY).getState());
-    }
-
-    @Test
-    void runtimeOnlyUsesTheGestureIfTheRuntimeIsInactive(){
-        assertTrue(ActionSourceCombiner.combineBoolean(INACTIVE, ON, RUNTIME_ONLY).getState());
     }
 
     @Test
@@ -74,16 +67,10 @@ class ActionSourceCombinerTest{
     }
 
     @Test
-    void floatAutomaticTakesTheLargerValue(){
-        FloatActionState state = ActionSourceCombiner.combineFloat(new ActionSourceState(0.2f, false, true), new ActionSourceState(0.6f, true, true), AUTOMATIC);
-        assertEquals(0.6f, state.getState());
-        assertTrue(state.hasChanged());
-    }
-
-    @Test
     void floatPrecedenceUsesOneSource(){
         ActionSourceState runtime = new ActionSourceState(0.2f, false, true);
         ActionSourceState gesture = new ActionSourceState(0.6f, true, true);
+        assertEquals(0.2f, ActionSourceCombiner.combineFloat(runtime, gesture, AUTOMATIC).getState());
         assertEquals(0.2f, ActionSourceCombiner.combineFloat(runtime, gesture, RUNTIME_ONLY).getState());
         assertEquals(0.6f, ActionSourceCombiner.combineFloat(runtime, gesture, TAMARIN_ONLY).getState());
     }

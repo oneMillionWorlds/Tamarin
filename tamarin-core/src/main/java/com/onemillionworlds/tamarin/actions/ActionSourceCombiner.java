@@ -7,13 +7,14 @@ import com.onemillionworlds.tamarin.handgestures.HandGestureSourcePreference;
 import java.util.List;
 
 /**
- * Combines an action's state from the OpenXR runtime's bindings with its state from Tamarin's gesture bindings (see
- * {@link com.onemillionworlds.tamarin.actions.actionprofile.Action.ActionBuilder#withGestureBinding}), for one hand.
+ * Decides, for one hand, whether an action's state comes from the OpenXR runtime's bindings or from Tamarin's gesture
+ * bindings (see {@link com.onemillionworlds.tamarin.actions.actionprofile.Action.ActionBuilder#withGestureBinding}).
+ * Only one source is ever used at a time (combining them would mean two slightly different versions of the same
+ * gesture fighting each other).
  * <ul>
- *     <li>{@link HandGestureSourcePreference#AUTOMATIC}: both together. A boolean action is on if either is on, a
- *     float action takes the larger value.</li>
- *     <li>{@link HandGestureSourcePreference#RUNTIME_ONLY}: the runtime takes precedence. It is used if it is active
- *     (any runtime binding is currently supplying the action), otherwise the gesture bindings are.</li>
+ *     <li>{@link HandGestureSourcePreference#AUTOMATIC} and {@link HandGestureSourcePreference#RUNTIME_ONLY}: the
+ *     runtime takes precedence. It is used if it is active (a runtime binding is currently supplying the action, e.g.
+ *     a controller button, or the hand interaction profile's pinch), otherwise the gesture bindings are.</li>
  *     <li>{@link HandGestureSourcePreference#TAMARIN_ONLY}: the gesture bindings take precedence. They are used if they
  *     are active (the hand is tracked), otherwise the runtime is (so controllers still work).</li>
  * </ul>
@@ -26,19 +27,11 @@ public final class ActionSourceCombiner{
     private ActionSourceCombiner(){}
 
     public static BooleanActionState combineBoolean(ActionSourceState runtime, ActionSourceState gesture, HandGestureSourcePreference preference){
-        if (preference == HandGestureSourcePreference.AUTOMATIC){
-            boolean now = runtime.getBooleanValue() || gesture.getBooleanValue();
-            boolean previous = runtime.getPreviousBooleanValue() || gesture.getPreviousBooleanValue();
-            return new BooleanActionState(now, now != previous);
-        }
         ActionSourceState chosen = choose(runtime, gesture, preference);
         return new BooleanActionState(chosen.getBooleanValue(), chosen.isChangedSinceLastSync());
     }
 
     public static FloatActionState combineFloat(ActionSourceState runtime, ActionSourceState gesture, HandGestureSourcePreference preference){
-        if (preference == HandGestureSourcePreference.AUTOMATIC){
-            return new FloatActionState(Math.max(runtime.getValue(), gesture.getValue()), runtime.isChangedSinceLastSync() || gesture.isChangedSinceLastSync());
-        }
         ActionSourceState chosen = choose(runtime, gesture, preference);
         return new FloatActionState(chosen.getValue(), chosen.isChangedSinceLastSync());
     }
@@ -75,7 +68,7 @@ public final class ActionSourceCombiner{
         if (preference == HandGestureSourcePreference.TAMARIN_ONLY){
             return gesture.isActive() ? gesture : runtime;
         }
-        // RUNTIME_ONLY
+        // AUTOMATIC and RUNTIME_ONLY
         return !runtime.isActive() && gesture.isActive() ? gesture : runtime;
     }
 }

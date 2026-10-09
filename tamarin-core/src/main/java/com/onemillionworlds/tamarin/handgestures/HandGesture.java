@@ -1,5 +1,10 @@
 package com.onemillionworlds.tamarin.handgestures;
 
+import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.actions.actionprofile.SuggestedBinding;
+
+import java.util.List;
+
 /**
  * A hand gesture that can be bound to an action (see
  * {@link com.onemillionworlds.tamarin.actions.actionprofile.Action.ActionBuilder#withGestureBinding}). The built-in
@@ -51,4 +56,18 @@ public interface HandGesture{
      * action is bound to.
      */
     String getDescription();
+
+    /**
+     * The OpenXR runtime bindings that are this same gesture, if any (e.g. the index finger pinch is
+     * {@link com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt}'s pinch). These are added to
+     * the action's suggested bindings automatically when the gesture is bound, and while the runtime is supplying them
+     * they are used instead of Tamarin's own detection (see
+     * {@link com.onemillionworlds.tamarin.actions.actionprofile.Action.ActionBuilder#withGestureBinding}).
+     *
+     * @param handSide the hand the gesture is bound for
+     * @return the equivalent runtime bindings, usually none
+     */
+    default List<SuggestedBinding> getRuntimeEquivalentBindings(HandSide handSide){
+        return List.of();
+    }
 }

@@ -408,12 +408,15 @@ public class Action{
         }
 
         /**
-         * Binds a hand gesture (made with a bare, tracked hand) to this action. Unlike suggested bindings this is
-         * done by Tamarin, not the OpenXR runtime: each frame Tamarin checks the gesture and combines it with the
-         * runtime's value for the action. By default either can turn the action on (a float action takes the larger
-         * value), {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#setHandGestureSourcePreference}
-         * can instead give the runtime's or Tamarin's bindings precedence. Game code just reads the action as normal
-         * and doesn't need to know about the gesture.
+         * Binds a hand gesture (made with a bare, tracked hand) to this action. Game code just reads the action as
+         * normal and doesn't need to know about the gesture.
+         * <p>
+         *     If the runtime has an equivalent of the gesture (e.g. the index finger pinch is {@link HandInteractionExt}'s
+         *     pinch) that is added as a suggested binding automatically, and whenever the runtime is supplying the action
+         *     its value is used. Otherwise Tamarin detects the gesture itself. Either way the app just binds the
+         *     gesture. {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#setHandGestureSourcePreference}
+         *     can change this (mostly for testing and comparison).
+         * </p>
          * <p>
          *     For example:
          * </p>
@@ -426,13 +429,12 @@ public class Action{
          * </p>
          * <ul>
          *     <li>Only boolean and float actions can have gesture bindings.</li>
-         *     <li>The runtime doesn't know about these bindings, so they won't appear in its rebinding UI (but they are
-         *     included in {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#getLocalisedButtonNameForAction}).</li>
+         *     <li>The runtime doesn't know about gestures that Tamarin detects, so they won't appear in its rebinding
+         *     UI (but they are included in {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#getLocalisedButtonNameForAction}).</li>
          *     <li>Gestures only work when the hand is being tracked as a bare hand (not holding a controller). Some
          *     runtimes (e.g. SteamVR with Index controllers) report hand joints synthesised from the controller, in which
-         *     case gestures may also trigger while holding the controller.</li>
-         *     <li>Prefer a runtime binding where one exists (e.g. {@link HandInteractionExt} pinch or grasp), it
-         *     will be better tuned.</li>
+         *     case gestures may also trigger while holding the controller (unless the action is also bound to a
+         *     controller input, which takes precedence).</li>
          * </ul>
          *
          * @param handSide the hand that makes the gesture
@@ -467,7 +469,25 @@ public class Action{
                     throw new IllegalArgumentException("gesture binding for " + gestureBinding.getHandSide() + " but the action doesn't support the sub action path " + gestureBinding.getHandSide().restrictToInputString);
                 }
             }
-            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths, desktopDebugKeyTrigger, List.copyOf(gestureBindings));
+            return new Action(actionHandle, translatedName, actionType, withRuntimeEquivalentsOfGestures(), supportedSubActionPaths, desktopDebugKeyTrigger, List.copyOf(gestureBindings));
+        }
+
+        /**
+         * The suggested bindings plus the runtime equivalents of any gesture bindings (without duplicates, in case the
+         * application also suggested them directly).
+         */
+        private List<SuggestedBinding> withRuntimeEquivalentsOfGestures(){
+            List<SuggestedBinding> allBindings = new ArrayList<>(suggestedBindings);
+            for(GestureBinding gestureBinding : gestureBindings){
+                for(SuggestedBinding equivalent : gestureBinding.getGesture().getRuntimeEquivalentBindings(gestureBinding.getHandSide())){
+                    boolean alreadyPresent = allBindings.stream().anyMatch(existing ->
+                            existing.getProfile().equals(equivalent.getProfile()) && existing.getBinding().equals(equivalent.getBinding()));
+                    if (!alreadyPresent){
+                        allBindings.add(equivalent);
+                    }
+                }
+            }
+            return allBindings;
         }
 
     }
