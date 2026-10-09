@@ -30,7 +30,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
 
     private final InteractionProfileTracker interactionProfileTracker = new InteractionProfileTracker();
 
-    private TamarinGestureActions tamarinGestures = new TamarinGestureActions(new ActionManifest(List.of()));
+    private TamarinGestureActions tamarinGestures = new TamarinGestureActions(new ActionManifest(List.of()), extension -> false);
 
     /**
      * Time in seconds since this state started updating, used for the controller lost grace period
@@ -196,10 +196,12 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     /**
      * Tamarin's own detection of hand gestures (pinches, fist, pointing etc.) for this hand this frame. This is what
      * gesture bindings in the action manifest (see {@link com.onemillionworlds.tamarin.actions.actionprofile.Action.ActionBuilder#withGestureBinding})
-     * use, in addition to anything the runtime itself detects.
+     * use for gestures the runtime doesn't provide itself (if the runtime does provide a gesture, its own detection is
+     * used for that gesture's bindings instead).
      * <p>
      *     Empty unless the hand is tracked as a bare hand (see {@link #getHandJointsDataSource}), and only worked out
-     *     if the action manifest has at least one gesture binding. Always empty in desktop simulation mode.
+     *     if the action manifest has at least one gesture binding that Tamarin detects itself. Always empty in desktop
+     *     simulation mode.
      * </p>
      */
     public Optional<HandGestureTamarinProvidedState> getTamarinGestureState(HandSide handSide){
@@ -210,7 +212,8 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * Implementations should call this when the action manifest is registered with the runtime.
      */
     protected void registerGestureBindings(ActionManifest manifest){
-        tamarinGestures = new TamarinGestureActions(manifest);
+        XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
+        tamarinGestures = new TamarinGestureActions(manifest, xrAppState::checkExtensionLoaded);
     }
 
     /**

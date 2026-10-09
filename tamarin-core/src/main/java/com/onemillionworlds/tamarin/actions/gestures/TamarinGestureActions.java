@@ -9,11 +9,13 @@ import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Tamarin's own detection of the gestures bound to actions in the manifest (see
@@ -34,11 +36,24 @@ public class TamarinGestureActions{
     private final EnumMap<HandSide, HandGestureTamarinProvidedState> currentStates = new EnumMap<>(HandSide.class);
     private final EnumMap<HandSide, HandGestureTamarinProvidedState> previousStates = new EnumMap<>(HandSide.class);
 
-    public TamarinGestureActions(ActionManifest manifest){
+    /**
+     * @param manifest the action manifest, for its gesture bindings
+     * @param isExtensionLoaded returns true if the given extension is loaded. Gestures whose runtime equivalent
+     *                          extension is loaded are left to the runtime (via the bindings they suggested) and
+     *                          Tamarin doesn't detect them itself
+     */
+    public TamarinGestureActions(ActionManifest manifest, Predicate<String> isExtensionLoaded){
         for(ActionSet actionSet : manifest.getActionSets()){
             for(Action action : actionSet.getActions()){
-                if (!action.getGestureBindings().isEmpty()){
-                    gestureBindings.put(action.getActionHandle(), action.getGestureBindings());
+                List<GestureBinding> tamarinDetected = new ArrayList<>();
+                for(GestureBinding binding : action.getGestureBindings()){
+                    boolean runtimeProvidesIt = binding.getGesture().runtimeEquivalentRequiredExtension.filter(isExtensionLoaded).isPresent();
+                    if (!runtimeProvidesIt){
+                        tamarinDetected.add(binding);
+                    }
+                }
+                if (!tamarinDetected.isEmpty()){
+                    gestureBindings.put(action.getActionHandle(), tamarinDetected);
                 }
             }
         }
@@ -48,7 +63,8 @@ public class TamarinGestureActions{
     }
 
     /**
-     * If any action has a gesture bound to it (if not there is no point calling {@link #update}).
+     * If any action has a gesture bound to it that Tamarin detects itself (if not there is no point calling
+     * {@link #update}).
      */
     public boolean hasGestures(){
         return !gestureBindings.isEmpty();
