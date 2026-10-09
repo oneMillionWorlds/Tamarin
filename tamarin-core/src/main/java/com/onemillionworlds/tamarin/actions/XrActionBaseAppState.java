@@ -23,6 +23,7 @@ import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.openxr.GameplayInterrupt;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
@@ -99,6 +100,10 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * <p>
      *     Note this method will return an empty list until the actions are synced (which happens once the session is fully running
      *     and this action state updates. Basically be careful calling this method at application start up).
+     * </p>
+     * <p>
+     *     Gesture bindings that Tamarin handles are also included, e.g. "Left hand: Thumbs up (gesture)". These are in
+     *     English (not localised).
      * </p>
      *
      * @param actionHandle the handle to get the binding string for
@@ -301,6 +306,17 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         }
         tamarinGestures.update(handSide, stageRelativeJoints.map(joints -> rules.apply(new HandJointMeasurements(joints))));
         aimStateGestures.update(handSide, aimState);
+    }
+
+    /**
+     * Implementations should add these to {@link #getLocalisedButtonNameForAction}. They describe the action's gesture
+     * bindings that Tamarin handles (gestures provided by a runtime binding, like the index finger pinch, are already
+     * among the runtime's own bound sources).
+     */
+    protected List<String> describeGestureBindings(ActionHandle action){
+        List<String> descriptions = new ArrayList<>(tamarinGestures.describe(action));
+        descriptions.addAll(aimStateGestures.describe(action));
+        return descriptions;
     }
 
     /**

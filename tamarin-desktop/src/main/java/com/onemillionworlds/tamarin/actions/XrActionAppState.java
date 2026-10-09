@@ -260,6 +260,7 @@ public class XrActionAppState extends XrActionBaseAppState{
                 results.add(localisedNameForPath(sourcePath));
             }
         }
+        results.addAll(describeGestureBindings(actionHandle));
         return results;
     }
 

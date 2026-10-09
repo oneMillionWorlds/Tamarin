@@ -108,6 +108,19 @@ public class GestureBindingLayer<S>{
     }
 
     /**
+     * Human-readable (English, not localised) descriptions of the action's gesture bindings in this layer, e.g.
+     * "Left hand: Thumbs up (gesture)".
+     */
+    public List<String> describe(ActionHandle action){
+        List<String> descriptions = new ArrayList<>();
+        for(GestureBinding binding : gestureBindings.getOrDefault(action, List.of())){
+            String hand = binding.getHandSide() == HandSide.LEFT ? "Left hand" : "Right hand";
+            descriptions.add(hand + ": " + binding.getGesture().description + " (gesture)");
+        }
+        return descriptions;
+    }
+
+    /**
      * If any action has a gesture bound to it in this layer (if not there is no point calling {@link #update}).
      */
     public boolean hasGestures(){

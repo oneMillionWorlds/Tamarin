@@ -12,6 +12,7 @@ import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -297,6 +298,19 @@ class GestureBindingLayerTest{
     private static void assertState(boolean expectedState, boolean expectedChanged, BooleanActionState actual){
         assertEquals(expectedState, actual.getState(), "state");
         assertEquals(expectedChanged, actual.hasChanged(), "changed");
+    }
+
+    @Test
+    void describesTheGestureBindingsInTheLayer(){
+        assertEquals(List.of("Left hand: Fist (gesture)"), tamarinLayer(NO_EXTENSIONS).describe(FIST_ACTION));
+        assertEquals(List.of(), tamarinLayer(NO_EXTENSIONS).describe(PLAIN_ACTION));
+    }
+
+    @Test
+    void doesNotDescribeGesturesHandledByAnotherLayer(){
+        // with the aim extension loaded the middle finger pinch belongs to the aim layer
+        assertEquals(List.of(), tamarinLayer(ALL_EXTENSIONS).describe(PINCH_MIDDLE_ACTION));
+        assertEquals(List.of("Left hand: Pinch Thumb and middle finger (gesture)"), aimLayer(ALL_EXTENSIONS).describe(PINCH_MIDDLE_ACTION));
     }
 
     private static ActionManifest manifest(){

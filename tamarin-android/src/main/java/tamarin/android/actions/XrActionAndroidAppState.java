@@ -273,6 +273,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 results.add(localisedName);
             }
         }
+        results.addAll(describeGestureBindings(actionHandle));
         return results;
     }
 
