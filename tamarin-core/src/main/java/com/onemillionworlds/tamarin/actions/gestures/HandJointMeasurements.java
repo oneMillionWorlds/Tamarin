@@ -56,8 +56,24 @@ public final class HandJointMeasurements{
      */
     static final float TIP_CONTACT_FULL = 0f;
 
+    /**
+     * How close (at the reference hand size) the thumb tip must be to the middle of the index or middle finger to
+     * count as fully tucked around them (as in a fist).
+     */
+    static final float THUMB_TUCKED_FULL_DISTANCE = 0.03f;
+    /**
+     * How far (at the reference hand size) the thumb tip must be from the middle of the index and middle fingers to
+     * count as not tucked at all.
+     */
+    static final float THUMB_TUCKED_ZERO_DISTANCE = 0.05f;
+
+    private static final HandJoint[] THUMB_TUCK_TARGETS = new HandJoint[]{
+            HandJoint.INDEX_INTERMEDIATE_EXT, HandJoint.INDEX_DISTAL_EXT, HandJoint.MIDDLE_INTERMEDIATE_EXT, HandJoint.MIDDLE_DISTAL_EXT
+    };
+
     private final Map<HandJoint, BonePose> joints;
     private final float handScale;
+    private final float thumbTucked;
     private final EnumMap<Finger, Float> curls = new EnumMap<>(Finger.class);
     private final EnumMap<Finger, Float> pinchStrengths = new EnumMap<>(Finger.class);
     private final Vector3f thumbDirection;
@@ -77,6 +93,15 @@ public final class HandJointMeasurements{
             pinchStrengths.put(finger, measurePinch(finger));
         }
         thumbDirection = position(HandJoint.THUMB_TIP_EXT).subtract(position(HandJoint.THUMB_PROXIMAL_EXT)).normalizeLocal();
+        thumbTucked = measureThumbTucked();
+    }
+
+    /**
+     * How much the thumb tip is tucked against the middle of the index and middle fingers (as it is in a fist). 0 is
+     * not at all, 1 is fully.
+     */
+    public float getThumbTucked(){
+        return thumbTucked;
     }
 
     /**
@@ -165,6 +190,15 @@ public final class HandJointMeasurements{
         // positive when the thumb is nearer the tip than the side of the finger
         float tipCloserBy = (sideDistance - tipDistance) / handScale;
         return inverseLerpClamped(tipCloserBy, TIP_CONTACT_ZERO, TIP_CONTACT_FULL);
+    }
+
+    private float measureThumbTucked(){
+        Vector3f thumbTip = position(HandJoint.THUMB_TIP_EXT);
+        float closestDistance = Float.MAX_VALUE;
+        for(HandJoint target : THUMB_TUCK_TARGETS){
+            closestDistance = Math.min(closestDistance, thumbTip.distance(position(target)));
+        }
+        return 1 - inverseLerpClamped(closestDistance / handScale, THUMB_TUCKED_FULL_DISTANCE, THUMB_TUCKED_ZERO_DISTANCE);
     }
 
     /**

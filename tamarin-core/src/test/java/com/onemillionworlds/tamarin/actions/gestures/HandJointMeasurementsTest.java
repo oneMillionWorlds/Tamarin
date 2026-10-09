@@ -65,6 +65,15 @@ class HandJointMeasurementsTest{
     }
 
     @Test
+    void thumbTipAgainstTheMiddleOfTheFingersIsTucked(){
+        HandJointMeasurements tucked = new HandJointMeasurements(SyntheticHand.openHand().thumbTipNear(HandJoint.MIDDLE_INTERMEDIATE_EXT, 0.02f).joints());
+        HandJointMeasurements open = new HandJointMeasurements(SyntheticHand.openHand().joints());
+
+        assertEquals(1, tucked.getThumbTucked(), 0.001f);
+        assertEquals(0, open.getThumbTucked(), 0.001f);
+    }
+
+    @Test
     void thumbOnTheSideOfTheFingerIsNotAPinch(){
         // like a Meta microgesture, the thumb tip on the side of the index finger, closer to its middle than its tip
         SyntheticHand hand = SyntheticHand.openHand().thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.005f);

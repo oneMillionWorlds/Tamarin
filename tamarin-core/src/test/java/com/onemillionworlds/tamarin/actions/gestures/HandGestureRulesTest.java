@@ -1,6 +1,7 @@
 package com.onemillionworlds.tamarin.actions.gestures;
 
 import com.jme3.math.Vector3f;
+import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,6 +39,14 @@ class HandGestureRulesTest{
     }
 
     @Test
+    void curledFingersWithTheThumbStickingOutIsNotAFist(){
+        // the thumb is bent (as it can be in a fist) but out to the side rather than tucked over the fingers
+        SyntheticHand hand = SyntheticHand.openHand().curlAllFingers(80).thumb(new Vector3f(-1, 0, 0), Vector3f.UNIT_Y, 30);
+
+        assertFalse(apply(new HandGestureRules(), hand).isFist());
+    }
+
+    @Test
     void thumbsUpRequiresTheThumbToPointUp(){
         HandGestureTamarinProvidedState state = apply(new HandGestureRules(), thumbsUp(new Vector3f(1, 0, 0)));
 
@@ -56,7 +65,7 @@ class HandGestureRulesTest{
     void gestureStaysActiveBetweenTheThresholds(){
         HandGestureRules rules = new HandGestureRules();
         // 3 knuckles of 47 degrees is a curl of ~0.64, between the deactivate and activate thresholds
-        SyntheticHand partlyCurled = SyntheticHand.openHand().curlAllFingers(47).thumb(new Vector3f(-1, 0, 0), Vector3f.UNIT_Y, 30);
+        SyntheticHand partlyCurled = SyntheticHand.openHand().curlAllFingers(47).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.02f);
 
         assertFalse(apply(new HandGestureRules(), partlyCurled).isFist(), "Shouldn't activate from scratch");
 
@@ -68,7 +77,7 @@ class HandGestureRulesTest{
     void resetDeactivatesGestures(){
         HandGestureRules rules = new HandGestureRules();
         // 3 knuckles of 47 degrees is a curl of ~0.64, between the deactivate and activate thresholds
-        SyntheticHand partlyCurled = SyntheticHand.openHand().curlAllFingers(47).thumb(new Vector3f(-1, 0, 0), Vector3f.UNIT_Y, 30);
+        SyntheticHand partlyCurled = SyntheticHand.openHand().curlAllFingers(47).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.02f);
         apply(rules, fist());
 
         rules.reset();
@@ -122,7 +131,7 @@ class HandGestureRulesTest{
     }
 
     static SyntheticHand fist(){
-        return SyntheticHand.openHand().curlAllFingers(80).thumb(new Vector3f(-1, 0, 0), Vector3f.UNIT_Y, 30);
+        return SyntheticHand.openHand().curlAllFingers(80).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.02f);
     }
 
     private static SyntheticHand thumbsUp(Vector3f thumbDirection){

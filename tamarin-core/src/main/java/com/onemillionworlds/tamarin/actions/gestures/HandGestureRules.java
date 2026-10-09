@@ -33,11 +33,6 @@ public class HandGestureRules{
     static final float GESTURE_ACTIVATE = 0.75f;
     static final float GESTURE_DEACTIVATE = 0.55f;
     /**
-     * In a fist the thumb is folded over the fingers, but not tightly curled. Thumb curl at or above this counts as
-     * fully folded.
-     */
-    static final float FIST_THUMB_CURL = 0.4f;
-    /**
      * How much the thumb must point upwards (the dot product of its direction with the stage's up, i.e. the user's real up) for a thumbs up. At or
      * below the minimum it doesn't count at all, at or above the full value it counts completely.
      */
@@ -59,7 +54,8 @@ public class HandGestureRules{
                 Math.min(measurements.getCurl(Finger.INDEX), measurements.getCurl(Finger.MIDDLE)),
                 Math.min(measurements.getCurl(Finger.RING), measurements.getCurl(Finger.LITTLE)));
 
-        float fistStrength = Math.min(fourFingersCurled, FastMath.clamp(measurements.getCurl(Finger.THUMB) / FIST_THUMB_CURL, 0, 1));
+        // in a fist the thumb is tucked over the fingers
+        float fistStrength = Math.min(fourFingersCurled, measurements.getThumbTucked());
         builder.fist(fistStrength, fistHysteresis.update(fistStrength));
 
         float otherFingersCurled = Math.min(measurements.getCurl(Finger.MIDDLE), Math.min(measurements.getCurl(Finger.RING), measurements.getCurl(Finger.LITTLE)));
@@ -67,7 +63,8 @@ public class HandGestureRules{
         builder.point(pointStrength, pointHysteresis.update(pointStrength));
 
         float thumbUpwards = FastMath.clamp((measurements.getThumbDirection().dot(Vector3f.UNIT_Y) - THUMB_UP_MINIMUM) / (THUMB_UP_FULL - THUMB_UP_MINIMUM), 0, 1);
-        float thumbsUpStrength = Math.min(fourFingersCurled, Math.min(1 - measurements.getCurl(Finger.THUMB), thumbUpwards));
+        float thumbStraightAndOut = Math.min(1 - measurements.getCurl(Finger.THUMB), 1 - measurements.getThumbTucked());
+        float thumbsUpStrength = Math.min(fourFingersCurled, Math.min(thumbStraightAndOut, thumbUpwards));
         builder.thumbsUp(thumbsUpStrength, thumbsUpHysteresis.update(thumbsUpStrength));
 
         updateActivePinch(measurements);
