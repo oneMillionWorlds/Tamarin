@@ -18,6 +18,7 @@ import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
 import com.onemillionworlds.tamarin.handgestures.HandGestureSourcePreference;
 import com.onemillionworlds.tamarin.handgestures.HandGestureState;
 import com.onemillionworlds.tamarin.handgestures.HandGestureTracker;
+import com.onemillionworlds.tamarin.handgestures.HandTrackingDataSource;
 import com.onemillionworlds.tamarin.handgestures.TrackedHand;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
@@ -56,10 +57,15 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     private HandGestureSourcePreference handGestureSourcePreference = HandGestureSourcePreference.AUTOMATIC;
 
     /**
-     * Hand gestures are only tracked once something has asked for them (to avoid the cost for applications that
-     * don't use them)
+     * Hands are only located (and gestures tracked) once something has asked for them, to avoid the cost for
+     * applications that don't use them
      */
-    private boolean handGesturesRequested = false;
+    private boolean handTrackingRequested = false;
+
+    /**
+     * Each hand's tracking data, located once per frame (in update) so the getters don't have to make OpenXR calls
+     */
+    private final Map<HandSide, Optional<TrackedHand>> latestTrackedHands = new EnumMap<>(HandSide.class);
 
     private SyntheticGestureBindings syntheticGestureBindings = SyntheticGestureBindings.none();
 
@@ -74,6 +80,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         super(ID);
         for(HandSide handSide : HandSide.values()){
             handGestureTrackers.put(handSide, new HandGestureTracker(handSide));
+            latestTrackedHands.put(handSide, Optional.empty());
         }
     }
 
@@ -83,18 +90,20 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         time += tpf;
         interactionProfileTracker.tick(isAlreadyPaused(), time);
         forwardControllerInterrupts();
-        updateHandGestures(tpf);
+        updateHandTracking(tpf);
     }
 
-    private void updateHandGestures(float tpf){
-        if (!handGesturesRequested && !syntheticGestureBindings.hasAny()){
+    /**
+     * Locates the hands (once per frame, the getters use the cached result) and updates the hand gestures.
+     */
+    private void updateHandTracking(float tpf){
+        if (!handTrackingRequested && !syntheticGestureBindings.hasAny()){
             return;
         }
-        Map<HandSide, Optional<TrackedHand>> trackedHands = new EnumMap<>(HandSide.class);
         boolean anyTracked = false;
         for(HandSide handSide : HandSide.values()){
             Optional<TrackedHand> trackedHand = locateTrackedHand(handSide);
-            trackedHands.put(handSide, trackedHand);
+            latestTrackedHands.put(handSide, trackedHand);
             anyTracked |= trackedHand.isPresent();
         }
 
@@ -106,7 +115,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
             headRotation = xrAppState.getVrCameraRotation();
         }
         for(HandSide handSide : HandSide.values()){
-            handGestureTrackers.get(handSide).update(trackedHands.get(handSide), headPosition, headRotation, tpf);
+            handGestureTrackers.get(handSide).update(latestTrackedHands.get(handSide), headPosition, headRotation, tpf);
         }
         syntheticGestureBindings.update(handSide -> handGestureTrackers.get(handSide).getState(handGestureSourcePreference), activeActionSetNames);
     }
@@ -242,11 +251,39 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      *     isn't available, or if the hand isn't currently being tracked (including when the user is holding a
      *     controller).
      * </p>
+     * <p>
+     *     Hands are only tracked once this (or another hand tracking method) has been called, so the very first call
+     *     will return empty. Call it every frame. The value is updated once per frame.
+     * </p>
      * @param handSide the hand to get the state for
      * @return the aim state, if available
      */
     public Optional<HandTrackingAimState> getHandTrackingAimState(HandSide handSide){
-        return Optional.empty();
+        handTrackingRequested = true;
+        return latestTrackedHands.get(handSide).flatMap(TrackedHand::getRuntimeAimState);
+    }
+
+    /**
+     * Where the hand's tracking data (joints) is currently coming from: the bare hand itself, or a controller held in
+     * the hand (some runtimes, e.g. SteamVR with Valve Index controllers, work out hand joints from the controller).
+     * Useful for things like choosing a hand model, or tutorial text ("pinch" vs "pull the trigger").
+     * <p>
+     *     Returns {@link HandTrackingDataSource#UNKNOWN} if the runtime doesn't support XR_EXT_hand_tracking_data_source,
+     *     and empty if the hand isn't tracked at all. Note that some runtimes (e.g. Quest) provide no hand tracking
+     *     data at all while a controller is held, so on those holding a controller gives empty rather than
+     *     {@link HandTrackingDataSource#CONTROLLER}.
+     * </p>
+     * <p>
+     *     Hands are only tracked once this (or another hand tracking method) has been called, so the very first call
+     *     will return empty. Call it every frame. The value is updated once per frame.
+     * </p>
+     *
+     * @param handSide the hand
+     * @return the data source, or empty if the hand isn't tracked (or hand tracking isn't supported, or in desktop simulation)
+     */
+    public Optional<HandTrackingDataSource> getHandTrackingDataSource(HandSide handSide){
+        handTrackingRequested = true;
+        return latestTrackedHands.get(handSide).map(TrackedHand::getDataSource);
     }
 
     /**
@@ -258,7 +295,8 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      *     controlled with {@link #setHandGestureSourcePreference}. Everything else is always Tamarin's.
      * </p>
      * <p>
-     *     Returns empty if the hand isn't currently tracked as a bare hand (e.g. the user is holding a controller),
+     *     Returns empty if the hand isn't currently tracked as a bare hand (e.g. the user is holding a controller, see
+     *     {@link #getHandTrackingDataSource}),
      *     if hand tracking isn't supported, or in desktop simulation.
      * </p>
      * <p>
@@ -283,7 +321,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @return the hand's gestures, if available
      */
     public Optional<HandGestureState> getHandGestureState(HandSide handSide, HandGestureSourcePreference preference){
-        handGesturesRequested = true;
+        handTrackingRequested = true;
         return handGestureTrackers.get(handSide).getState(preference);
     }
 
@@ -302,8 +340,9 @@ public abstract class XrActionBaseAppState extends BaseAppState{
 
     /**
      * For VR implementations to provide the raw hand tracking data (joints in world coordinates, plus the runtime's
-     * gesture recognition if available) used for hand gestures. Called once per hand per frame, only if hand gestures
-     * are in use.
+     * gesture recognition if available). Called by this class once per hand per frame (only if hand tracking is in use),
+     * and the result is cached for the getters, so implementations can make the OpenXR calls needed directly. Nothing
+     * else should call this.
      *
      * @return the hand's data, or empty if the hand isn't tracked (or hand tracking isn't supported)
      */

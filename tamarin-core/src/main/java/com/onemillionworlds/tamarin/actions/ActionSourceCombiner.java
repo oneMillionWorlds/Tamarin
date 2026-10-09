@@ -16,7 +16,8 @@ import java.util.List;
  *     runtime takes precedence. It is used if it is active (a runtime binding is currently supplying the action, e.g.
  *     a controller button, or the hand interaction profile's pinch), otherwise the gesture bindings are.</li>
  *     <li>{@link HandGestureSourcePreference#TAMARIN_ONLY}: the gesture bindings take precedence. They are used if they
- *     are active (the hand is tracked), otherwise the runtime is (so controllers still work).</li>
+ *     are active (the hand is tracked as a bare hand, see {@link com.onemillionworlds.tamarin.handgestures.HandTrackingDataSource}),
+ *     otherwise the runtime is (so held controllers still work).</li>
  * </ul>
  * <p>
  *     Primarily for internal use.

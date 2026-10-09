@@ -27,9 +27,10 @@ public enum HandGestureSourcePreference{
     RUNTIME_ONLY,
     /**
      * Only use Tamarin's pinches and aim (worked out from the hand joints), even when the runtime could provide them.
-     * For actions, gesture bindings take precedence whenever the hand is tracked (the runtime's bindings are still
-     * used when it isn't, e.g. while holding a controller). Useful for consistent behaviour across all runtimes, or
-     * for testing and comparison.
+     * For actions, gesture bindings take precedence whenever the hand is tracked as a bare hand. The runtime's
+     * bindings are still used while a controller is held, provided the runtime either reports no hand joints then
+     * (e.g. Quest) or supports XR_EXT_hand_tracking_data_source (so joints worked out from a controller, e.g. on
+     * SteamVR with Index controllers, can be told apart). Useful for testing and comparison.
      */
     TAMARIN_ONLY
 }

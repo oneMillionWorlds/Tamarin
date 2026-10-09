@@ -432,9 +432,10 @@ public class Action{
          *     <li>The runtime doesn't know about gestures that Tamarin detects, so they won't appear in its rebinding
          *     UI (but they are included in {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#getLocalisedButtonNameForAction}).</li>
          *     <li>Gestures only work when the hand is being tracked as a bare hand (not holding a controller). Some
-         *     runtimes (e.g. SteamVR with Index controllers) report hand joints synthesised from the controller, in which
-         *     case gestures may also trigger while holding the controller (unless the action is also bound to a
-         *     controller input, which takes precedence).</li>
+         *     runtimes (e.g. SteamVR with Index controllers) report hand joints worked out from a held controller. These
+         *     are ignored if the runtime supports XR_EXT_hand_tracking_data_source (see
+         *     {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#getHandTrackingDataSource}), otherwise
+         *     gestures may also trigger while holding the controller.</li>
          * </ul>
          *
          * @param handSide the hand that makes the gesture

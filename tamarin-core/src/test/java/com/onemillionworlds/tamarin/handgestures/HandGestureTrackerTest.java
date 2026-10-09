@@ -4,6 +4,7 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.state.HandTrackingAimState;
+import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -134,6 +135,26 @@ class HandGestureTrackerTest{
 
     private static Vector3f fingerTip(Finger finger){
         return SyntheticHand.openRightHand().build().get(finger.getTip()).position();
+    }
+
+    @Test
+    void jointsFromAHeldControllerGiveNoGestures(){
+        HandGestureTracker tracker = new HandGestureTracker(HandSide.RIGHT);
+        // e.g. SteamVR working out the joints from an Index controller held in a fist
+        update(tracker, new TrackedHand(SyntheticHand.openRightHand().curlAllFingers(80).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.015f).build(), Optional.empty(), HandTrackingDataSource.CONTROLLER));
+
+        for(HandGestureSourcePreference preference : HandGestureSourcePreference.values()){
+            assertFalse(tracker.getState(preference).isPresent(), preference.name());
+        }
+    }
+
+    @Test
+    void jointsFromABareHandOrAnUnknownSourceGiveGestures(){
+        for(HandTrackingDataSource dataSource : new HandTrackingDataSource[]{HandTrackingDataSource.BARE_HAND, HandTrackingDataSource.UNKNOWN}){
+            HandGestureTracker tracker = new HandGestureTracker(HandSide.RIGHT);
+            update(tracker, new TrackedHand(SyntheticHand.openRightHand().curlAllFingers(80).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.015f).build(), Optional.empty(), dataSource));
+            assertTrue(tamarinState(tracker).isFist(), dataSource.name());
+        }
     }
 
     @Test

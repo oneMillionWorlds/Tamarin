@@ -73,13 +73,15 @@ public class HandGestureTracker{
     }
 
     /**
-     * @param trackedHand the hand's data this frame, or empty if the hand isn't currently tracked
+     * @param trackedHand the hand's data this frame, or empty if the hand isn't currently tracked. Joints that come from
+     *                    a held controller ({@link HandTrackingDataSource#CONTROLLER}) are treated as not tracked, as the
+     *                    hand isn't free to make gestures
      * @param headPosition the head position in world coordinates (used to estimate an aim ray)
      * @param headRotation the head rotation in world coordinates (used to estimate an aim ray)
      * @param tpf time since the last update, in seconds
      */
     public void update(Optional<TrackedHand> trackedHand, Vector3f headPosition, Quaternion headRotation, float tpf){
-        if (!trackedHand.isPresent()){
+        if (!trackedHand.isPresent() || trackedHand.get().getDataSource() == HandTrackingDataSource.CONTROLLER){
             reset();
             return;
         }

@@ -81,6 +81,7 @@ public class XrSettings{
         requiredXrExtensions.add("XR_EXT_hand_interaction"); //hand tracking gestures (pinch, grasp) as action inputs. See HandInteractionExt
         requiredXrExtensions.add("XR_META_hand_tracking_microgestures"); //META ONLY thumb tap/swipe gestures as action inputs (needs XR_EXT_hand_interaction). See MetaHandMicrogestures
         requiredXrExtensions.add("XR_FB_hand_tracking_aim"); //META ONLY per finger pinch strength and stabilised aim. See FBHandTrackingAim.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME and XrActionBaseAppState#getHandTrackingAimState
+        requiredXrExtensions.add("XR_EXT_hand_tracking_data_source"); //if hand joints come from a bare hand or a held controller (so gestures are not detected from controllers). See EXTHandTrackingDataSource.XR_EXT_HAND_TRACKING_DATA_SOURCE_EXTENSION_NAME
     }
 
     /**
