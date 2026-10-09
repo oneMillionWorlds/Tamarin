@@ -22,14 +22,23 @@ import java.util.Map;
 public final class HandJointMeasurements{
 
     /**
+     * The total bend (summed over the finger's knuckles) of a finger that still counts as fully straight (a relaxed
+     * "straight" finger is never perfectly straight).
+     */
+    static final float FINGER_STRAIGHT_BEND = 25 * FastMath.DEG_TO_RAD;
+    /**
      * The total bend (summed over the finger's knuckles) of a fully curled finger, as in a fist. Bending more than
      * this still counts as a curl of 1.
      */
-    static final float FULL_FINGER_BEND = 220 * FastMath.DEG_TO_RAD;
+    static final float FINGER_CURLED_BEND = 200 * FastMath.DEG_TO_RAD;
     /**
-     * As {@link #FULL_FINGER_BEND} but for the thumb, which has one fewer knuckle and bends less.
+     * As {@link #FINGER_STRAIGHT_BEND} but for the thumb, which has one fewer knuckle and bends less.
      */
-    static final float FULL_THUMB_BEND = 120 * FastMath.DEG_TO_RAD;
+    static final float THUMB_STRAIGHT_BEND = 15 * FastMath.DEG_TO_RAD;
+    /**
+     * As {@link #FINGER_CURLED_BEND} but for the thumb.
+     */
+    static final float THUMB_CURLED_BEND = 100 * FastMath.DEG_TO_RAD;
     /**
      * The distance from the wrist to the middle finger knuckle on an average adult hand. Distances are scaled by the
      * actual hand's size relative to this, so gestures work the same for large and small hands.
@@ -143,7 +152,7 @@ public final class HandJointMeasurements{
     }
 
     /**
-     * Sums the angle at each knuckle (between consecutive bones) and scales so a full curl is 1.
+     * Sums the angle at each knuckle (between consecutive bones) and scales so straight is 0 and a full curl is 1.
      */
     private float measureCurl(Finger finger){
         HandJoint[] fingerJoints = finger.getJoints();
@@ -157,8 +166,10 @@ public final class HandJointMeasurements{
             }
             previousBone = bone;
         }
-        float fullBend = finger == Finger.THUMB ? FULL_THUMB_BEND : FULL_FINGER_BEND;
-        return FastMath.clamp(totalBend / fullBend, 0, 1);
+        if (finger == Finger.THUMB){
+            return inverseLerpClamped(totalBend, THUMB_STRAIGHT_BEND, THUMB_CURLED_BEND);
+        }
+        return inverseLerpClamped(totalBend, FINGER_STRAIGHT_BEND, FINGER_CURLED_BEND);
     }
 
     /**

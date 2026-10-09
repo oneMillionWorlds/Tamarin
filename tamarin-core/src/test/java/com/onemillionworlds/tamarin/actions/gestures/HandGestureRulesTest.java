@@ -64,7 +64,7 @@ class HandGestureRulesTest{
     @Test
     void gestureStaysActiveBetweenTheThresholds(){
         HandGestureRules rules = new HandGestureRules();
-        // 3 knuckles of 47 degrees is a curl of ~0.64, between the deactivate and activate thresholds
+        // 3 knuckles of 47 degrees is a curl of ~0.66, between the deactivate and activate thresholds
         SyntheticHand partlyCurled = SyntheticHand.openHand().curlAllFingers(47).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.02f);
 
         assertFalse(apply(new HandGestureRules(), partlyCurled).isFist(), "Shouldn't activate from scratch");
@@ -76,7 +76,7 @@ class HandGestureRulesTest{
     @Test
     void resetDeactivatesGestures(){
         HandGestureRules rules = new HandGestureRules();
-        // 3 knuckles of 47 degrees is a curl of ~0.64, between the deactivate and activate thresholds
+        // 3 knuckles of 47 degrees is a curl of ~0.66, between the deactivate and activate thresholds
         SyntheticHand partlyCurled = SyntheticHand.openHand().curlAllFingers(47).thumbTipNear(HandJoint.INDEX_INTERMEDIATE_EXT, 0.02f);
         apply(rules, fist());
 

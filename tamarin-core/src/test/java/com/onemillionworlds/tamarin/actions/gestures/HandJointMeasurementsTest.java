@@ -19,11 +19,19 @@ class HandJointMeasurementsTest{
     }
 
     @Test
-    void curlIsTheTotalKnuckleBendOverAFullCurl(){
-        // 3 knuckles of 40 degrees is 120 out of the full 220
+    void curlIsTheTotalKnuckleBendBetweenStraightAndFullyCurled(){
+        // 3 knuckles of 40 degrees is 120, between straight (25) and fully curled (200)
         HandJointMeasurements measurements = new HandJointMeasurements(SyntheticHand.openHand().curlFinger(Finger.MIDDLE, 40).joints());
 
-        assertEquals(120f / 220f, measurements.getCurl(Finger.MIDDLE), 0.001f);
+        assertEquals((120f - 25f) / (200f - 25f), measurements.getCurl(Finger.MIDDLE), 0.001f);
+        assertEquals(0, measurements.getCurl(Finger.INDEX), 0.001f);
+    }
+
+    @Test
+    void slightlyBentFingerCountsAsStraight(){
+        // 3 knuckles of 8 degrees is 24, within the straight allowance
+        HandJointMeasurements measurements = new HandJointMeasurements(SyntheticHand.openHand().curlFinger(Finger.INDEX, 8).joints());
+
         assertEquals(0, measurements.getCurl(Finger.INDEX), 0.001f);
     }
 
@@ -35,11 +43,11 @@ class HandJointMeasurementsTest{
     }
 
     @Test
-    void thumbCurlUsesItsOwnFullCurl(){
-        // 2 knuckles of 30 degrees is 60 out of the full 120
+    void thumbCurlUsesItsOwnStraightAndCurledBends(){
+        // 2 knuckles of 30 degrees is 60, between straight (15) and fully curled (100)
         HandJointMeasurements measurements = new HandJointMeasurements(SyntheticHand.openHand().thumb(new Vector3f(-1, 0, 0), Vector3f.UNIT_Y, 30).joints());
 
-        assertEquals(0.5f, measurements.getCurl(Finger.THUMB), 0.001f);
+        assertEquals((60f - 15f) / (100f - 15f), measurements.getCurl(Finger.THUMB), 0.001f);
     }
 
     @Test
