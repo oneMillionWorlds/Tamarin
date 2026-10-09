@@ -6,6 +6,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.onemillionworlds.tamarin.actions.ActionType;
 import com.onemillionworlds.tamarin.actions.HandSide;
+import com.onemillionworlds.tamarin.actions.RuntimeActionState;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.Action;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -18,6 +19,7 @@ import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
+import com.onemillionworlds.tamarin.handgestures.TrackedHand;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.openxrbindings.BufferUtils;
@@ -194,6 +196,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             throw new RuntimeException("No starting action sets specified, that means no actions will be usable. Probably not what you want. If you really really want that then set anything here then call setActiveActionSets() with no arguments later");
         }
         this.pendingActions = new PendingActions(manifest, startingActionSets);
+        registerGestureBindings(manifest);
     }
 
 
@@ -251,6 +254,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 results.add(localisedName);
             }
         }
+        results.addAll(describeGestureBindings(actionHandle));
         return results;
     }
 
@@ -468,6 +472,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             activeActionSetsBuffer.get(i).actionSet(activeActionSets.get(i));
         }
         this.xrActionsSyncInfo.activeActionSets(activeActionSetsBuffer);
+        recordActiveActionSets(actionSets);
     }
 
     private static ByteBuffer stringToByte(String str){
@@ -515,7 +520,10 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         if (!isReady()){
             return new BooleanActionState(false, false);
         }
+        return combineBooleanWithGestureBindings(action, restrictToInput, subActionPath -> runtimeBooleanActionState(action, subActionPath));
+    }
 
+    private RuntimeActionState runtimeBooleanActionState(ActionHandle action, String restrictToInput){
         try(MemoryStack stack = MemoryStack.stackGet().push()){
             XrActionStateBoolean actionState = XrActionStateBoolean.calloc(stack);
             actionState.type$Default();
@@ -533,7 +541,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             }
             checkResponseCode("getActionState", responseCode);
 
-            return new BooleanActionState(actionState.currentState() !=0, actionState.changedSinceLastSync() !=0);
+            return RuntimeActionState.ofBoolean(actionState.currentState() != 0, actionState.changedSinceLastSync() != 0, actionState.isActive() != 0);
         }
     }
 
@@ -688,6 +696,18 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         if (!isReady() || !xrAppState.checkExtensionLoaded(XR10Constants.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME)){
             return Optional.empty();
         }
+        return locateTrackedHand(handSide).flatMap(TrackedHand::getRuntimeAimState);
+    }
+
+    /**
+     * Locates all the hand's joints (in world coordinates) and, if XR_FB_hand_tracking_aim is available, the runtime's
+     * own gesture recognition (which is chained onto the same call).
+     */
+    @Override
+    protected Optional<TrackedHand> locateTrackedHand(HandSide handSide){
+        if (!isReady()){
+            return Optional.empty();
+        }
         XrHandTrackerEXT handTracker = handTrackers.get(handSide);
         if (handTracker == null){
             return Optional.empty();
@@ -700,14 +720,16 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 return Optional.empty();
             }
 
-            XrHandTrackingAimStateFB aimState = XrHandTrackingAimStateFB.calloc(stack)
-                    .type$Default();
-
-            // the aim state is chained onto a normal joint location request, the joints themselves are not used
             XrHandJointLocationsEXT handJointLocations = XrHandJointLocationsEXT.calloc(stack)
                     .type$Default()
-                    .next(aimState)
                     .jointLocations(XrHandJointLocationEXT.calloc(XR10Constants.XR_HAND_JOINT_COUNT_EXT, stack));
+
+            XrHandTrackingAimStateFB aimState = null;
+            if (xrAppState.checkExtensionLoaded(XR10Constants.XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME)){
+                aimState = XrHandTrackingAimStateFB.calloc(stack)
+                        .type$Default();
+                handJointLocations.next(aimState);
+            }
 
             XrSpace stageSpace = getOrCreateReferenceSpace(XrReferenceSpaceType.REFERENCE_SPACE_TYPE_STAGE);
 
@@ -716,24 +738,42 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                     .baseSpace(stageSpace)
                     .time(predictedTime);
 
-            boolean success = withResponseCodeLogging("Get hand tracking aim state", XR10.xrLocateHandJointsEXT(handTracker, locateInfo, handJointLocations));
+            boolean success = withResponseCodeLogging("Locate tracked hand", XR10.xrLocateHandJointsEXT(handTracker, locateInfo, handJointLocations));
             if (!success || handJointLocations.isActive() == XR10Constants.XR_FALSE){
                 return Optional.empty();
             }
 
             Node observer = xrAppState.getObserver();
-            Vector3f aimPosition = observer.localToWorld(xrVector3fToJME(aimState.aimPose().position$()), null);
-            Quaternion aimOrientation = observer.getWorldRotation().mult(xrQuaternionToJme(aimState.aimPose().orientation()));
+            Quaternion observerRotation = observer.getWorldRotation();
+            float observerScale = observer.getWorldScale().x;
 
-            return Optional.of(new HandTrackingAimState(
-                    aimState.status(),
-                    aimPosition,
-                    aimOrientation,
-                    aimState.pinchStrengthIndex(),
-                    aimState.pinchStrengthMiddle(),
-                    aimState.pinchStrengthRing(),
-                    aimState.pinchStrengthLittle()
-            ));
+            Map<HandJoint, BonePose> worldJoints = new EnumMap<>(HandJoint.class);
+            XrHandJointLocationEXT.Buffer jointLocations = handJointLocations.jointLocations();
+            for(HandJoint joint : HandJoint.values()){
+                XrHandJointLocationEXT jointLocation = jointLocations.get(joint.getJointIndex());
+                long locationFlags = jointLocation.locationFlags();
+                if ((locationFlags & XR10Constants.XR_SPACE_LOCATION_POSITION_VALID_BIT) == 0 || (locationFlags & XR10Constants.XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) == 0){
+                    return Optional.empty();
+                }
+                worldJoints.put(joint, new BonePose(
+                        observer.localToWorld(xrVector3fToJME(jointLocation.pose().position$()), null),
+                        observerRotation.mult(xrQuaternionToJme(jointLocation.pose().orientation())),
+                        jointLocation.radius() * observerScale));
+            }
+
+            Optional<HandTrackingAimState> runtimeAimState = Optional.empty();
+            if (aimState != null){
+                runtimeAimState = Optional.of(new HandTrackingAimState(
+                        aimState.status(),
+                        observer.localToWorld(xrVector3fToJME(aimState.aimPose().position$()), null),
+                        observerRotation.mult(xrQuaternionToJme(aimState.aimPose().orientation())),
+                        aimState.pinchStrengthIndex(),
+                        aimState.pinchStrengthMiddle(),
+                        aimState.pinchStrengthRing(),
+                        aimState.pinchStrengthLittle()
+                ));
+            }
+            return Optional.of(new TrackedHand(worldJoints, runtimeAimState));
         }
     }
 
@@ -742,7 +782,10 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
         if (!isReady()){
             return new FloatActionState(0, false);
         }
+        return combineFloatWithGestureBindings(action, restrictToInput, subActionPath -> runtimeFloatActionState(action, subActionPath));
+    }
 
+    private RuntimeActionState runtimeFloatActionState(ActionHandle action, String restrictToInput){
         try(MemoryStack stack = MemoryStack.stackGet().push()) {
             XrActionStateFloat actionState = XrActionStateFloat.calloc(stack);
             actionState.type$Default();
@@ -758,7 +801,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                 throw new IncorrectActionTypeException("Called for the float action but the action is not of that type");
             }
             checkResponseCode("getActionState", responseCode);
-            return new FloatActionState(actionState.currentState(), actionState.changedSinceLastSync() == XR10Constants.XR_TRUE);
+            return new RuntimeActionState(actionState.currentState(), actionState.changedSinceLastSync() == XR10Constants.XR_TRUE, actionState.isActive() == XR10Constants.XR_TRUE);
         }
     }
 

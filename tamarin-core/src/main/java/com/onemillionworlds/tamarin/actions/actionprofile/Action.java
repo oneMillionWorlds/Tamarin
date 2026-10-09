@@ -13,6 +13,7 @@ import com.onemillionworlds.tamarin.actions.controllerprofile.MixedRealityMotion
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusGoController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusTouchController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.ValveIndexController;
+import com.onemillionworlds.tamarin.handgestures.HandGesture;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,6 +49,11 @@ public class Action{
 
     private final Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding;
 
+    /**
+     * Tamarin side (synthetic) bindings of hand gestures to this action.
+     */
+    private final List<GestureBinding> gestureBindings;
+
     public Action(ActionHandle actionHandle, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings){
         this.actionHandle = actionHandle;
         this.translatedName = translatedName;
@@ -55,6 +61,7 @@ public class Action{
         this.suggestedBindings = suggestedBindings;
         this.supportedSubActionPaths = DEFAULT_SUB_ACTIONS;
         this.desktopSimulationKeybinding = new HashMap<>();
+        this.gestureBindings = List.of();
     }
 
     public Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths){
@@ -64,15 +71,17 @@ public class Action{
         this.suggestedBindings = suggestedBindings;
         this.supportedSubActionPaths = supportedSubActionPaths;
         this.desktopSimulationKeybinding = new HashMap<>();
+        this.gestureBindings = List.of();
     }
 
-    private Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths, Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding){
+    private Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths, Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding, List<GestureBinding> gestureBindings){
         this.actionHandle = actionName;
         this.translatedName = translatedName;
         this.actionType = actionType;
         this.suggestedBindings = suggestedBindings;
         this.supportedSubActionPaths = supportedSubActionPaths;
         this.desktopSimulationKeybinding = desktopSimulationKeybinding;
+        this.gestureBindings = gestureBindings;
     }
 
     public String getActionName(){
@@ -113,6 +122,13 @@ public class Action{
         return desktopSimulationKeybinding;
     }
 
+    /**
+     * Tamarin side (synthetic) bindings of hand gestures to this action. See {@link ActionBuilder#withGestureBinding}.
+     */
+    public List<GestureBinding> getGestureBindings(){
+        return gestureBindings;
+    }
+
     @SuppressWarnings("unused")
     public static ActionBuilder builder(){
         return new ActionBuilder();
@@ -132,6 +148,8 @@ public class Action{
         private List<String> supportedSubActionPaths = DEFAULT_SUB_ACTIONS;
 
         private Map<String,DesktopSimulationKeybinding> desktopDebugKeyTrigger = new HashMap<>();
+
+        private final List<GestureBinding> gestureBindings = new ArrayList<>();
 
         /**
          * This is used to identify the action when you want to programatically interact with it e.g. getting an actions value. It is anticipated that
@@ -389,6 +407,44 @@ public class Action{
             return this;
         }
 
+        /**
+         * Binds a hand gesture (made with a bare, tracked hand) to this action. Unlike suggested bindings this is
+         * done by Tamarin, not the OpenXR runtime: each frame Tamarin checks the gesture and combines it with the
+         * runtime's value for the action. By default either can turn the action on (a float action takes the larger
+         * value), {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#setHandGestureSourcePreference}
+         * can instead give the runtime's or Tamarin's bindings precedence. Game code just reads the action as normal
+         * and doesn't need to know about the gesture.
+         * <p>
+         *     For example:
+         * </p>
+         * <pre>{@code
+         * .withGestureBinding(HandSide.LEFT, HandGestures.thumbsUp())
+         * .withGestureBinding(HandSide.RIGHT, HandGestures.thumbsUp())
+         * }</pre>
+         * <p>
+         *     Things to be aware of:
+         * </p>
+         * <ul>
+         *     <li>Only boolean and float actions can have gesture bindings.</li>
+         *     <li>Gesture bindings respect the active action sets, like normal bindings.</li>
+         *     <li>The runtime doesn't know about these bindings, so they won't appear in its rebinding UI (but they are
+         *     included in {@link com.onemillionworlds.tamarin.actions.XrActionBaseAppState#getLocalisedButtonNameForAction}).</li>
+         *     <li>Gestures only work when the hand is being tracked as a bare hand (not holding a controller). Some
+         *     runtimes (e.g. SteamVR with Index controllers) report hand joints synthesised from the controller, in which
+         *     case gestures may also trigger while holding the controller.</li>
+         *     <li>Prefer a runtime binding where one exists (e.g. {@link HandInteractionExt} pinch or grasp), it
+         *     will be better tuned.</li>
+         *     <li>An action may have only gesture bindings (no suggested bindings).</li>
+         * </ul>
+         *
+         * @param handSide the hand that makes the gesture
+         * @param gesture the gesture, see {@link com.onemillionworlds.tamarin.handgestures.HandGestures}
+         */
+        public ActionBuilder withGestureBinding(HandSide handSide, HandGesture gesture){
+            this.gestureBindings.add(new GestureBinding(handSide, gesture));
+            return this;
+        }
+
         public Action build(){
             if(actionHandle == null){
                 throw new IllegalArgumentException("actionHandle cannot be null");
@@ -399,13 +455,21 @@ public class Action{
             if(actionType == null){
                 throw new IllegalArgumentException("actionType cannot be null");
             }
-            if(suggestedBindings.isEmpty()){
-                throw new IllegalArgumentException("suggestedBindings cannot be empty");
+            if(suggestedBindings.isEmpty() && gestureBindings.isEmpty()){
+                throw new IllegalArgumentException("suggestedBindings cannot be empty (unless there are gesture bindings)");
             }
             if(actionType != ActionType.BOOLEAN && actionType != ActionType.FLOAT && !desktopDebugKeyTrigger.isEmpty()){
                 throw new IllegalArgumentException("desktopDebugKeyTrigger can only be set for boolean and float actions");
             }
-            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths, desktopDebugKeyTrigger);
+            if(actionType != ActionType.BOOLEAN && actionType != ActionType.FLOAT && !gestureBindings.isEmpty()){
+                throw new IllegalArgumentException("gesture bindings can only be set for boolean and float actions");
+            }
+            for(GestureBinding gestureBinding : gestureBindings){
+                if (!supportedSubActionPaths.contains(gestureBinding.getHandSide().restrictToInputString)){
+                    throw new IllegalArgumentException("gesture binding for " + gestureBinding.getHandSide() + " but the action doesn't support the sub action path " + gestureBinding.getHandSide().restrictToInputString);
+                }
+            }
+            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths, desktopDebugKeyTrigger, List.copyOf(gestureBindings));
         }
 
     }

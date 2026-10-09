@@ -2,6 +2,7 @@ package com.onemillionworlds.tamarin.actions.state;
 
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.onemillionworlds.tamarin.handgestures.Finger;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,10 +15,10 @@ class HandTrackingAimStateTest{
     void pinchFlagsAreDecodedPerFinger(){
         HandTrackingAimState state = stateWithStatus(HandTrackingAimState.MIDDLE_PINCHING_BIT | HandTrackingAimState.LITTLE_PINCHING_BIT);
 
-        assertFalse(state.isPinching(HandTrackingAimState.PinchFinger.INDEX));
-        assertTrue(state.isPinching(HandTrackingAimState.PinchFinger.MIDDLE));
-        assertFalse(state.isPinching(HandTrackingAimState.PinchFinger.RING));
-        assertTrue(state.isPinching(HandTrackingAimState.PinchFinger.LITTLE));
+        assertFalse(state.isPinching(Finger.INDEX));
+        assertTrue(state.isPinching(Finger.MIDDLE));
+        assertFalse(state.isPinching(Finger.RING));
+        assertTrue(state.isPinching(Finger.LITTLE));
     }
 
     @Test
@@ -41,10 +42,10 @@ class HandTrackingAimStateTest{
     void pinchStrengthsAreReturnedForTheRightFinger(){
         HandTrackingAimState state = new HandTrackingAimState(0, new Vector3f(), new Quaternion(), 0.1f, 0.2f, 0.3f, 0.4f);
 
-        assertEquals(0.1f, state.getPinchStrength(HandTrackingAimState.PinchFinger.INDEX));
-        assertEquals(0.2f, state.getPinchStrength(HandTrackingAimState.PinchFinger.MIDDLE));
-        assertEquals(0.3f, state.getPinchStrength(HandTrackingAimState.PinchFinger.RING));
-        assertEquals(0.4f, state.getPinchStrength(HandTrackingAimState.PinchFinger.LITTLE));
+        assertEquals(0.1f, state.getPinchStrength(Finger.INDEX));
+        assertEquals(0.2f, state.getPinchStrength(Finger.MIDDLE));
+        assertEquals(0.3f, state.getPinchStrength(Finger.RING));
+        assertEquals(0.4f, state.getPinchStrength(Finger.LITTLE));
     }
 
     private static HandTrackingAimState stateWithStatus(long status){

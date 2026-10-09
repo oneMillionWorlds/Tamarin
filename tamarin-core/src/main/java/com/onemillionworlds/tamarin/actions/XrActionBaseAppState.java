@@ -3,13 +3,20 @@ package com.onemillionworlds.tamarin.actions;
 import com.jme3.anim.Armature;
 import com.jme3.anim.Joint;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import com.onemillionworlds.tamarin.actions.state.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.PoseActionState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
+import com.onemillionworlds.tamarin.handgestures.HandGestureSourcePreference;
+import com.onemillionworlds.tamarin.handgestures.HandGestureState;
+import com.onemillionworlds.tamarin.handgestures.HandGestureTracker;
+import com.onemillionworlds.tamarin.handgestures.TrackedHand;
 import com.onemillionworlds.tamarin.handskeleton.HandJoint;
 import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
@@ -17,9 +24,11 @@ import com.onemillionworlds.tamarin.openxr.GameplayInterrupt;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 public abstract class XrActionBaseAppState extends BaseAppState{
 
@@ -38,8 +47,25 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     private final ObservableDataEventSubscription<HandSide> controllerLostForInterrupts = interactionProfileTracker.controllerLost.subscribe();
     private final ObservableDataEventSubscription<HandSide> controllerRegainedForInterrupts = interactionProfileTracker.controllerRegained.subscribe();
 
+    private final Map<HandSide, HandGestureTracker> handGestureTrackers = new EnumMap<>(HandSide.class);
+
+    private HandGestureSourcePreference handGestureSourcePreference = HandGestureSourcePreference.AUTOMATIC;
+
+    /**
+     * Hand gestures are only tracked once something has asked for them (to avoid the cost for applications that
+     * don't use them)
+     */
+    private boolean handGesturesRequested = false;
+
+    private SyntheticGestureBindings syntheticGestureBindings = SyntheticGestureBindings.none();
+
+    private List<String> activeActionSetNames = List.of();
+
     public XrActionBaseAppState(){
         super(ID);
+        for(HandSide handSide : HandSide.values()){
+            handGestureTrackers.put(handSide, new HandGestureTracker(handSide));
+        }
     }
 
     @Override
@@ -48,6 +74,32 @@ public abstract class XrActionBaseAppState extends BaseAppState{
         time += tpf;
         interactionProfileTracker.tick(isAlreadyPaused(), time);
         forwardControllerInterrupts();
+        updateHandGestures(tpf);
+    }
+
+    private void updateHandGestures(float tpf){
+        if (!handGesturesRequested && !syntheticGestureBindings.hasAny()){
+            return;
+        }
+        Map<HandSide, Optional<TrackedHand>> trackedHands = new EnumMap<>(HandSide.class);
+        boolean anyTracked = false;
+        for(HandSide handSide : HandSide.values()){
+            Optional<TrackedHand> trackedHand = locateTrackedHand(handSide);
+            trackedHands.put(handSide, trackedHand);
+            anyTracked |= trackedHand.isPresent();
+        }
+
+        Vector3f headPosition = new Vector3f();
+        Quaternion headRotation = new Quaternion();
+        XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
+        if (anyTracked && xrAppState != null){
+            headPosition = xrAppState.getVrCameraPosition();
+            headRotation = xrAppState.getVrCameraRotation();
+        }
+        for(HandSide handSide : HandSide.values()){
+            handGestureTrackers.get(handSide).update(trackedHands.get(handSide), headPosition, headRotation, tpf);
+        }
+        syntheticGestureBindings.update(handSide -> handGestureTrackers.get(handSide).getState(handGestureSourcePreference), activeActionSetNames, handGestureSourcePreference);
     }
 
     private void forwardControllerInterrupts(){
@@ -186,6 +238,109 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      */
     public Optional<HandTrackingAimState> getHandTrackingAimState(HandSide handSide){
         return Optional.empty();
+    }
+
+    /**
+     * Gets the gestures a bare (tracked) hand is making: per finger pinches, an aim ray, finger curl, fist, point,
+     * thumbs up and palm direction. See {@link HandGestureState} for details.
+     * <p>
+     *     Pinches and the aim ray come from the runtime's own gesture recognition where available (currently Meta
+     *     runtimes), otherwise from Tamarin's own recognition based on the positions of the hand's joints. This can be
+     *     controlled with {@link #setHandGestureSourcePreference}. Everything else is always Tamarin's.
+     * </p>
+     * <p>
+     *     Returns empty if the hand isn't currently tracked as a bare hand (e.g. the user is holding a controller),
+     *     if hand tracking isn't supported, or in desktop simulation.
+     * </p>
+     * <p>
+     *     Hand gestures are only tracked once this has been called (or the action manifest contains gesture
+     *     bindings), so the very first call will return empty. Call it every frame.
+     * </p>
+     *
+     * @param handSide the hand
+     * @return the hand's gestures, if available
+     */
+    public Optional<HandGestureState> getHandGestureState(HandSide handSide){
+        return getHandGestureState(handSide, handGestureSourcePreference);
+    }
+
+    /**
+     * As {@link #getHandGestureState(HandSide)}, but forces a particular source for the pinches and aim ray for
+     * this call only (ignoring {@link #setHandGestureSourcePreference}). Mostly useful for comparing the runtime's
+     * and Tamarin's gesture recognition.
+     *
+     * @param handSide the hand
+     * @param preference which source to use for pinches and aim
+     * @return the hand's gestures, if available
+     */
+    public Optional<HandGestureState> getHandGestureState(HandSide handSide, HandGestureSourcePreference preference){
+        handGesturesRequested = true;
+        return handGestureTrackers.get(handSide).getState(preference);
+    }
+
+    /**
+     * Controls where the pinches and aim ray in {@link #getHandGestureState(HandSide)} come from, and whether actions
+     * with gesture bindings combine them with the runtime's bindings or give one precedence. See
+     * {@link HandGestureSourcePreference}. Defaults to {@link HandGestureSourcePreference#AUTOMATIC}.
+     */
+    public void setHandGestureSourcePreference(HandGestureSourcePreference handGestureSourcePreference){
+        this.handGestureSourcePreference = handGestureSourcePreference;
+    }
+
+    public HandGestureSourcePreference getHandGestureSourcePreference(){
+        return handGestureSourcePreference;
+    }
+
+    /**
+     * For VR implementations to provide the raw hand tracking data (joints in world coordinates, plus the runtime's
+     * gesture recognition if available) used for hand gestures. Called once per hand per frame, only if hand gestures
+     * are in use.
+     *
+     * @return the hand's data, or empty if the hand isn't tracked (or hand tracking isn't supported)
+     */
+    protected Optional<TrackedHand> locateTrackedHand(HandSide handSide){
+        return Optional.empty();
+    }
+
+    /**
+     * For VR implementations to register the gesture bindings in the action manifest.
+     */
+    protected void registerGestureBindings(ActionManifest manifest){
+        this.syntheticGestureBindings = new SyntheticGestureBindings(manifest);
+    }
+
+    /**
+     * For VR implementations to report which action sets are active (gesture bindings in inactive sets are ignored).
+     */
+    protected void recordActiveActionSets(List<String> actionSetNames){
+        this.activeActionSetNames = List.copyOf(actionSetNames);
+    }
+
+    /**
+     * For VR implementations to work out a boolean action's state from the runtime's state and any gesture bindings.
+     * The runtime state function may be called several times (once per hand) when the action has gesture bindings.
+     *
+     * @param runtimeState gets the runtime's state of the action for a sub action path (or null for all)
+     */
+    protected BooleanActionState combineBooleanWithGestureBindings(ActionHandle action, String restrictToInput, Function<String, RuntimeActionState> runtimeState){
+        return syntheticGestureBindings.combineBoolean(action, restrictToInput, runtimeState);
+    }
+
+    /**
+     * For VR implementations to work out a float action's state from the runtime's state and any gesture bindings.
+     * The runtime state function may be called several times (once per hand) when the action has gesture bindings.
+     *
+     * @param runtimeState gets the runtime's state of the action for a sub action path (or null for all)
+     */
+    protected FloatActionState combineFloatWithGestureBindings(ActionHandle action, String restrictToInput, Function<String, RuntimeActionState> runtimeState){
+        return syntheticGestureBindings.combineFloat(action, restrictToInput, runtimeState);
+    }
+
+    /**
+     * For VR implementations to add descriptions of gesture bindings to {@link #getLocalisedButtonNameForAction}.
+     */
+    protected List<String> describeGestureBindings(ActionHandle action){
+        return syntheticGestureBindings.describe(action);
     }
 
     /**

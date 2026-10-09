@@ -2,6 +2,7 @@ package com.onemillionworlds.tamarin.actions.state;
 
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.onemillionworlds.tamarin.handgestures.Finger;
 
 /**
  * <b>META ONLY.</b> The extra gesture information a Meta runtime provides for a tracked bare hand via the
@@ -25,10 +26,6 @@ public class HandTrackingAimState{
     static final long SYSTEM_GESTURE_BIT = 0x00000040L;
     static final long DOMINANT_HAND_BIT = 0x00000080L;
     static final long MENU_PRESSED_BIT = 0x00000100L;
-
-    public enum PinchFinger{
-        INDEX, MIDDLE, RING, LITTLE
-    }
 
     private final long status;
 
@@ -62,27 +59,29 @@ public class HandTrackingAimState{
      * How strongly the thumb is pinching the given finger. Range 0 to 1, with 1 meaning the finger and thumb
      * are fully touching.
      */
-    public float getPinchStrength(PinchFinger finger){
+    public float getPinchStrength(Finger finger){
         switch(finger){
             case INDEX: return pinchStrengthIndex;
             case MIDDLE: return pinchStrengthMiddle;
             case RING: return pinchStrengthRing;
             case LITTLE: return pinchStrengthLittle;
-            default: throw new IllegalArgumentException("Unknown finger " + finger);
+            default: throw new IllegalArgumentException("The thumb can't pinch against itself, use INDEX, MIDDLE, RING or LITTLE");
         }
     }
 
     /**
      * The runtime's own discrete (on/off) decision on whether the thumb is pinching the given finger. Prefer this
      * over applying a threshold to {@link #getPinchStrength} because the runtime tunes it (and handles hysteresis).
+     * Note that (in testing on a Quest) the ring and little finger flags need a very clear, deliberate pinch with the
+     * other fingers held out of the way.
      */
-    public boolean isPinching(PinchFinger finger){
+    public boolean isPinching(Finger finger){
         switch(finger){
             case INDEX: return hasFlag(INDEX_PINCHING_BIT);
             case MIDDLE: return hasFlag(MIDDLE_PINCHING_BIT);
             case RING: return hasFlag(RING_PINCHING_BIT);
             case LITTLE: return hasFlag(LITTLE_PINCHING_BIT);
-            default: throw new IllegalArgumentException("Unknown finger " + finger);
+            default: throw new IllegalArgumentException("The thumb can't pinch against itself, use INDEX, MIDDLE, RING or LITTLE");
         }
     }
 
