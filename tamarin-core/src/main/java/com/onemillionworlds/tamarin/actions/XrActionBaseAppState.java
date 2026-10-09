@@ -28,6 +28,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public abstract class XrActionBaseAppState extends BaseAppState{
@@ -43,6 +44,7 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     private final GestureBindingLayer<HandTrackingAimState> aimStateGestures = GestureBindingLayer.aimStateDetected();
     private ActionManifest gestureManifest = new ActionManifest(List.of());
     private HandGestureSourcePreference handGestureSourcePreference = HandGestureSourcePreference.AUTOMATIC;
+    private Set<String> activeActionSetNames = Set.of();
     private final EnumMap<HandSide, HandGestureRules> gestureRules = new EnumMap<>(Map.of(HandSide.LEFT, new HandGestureRules(), HandSide.RIGHT, new HandGestureRules()));
 
     /**
@@ -118,6 +120,14 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @param actionSets the names of the action sets
      */
     public abstract void setActiveActionSets(List<String> actionSets);
+
+    /**
+     * Implementations should call this from {@link #setActiveActionSets(List)}, so that gesture bindings (which
+     * Tamarin evaluates, not the runtime) also only work while their action set is active.
+     */
+    protected void recordActiveActionSets(List<String> actionSets){
+        activeActionSetNames = Set.copyOf(actionSets);
+    }
 
     public abstract void doNotSuppressRepeatedErrors();
 
@@ -299,6 +309,10 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * runtime's XR_FB_hand_tracking_aim state, layered on top of the action's ordinary bindings.
      */
     protected BooleanActionState combineWithGestures(ActionHandle action, String restrictToInput, BooleanActionState runtimeState){
+        if (!activeActionSetNames.contains(action.actionSetName())){
+            // like the runtime's bindings, gesture bindings only work while their action set is active
+            return runtimeState;
+        }
         BooleanActionState withTamarinGestures = tamarinGestures.combine(action, restrictToInput, runtimeState);
         return aimStateGestures.combine(action, restrictToInput, withTamarinGestures);
     }
@@ -309,6 +323,9 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * ordinary bindings' value and the bound gestures' strengths.
      */
     protected FloatActionState combineWithGestures(ActionHandle action, String restrictToInput, FloatActionState runtimeState){
+        if (!activeActionSetNames.contains(action.actionSetName())){
+            return runtimeState;
+        }
         FloatActionState withTamarinGestures = tamarinGestures.combine(action, restrictToInput, runtimeState);
         return aimStateGestures.combine(action, restrictToInput, withTamarinGestures);
     }

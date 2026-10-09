@@ -493,6 +493,7 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
             }
             activeActionSets.add(actionSetXr);
         }
+        recordActiveActionSets(actionSets);
 
         this.xrActionsSyncInfo = XrActionsSyncInfo.create();
         this.xrActionsSyncInfo.type$Default();
