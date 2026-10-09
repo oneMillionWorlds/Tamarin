@@ -786,7 +786,7 @@ public class XrActionAppState extends XrActionBaseAppState{
                 throw new IncorrectActionTypeException("Called for the float action but the action is not of that type");
             }
             checkResponseCode("getActionState", responseCode);
-            return new FloatActionState(actionState.currentState(), actionState.changedSinceLastSync());
+            return combineWithGestures(action, restrictToInput, new FloatActionState(actionState.currentState(), actionState.changedSinceLastSync()));
         }
     }
 

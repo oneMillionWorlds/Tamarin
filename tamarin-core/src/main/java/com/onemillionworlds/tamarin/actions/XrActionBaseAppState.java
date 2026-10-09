@@ -270,6 +270,16 @@ public abstract class XrActionBaseAppState extends BaseAppState{
     }
 
     /**
+     * As {@link #combineWithGestures(ActionHandle, String, BooleanActionState)} but for float actions, where gestures
+     * contribute how strongly they are being made (e.g. how close a pinch is). The action's value is the largest of the
+     * ordinary bindings' value and the bound gestures' strengths.
+     */
+    protected FloatActionState combineWithGestures(ActionHandle action, String restrictToInput, FloatActionState runtimeState){
+        FloatActionState withTamarinGestures = tamarinGestures.combine(action, restrictToInput, runtimeState);
+        return aimStateGestures.combine(action, restrictToInput, withTamarinGestures);
+    }
+
+    /**
      * Gets the current state of the action (abstract version of a button press).
      * <p>
      * This is called for analog style actions (most commonly triggers but button pressure can also be mapped in analog).

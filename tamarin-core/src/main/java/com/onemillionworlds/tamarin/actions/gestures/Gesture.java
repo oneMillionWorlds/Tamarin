@@ -25,19 +25,22 @@ public enum Gesture {
             "Pinch Thumb and middle finger",
             state -> state.isPinching(Finger.MIDDLE),
             state -> state.getPinchStrength(Finger.MIDDLE),
-            aimState -> aimState.isPinching(Finger.MIDDLE)
+            aimState -> aimState.isPinching(Finger.MIDDLE),
+            aimState -> aimState.getPinchStrength(Finger.MIDDLE)
     ),
     PINCH_RING(
             "Pinch Thumb and ring finger",
             state -> state.isPinching(Finger.RING),
             state -> state.getPinchStrength(Finger.RING),
-            aimState -> aimState.isPinching(Finger.RING)
+            aimState -> aimState.isPinching(Finger.RING),
+            aimState -> aimState.getPinchStrength(Finger.RING)
     ),
     PINCH_LITTLE_FINGER(
             "Pinch Thumb and little finger",
             state -> state.isPinching(Finger.LITTLE),
             state -> state.getPinchStrength(Finger.LITTLE),
-            aimState -> aimState.isPinching(Finger.LITTLE)
+            aimState -> aimState.isPinching(Finger.LITTLE),
+            aimState -> aimState.getPinchStrength(Finger.LITTLE)
     ),
 
     FIST("Fist",
@@ -69,6 +72,8 @@ public enum Gesture {
      */
     final Optional<Function<HandTrackingAimState, Boolean>> aimStateBooleanEvaluator;
 
+    final Optional<Function<HandTrackingAimState, Float>> aimStateFloatEvaluator;
+
     final Optional<String> runtimeEquivalentRequiredExtension;
 
     /**
@@ -80,6 +85,7 @@ public enum Gesture {
         this.floatEvaluator = floatEvaluator;
         this.runtimeEquivalentBinding = Optional.empty();
         this.aimStateBooleanEvaluator = Optional.empty();
+        this.aimStateFloatEvaluator = Optional.empty();
         this.runtimeEquivalentRequiredExtension = Optional.empty();
     }
 
@@ -92,18 +98,20 @@ public enum Gesture {
         this.floatEvaluator = floatEvaluator;
         this.runtimeEquivalentBinding = Optional.of(runtimeEquivalentBinding);
         this.aimStateBooleanEvaluator = Optional.empty();
+        this.aimStateFloatEvaluator = Optional.empty();
         this.runtimeEquivalentRequiredExtension = Optional.of(runtimeEquivalentRequiredExtension);
     }
 
     /**
      * A gesture the runtime can detect via XR_FB_hand_tracking_aim (if the extension is loaded).
      */
-    Gesture(String description, Function<HandGestureTamarinProvidedState, Boolean> booleanEvaluator, Function<HandGestureTamarinProvidedState, Float> floatEvaluator, Function<HandTrackingAimState, Boolean> aimStateBooleanEvaluator) {
+    Gesture(String description, Function<HandGestureTamarinProvidedState, Boolean> booleanEvaluator, Function<HandGestureTamarinProvidedState, Float> floatEvaluator, Function<HandTrackingAimState, Boolean> aimStateBooleanEvaluator, Function<HandTrackingAimState, Float> aimStateFloatEvaluator) {
         this.description = description;
         this.booleanEvaluator = booleanEvaluator;
         this.floatEvaluator = floatEvaluator;
         this.runtimeEquivalentBinding = Optional.empty();
         this.aimStateBooleanEvaluator = Optional.of(aimStateBooleanEvaluator);
+        this.aimStateFloatEvaluator = Optional.of(aimStateFloatEvaluator);
         this.runtimeEquivalentRequiredExtension = Optional.of(HandTrackingAimState.REQUIRED_EXTENSION);
     }
 

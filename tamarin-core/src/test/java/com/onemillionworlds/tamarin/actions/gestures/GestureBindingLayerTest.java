@@ -9,6 +9,7 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.controllerprofile.HandInteractionExt;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusTouchController;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
+import com.onemillionworlds.tamarin.actions.state.FloatActionState;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -25,8 +26,10 @@ class GestureBindingLayerTest{
     private static final ActionHandle PINCH_INDEX_ACTION = new ActionHandle("test_set", "pinch_index");
     private static final ActionHandle PINCH_MIDDLE_ACTION = new ActionHandle("test_set", "pinch_middle");
     private static final ActionHandle PLAIN_ACTION = new ActionHandle("test_set", "plain");
+    private static final ActionHandle GROW_ACTION = new ActionHandle("test_set", "grow");
 
     private static final BooleanActionState RUNTIME_OFF = new BooleanActionState(false, false);
+    private static final FloatActionState FLOAT_RUNTIME_OFF = new FloatActionState(0, false);
 
     private static final Predicate<String> NO_EXTENSIONS = extension -> false;
     private static final Predicate<String> ALL_EXTENSIONS = extension -> true;
@@ -166,6 +169,71 @@ class GestureBindingLayerTest{
         assertSame(RUNTIME_OFF, aimLayer.combine(PINCH_INDEX_ACTION, null, RUNTIME_OFF));
     }
 
+    @Test
+    void floatActionTakesTheGestureStrength(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+
+        assertEquals(0.6f, layer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).getState(), 0.0001f);
+    }
+
+    @Test
+    void floatActionTakesTheLargerOfTheGestureAndTheStateBelow(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+
+        assertEquals(0.8f, layer.combine(GROW_ACTION, null, new FloatActionState(0.8f, false)).getState(), 0.0001f);
+    }
+
+    @Test
+    void floatActionIsChangedOnlyWhenTheGestureStrengthChanges(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+        assertFalse(layer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).hasChanged());
+
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.7f)));
+        assertTrue(layer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).hasChanged());
+    }
+
+    @Test
+    void floatGestureHiddenByALargerStateBelowIsNotAChange(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.2f)));
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.3f)));
+
+        assertFalse(layer.combine(GROW_ACTION, null, new FloatActionState(0.9f, false)).hasChanged());
+    }
+
+    @Test
+    void floatStateBelowChangingIsAlwaysAChange(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+
+        assertTrue(layer.combine(GROW_ACTION, null, new FloatActionState(0.1f, true)).hasChanged());
+    }
+
+    @Test
+    void floatGestureOnlyCountsForTheRestrictedHand(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
+
+        assertEquals(0, layer.combine(GROW_ACTION, HandSide.RIGHT.restrictToInputString, FLOAT_RUNTIME_OFF).getState(), 0.0001f);
+    }
+
+    @Test
+    void aimStateLayerProvidesTheRuntimePinchStrengthForFloatActions(){
+        GestureBindingLayer<HandTrackingAimState> aimLayer = GestureBindingLayer.aimStateDetected(manifest(), ALL_EXTENSIONS);
+        aimLayer.update(HandSide.LEFT, Optional.of(new HandTrackingAimState(HandTrackingAimState.VALID_BIT, 0.1f, 0.4f, 0.2f, 0.3f)));
+
+        assertEquals(0.4f, aimLayer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).getState(), 0.0001f);
+    }
+
+    private static HandGestureTamarinProvidedState middlePinch(float strength){
+        return HandGestureTamarinProvidedState.builder().pinch(Finger.MIDDLE, strength, false).build();
+    }
+
     private static void assertState(boolean expectedState, boolean expectedChanged, BooleanActionState actual){
         assertEquals(expectedState, actual.getState(), "state");
         assertEquals(expectedChanged, actual.hasChanged(), "changed");
@@ -180,6 +248,7 @@ class GestureBindingLayerTest{
                         .withAction(gestureAction(FIST_ACTION, Gesture.FIST))
                         .withAction(gestureAction(PINCH_INDEX_ACTION, Gesture.PINCH_INDEX))
                         .withAction(gestureAction(PINCH_MIDDLE_ACTION, Gesture.PINCH_MIDDLE))
+                        .withAction(gestureAction(GROW_ACTION, Gesture.PINCH_MIDDLE).actionType(ActionType.FLOAT))
                         .withAction(Action.builder()
                                 .actionHandle(PLAIN_ACTION)
                                 .translatedName("Plain")
