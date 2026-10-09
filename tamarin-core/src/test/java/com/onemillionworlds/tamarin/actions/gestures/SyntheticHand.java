@@ -68,6 +68,15 @@ class SyntheticHand{
         return this;
     }
 
+    /**
+     * Moves just the thumb tip so it is the given distance above (+Y) the given joint.
+     */
+    SyntheticHand thumbTipNear(HandJoint joint, float distance){
+        Vector3f target = joints.get(joint).position();
+        joints.put(HandJoint.THUMB_TIP_EXT, pose(target.add(0, distance, 0)));
+        return this;
+    }
+
     Map<HandJoint, BonePose> joints(){
         return new EnumMap<>(joints);
     }

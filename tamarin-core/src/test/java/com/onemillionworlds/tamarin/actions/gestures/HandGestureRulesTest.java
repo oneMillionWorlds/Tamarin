@@ -111,8 +111,9 @@ class HandGestureRulesTest{
     @Test
     void pinchStaysActiveBetweenTheThresholds(){
         HandGestureRules rules = new HandGestureRules();
-        // a pinch strength of 0.75, between the deactivate and activate thresholds
         SyntheticHand partlyPinched = SyntheticHand.openHand().fingerTipNearThumbTip(Finger.INDEX, 0.0325f);
+        float strength = new HandJointMeasurements(partlyPinched.joints()).getPinchStrength(Finger.INDEX);
+        assertTrue(strength > HandGestureRules.PINCH_DEACTIVATE && strength < HandGestureRules.PINCH_ACTIVATE, "Test setup: the pinch should be between the thresholds but was " + strength);
 
         assertFalse(apply(new HandGestureRules(), partlyPinched).isPinching(Finger.INDEX), "Shouldn't activate from scratch");
 

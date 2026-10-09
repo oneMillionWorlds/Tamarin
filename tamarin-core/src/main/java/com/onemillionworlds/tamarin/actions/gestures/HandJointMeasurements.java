@@ -31,15 +31,33 @@ public final class HandJointMeasurements{
      */
     static final float FULL_THUMB_BEND = 120 * FastMath.DEG_TO_RAD;
     /**
-     * Thumb tip to fingertip distance (between joint centres, in metres) at or below which the pinch strength is 1.
+     * The distance from the wrist to the middle finger knuckle on an average adult hand. Distances are scaled by the
+     * actual hand's size relative to this, so gestures work the same for large and small hands.
      */
-    static final float PINCH_CLOSED_DISTANCE = 0.02f;
+    static final float REFERENCE_HAND_SIZE = 0.095f;
     /**
-     * Thumb tip to fingertip distance (in metres) at or above which the pinch strength is 0.
+     * The gap between the skin of the thumb tip and the fingertip (at the reference hand size) that counts as a full
+     * pinch. Not zero because tracking is rarely good enough to see the skin actually touching.
      */
-    static final float PINCH_OPEN_DISTANCE = 0.07f;
+    static final float PINCH_FULL_GAP = 0.005f;
+    /**
+     * The gap between the skin of the thumb tip and the fingertip (at the reference hand size) at which the pinch
+     * strength drops to zero.
+     */
+    static final float PINCH_ZERO_GAP = 0.045f;
+    /**
+     * How much closer (at the reference hand size) the thumb tip must be to the finger's side (its proximal and
+     * intermediate bones) than to its tip for the contact to count as entirely "side" (no pinch at all).
+     */
+    static final float TIP_CONTACT_ZERO = -0.012f;
+    /**
+     * The thumb tip being at least as close to the fingertip as to the finger's side counts as entirely "tip" (a
+     * normal pinch).
+     */
+    static final float TIP_CONTACT_FULL = 0f;
 
     private final Map<HandJoint, BonePose> joints;
+    private final float handScale;
     private final EnumMap<Finger, Float> curls = new EnumMap<>(Finger.class);
     private final EnumMap<Finger, Float> pinchStrengths = new EnumMap<>(Finger.class);
     private final Vector3f thumbDirection;
@@ -49,15 +67,23 @@ public final class HandJointMeasurements{
      */
     public HandJointMeasurements(Map<HandJoint, BonePose> stageJoints){
         this.joints = stageJoints;
+        float handSize = position(HandJoint.WRIST_EXT).distance(position(HandJoint.MIDDLE_PROXIMAL_EXT));
+        // clamped so that a tracking glitch can't make the hand absurdly big or small
+        this.handScale = FastMath.clamp(handSize / REFERENCE_HAND_SIZE, 0.5f, 2f);
         for(Finger finger : Finger.values()){
             curls.put(finger, measureCurl(finger));
         }
-        Vector3f thumbTip = position(HandJoint.THUMB_TIP_EXT);
         for(Finger finger : Finger.PINCHING_FINGERS){
-            float distance = thumbTip.distance(position(finger.getTip()));
-            pinchStrengths.put(finger, FastMath.clamp((PINCH_OPEN_DISTANCE - distance) / (PINCH_OPEN_DISTANCE - PINCH_CLOSED_DISTANCE), 0, 1));
+            pinchStrengths.put(finger, measurePinch(finger));
         }
-        thumbDirection = thumbTip.subtract(position(HandJoint.THUMB_PROXIMAL_EXT)).normalizeLocal();
+        thumbDirection = position(HandJoint.THUMB_TIP_EXT).subtract(position(HandJoint.THUMB_PROXIMAL_EXT)).normalizeLocal();
+    }
+
+    /**
+     * How big this hand is relative to an average adult hand (1 is average).
+     */
+    public float getHandScale(){
+        return handScale;
     }
 
     /**
@@ -69,8 +95,13 @@ public final class HandJointMeasurements{
     }
 
     /**
-     * How close the thumb tip is to the finger's tip. 0 is far apart, 1 is touching. This is just distance; it says
-     * nothing about whether other fingers are also near the thumb.
+     * How close the thumb tip is to the finger's tip. 0 is far apart, 1 is touching. This says nothing about whether
+     * other fingers are also near the thumb.
+     * <p>
+     *     Only the thumb meeting the tip end of the finger counts. The thumb touching the side of the finger further
+     *     down (as it does in Meta's thumb microgestures, which slide the thumb along the side of the index finger) is
+     *     not a pinch, even if the thumb tip happens to be close to the fingertip.
+     * </p>
      *
      * @param finger INDEX, MIDDLE, RING or LITTLE (not THUMB)
      */
@@ -103,6 +134,57 @@ public final class HandJointMeasurements{
         }
         float fullBend = finger == Finger.THUMB ? FULL_THUMB_BEND : FULL_FINGER_BEND;
         return FastMath.clamp(totalBend / fullBend, 0, 1);
+    }
+
+    /**
+     * The skin to skin gap between the thumb tip and fingertip (scaled by hand size), times how much the thumb is at
+     * the tip of the finger rather than its side.
+     */
+    private float measurePinch(Finger finger){
+        BonePose thumbTip = joints.get(HandJoint.THUMB_TIP_EXT);
+        BonePose fingerTip = joints.get(finger.getTip());
+        float gap = thumbTip.position().distance(fingerTip.position()) - thumbTip.radius() - fingerTip.radius();
+        float closeness = 1 - inverseLerpClamped(gap / handScale, PINCH_FULL_GAP, PINCH_ZERO_GAP);
+        return closeness * measureTipContact(finger);
+    }
+
+    /**
+     * Whether the thumb tip is nearer the tip of the finger (1) or the side of the finger further down, i.e. its
+     * proximal and intermediate bones (0).
+     */
+    private float measureTipContact(Finger finger){
+        HandJoint[] fingerJoints = finger.getJoints();
+        Vector3f thumbTip = position(HandJoint.THUMB_TIP_EXT);
+        float tipDistance = thumbTip.distance(position(finger.getTip()));
+
+        // the proximal and intermediate bones: knuckle -> intermediate joint -> distal joint
+        float sideDistance = Math.min(
+                distanceToSegment(thumbTip, position(fingerJoints[1]), position(fingerJoints[2])),
+                distanceToSegment(thumbTip, position(fingerJoints[2]), position(fingerJoints[3])));
+
+        // positive when the thumb is nearer the tip than the side of the finger
+        float tipCloserBy = (sideDistance - tipDistance) / handScale;
+        return inverseLerpClamped(tipCloserBy, TIP_CONTACT_ZERO, TIP_CONTACT_FULL);
+    }
+
+    /**
+     * The shortest distance from the point to the line segment from a to b.
+     */
+    static float distanceToSegment(Vector3f point, Vector3f a, Vector3f b){
+        Vector3f ab = b.subtract(a);
+        float lengthSquared = ab.lengthSquared();
+        if (lengthSquared == 0){
+            return point.distance(a);
+        }
+        float t = FastMath.clamp(point.subtract(a).dot(ab) / lengthSquared, 0, 1);
+        return point.distance(a.add(ab.multLocal(t)));
+    }
+
+    /**
+     * 0 at (or before) from, 1 at (or after) to. From may be greater than to.
+     */
+    static float inverseLerpClamped(float value, float from, float to){
+        return FastMath.clamp((value - from) / (to - from), 0, 1);
     }
 
     private Vector3f position(HandJoint joint){
