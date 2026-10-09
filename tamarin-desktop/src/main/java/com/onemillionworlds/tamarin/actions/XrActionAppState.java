@@ -10,7 +10,6 @@ import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionSet;
 import com.onemillionworlds.tamarin.actions.actionprofile.SuggestedBindingsProfileView;
-import com.onemillionworlds.tamarin.actions.controllerprofile.InteractionProfileExtensions;
 import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
 import com.onemillionworlds.tamarin.actions.gestures.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.Vector2fActionState;
@@ -387,14 +386,9 @@ public class XrActionAppState extends XrActionBaseAppState{
                 }
             }
 
-            Collection<SuggestedBindingsProfileView> suggestedBindingsGroupedByProfile = manifest.getSuggestedBindingsGroupedByProfile();
+            Collection<SuggestedBindingsProfileView> suggestedBindingsGroupedByProfile = manifest.getSuggestedBindingsGroupedByProfile(xrAppState::checkExtensionLoaded);
 
             for(SuggestedBindingsProfileView profile : suggestedBindingsGroupedByProfile){
-                Optional<String> requiredExtension = InteractionProfileExtensions.requiredExtension(profile.getProfileName());
-                if (requiredExtension.isPresent() && !xrAppState.checkExtensionLoaded(requiredExtension.get())){
-                    LOGGER.info("Skipping suggested bindings for " + profile.getProfileName() + " as it requires the " + requiredExtension.get() + " extension, which isn't loaded");
-                    continue;
-                }
                 long deviceProfileHandle = pathToLong(profile.getProfileName(), false);
 
                 Set<Map.Entry<SuggestedBindingsProfileView.ActionData, String>> suggestedBindings = profile.getSetToActionToBindingMap().entrySet();

@@ -1,10 +1,17 @@
 package com.onemillionworlds.tamarin.actions.actionprofile;
 
+import com.onemillionworlds.tamarin.actions.controllerprofile.InteractionProfileExtensions;
+
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -15,6 +22,8 @@ import java.util.stream.Stream;
  */
 public class ActionManifest{
 
+    private static final Logger LOGGER = Logger.getLogger(ActionManifest.class.getName());
+
     List<ActionSet> actionSets;
 
     public ActionManifest(List<ActionSet> actionSets){
@@ -22,15 +31,37 @@ public class ActionManifest{
     }
 
     /**
-     * This is primarily for internal use. Gives a profile first view of the suggested bindings
+     * This is primarily for internal use. Gives a profile first view of the suggested bindings (all of them, regardless
+     * of any extensions they require).
      */
     public Collection<SuggestedBindingsProfileView> getSuggestedBindingsGroupedByProfile(){
+        return getSuggestedBindingsGroupedByProfile(extension -> true);
+    }
+
+    /**
+     * This is primarily for internal use. Gives a profile first view of the suggested bindings, leaving out any that
+     * need an extension that isn't loaded (see {@link InteractionProfileExtensions}), because suggesting them to the
+     * runtime would be an error. Profiles left with no bindings are not included.
+     *
+     * @param isExtensionLoaded returns true if the given extension is loaded
+     */
+    public Collection<SuggestedBindingsProfileView> getSuggestedBindingsGroupedByProfile(Predicate<String> isExtensionLoaded){
 
         Map<String, SuggestedBindingsProfileView> profileSuggestedBindings = new HashMap<>();
+        Set<String> loggedMissingExtensions = new HashSet<>();
 
         for(ActionSet actionSet : actionSets){
             for(Action action : actionSet.getActions()){
                 for(SuggestedBinding suggestedBinding : action.getSuggestedBindings()){
+                    Optional<String> missingExtension = InteractionProfileExtensions.requiredExtensions(suggestedBinding.profile, suggestedBinding.binding).stream()
+                            .filter(extension -> !isExtensionLoaded.test(extension))
+                            .findFirst();
+                    if (missingExtension.isPresent()){
+                        if (loggedMissingExtensions.add(missingExtension.get())){
+                            LOGGER.info("Skipping suggested bindings that require the " + missingExtension.get() + " extension (e.g. " + suggestedBinding.binding + " for " + suggestedBinding.profile + "), as it isn't loaded");
+                        }
+                        continue;
+                    }
                     profileSuggestedBindings.computeIfAbsent(suggestedBinding.profile, SuggestedBindingsProfileView::new)
                             .addSuggestion(actionSet.getName(), action.getActionName(), suggestedBinding.binding);
                 }
