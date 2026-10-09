@@ -123,7 +123,7 @@ public class XrActionAppState extends XrActionBaseAppState{
     /**
      * Holds things like XR10.XR_REFERENCE_SPACE_TYPE_STAGE -> the memory handle of the reference space.
      */
-    private final Map<Long, Long> referenceSpaceHandles = new HashMap<>();
+    private final Map<Integer, Long> referenceSpaceHandles = new HashMap<>();
 
     private XrSession xrSessionHandle;
     private XrInstance xrInstance;
@@ -704,6 +704,11 @@ public class XrActionAppState extends XrActionBaseAppState{
                         ? HandJointsDataSource.fromRuntimeState(handJointLocations.isActive(), handTrackersReportDataSource, dataSourceState.isActive(), dataSourceState.dataSource())
                         : HandJointsDataSource.NOT_TRACKED);
 
+                if (!success || !handJointLocations.isActive()){
+                    singleLog.info("xrLocateHandJointsEXT reporting inactive hand tracking");
+                    return Optional.empty();
+                }
+
                 XrHandJointLocationEXT.Buffer xrHandJointLocationEXTS = handJointLocations.jointLocations();
 
                 for (HandJoint joint : HandJoint.values()) {
@@ -923,7 +928,7 @@ public class XrActionAppState extends XrActionBaseAppState{
         PointerBuffer space = BufferUtils.createPointerBuffer(1);
         withResponseCodeLogging("Get space for " +referenceSpaceEnum, XR10.xrCreateReferenceSpace(xrSessionHandle, spaceInfo, space));
         long handle = space.get(0);
-        referenceSpaceHandles.put((long)referenceSpaceEnum, handle);
+        referenceSpaceHandles.put(referenceSpaceEnum, handle);
 
         return handle;
     }
