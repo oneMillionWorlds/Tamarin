@@ -9,6 +9,7 @@ import com.onemillionworlds.tamarin.actions.gestures.HandGestureTamarinProvidedS
 import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
 import com.onemillionworlds.tamarin.actions.gestures.GestureBindingLayer;
 import com.onemillionworlds.tamarin.actions.gestures.HandGestureRules;
+import com.onemillionworlds.tamarin.actions.gestures.HandGestureSourcePreference;
 import com.onemillionworlds.tamarin.actions.gestures.HandJointMeasurements;
 import com.onemillionworlds.tamarin.actions.gestures.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
@@ -27,6 +28,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public abstract class XrActionBaseAppState extends BaseAppState{
 
@@ -34,8 +36,13 @@ public abstract class XrActionBaseAppState extends BaseAppState{
 
     private final InteractionProfileTracker interactionProfileTracker = new InteractionProfileTracker();
 
-    private GestureBindingLayer<HandGestureTamarinProvidedState> tamarinGestures = GestureBindingLayer.none();
-    private GestureBindingLayer<HandTrackingAimState> aimStateGestures = GestureBindingLayer.none();
+    /*
+     * These have no bindings until the manifest is registered (and never do in desktop simulation)
+     */
+    private final GestureBindingLayer<HandGestureTamarinProvidedState> tamarinGestures = GestureBindingLayer.tamarinDetected();
+    private final GestureBindingLayer<HandTrackingAimState> aimStateGestures = GestureBindingLayer.aimStateDetected();
+    private ActionManifest gestureManifest = new ActionManifest(List.of());
+    private HandGestureSourcePreference handGestureSourcePreference = HandGestureSourcePreference.AUTOMATIC;
     private final EnumMap<HandSide, HandGestureRules> gestureRules = new EnumMap<>(Map.of(HandSide.LEFT, new HandGestureRules(), HandSide.RIGHT, new HandGestureRules()));
 
     /**
@@ -231,9 +238,36 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * Implementations should call this when the action manifest is registered with the runtime.
      */
     protected void registerGestureBindings(ActionManifest manifest){
+        gestureManifest = manifest;
+        refreshGestureBindings();
+    }
+
+    /**
+     * Sets where gesture bindings get their gestures from: the runtime's own gesture recognition, Tamarin's, or
+     * (the default, {@link HandGestureSourcePreference#AUTOMATIC}) the runtime's where it has one and Tamarin's
+     * otherwise. This is global, it affects every gesture binding, and can be changed at any time.
+     * <p>
+     *     Note that changing it while a gesture is being made may make an action briefly change (as the gesture's
+     *     state now comes from somewhere else).
+     * </p>
+     * <p>
+     *     Has no effect in desktop simulation mode.
+     * </p>
+     */
+    public void setHandGestureSourcePreference(HandGestureSourcePreference preference){
+        handGestureSourcePreference = preference;
+        refreshGestureBindings();
+    }
+
+    public HandGestureSourcePreference getHandGestureSourcePreference(){
+        return handGestureSourcePreference;
+    }
+
+    private void refreshGestureBindings(){
         XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
-        tamarinGestures = GestureBindingLayer.tamarinDetected(manifest, xrAppState::checkExtensionLoaded);
-        aimStateGestures = GestureBindingLayer.aimStateDetected(manifest, xrAppState::checkExtensionLoaded);
+        Predicate<String> isExtensionLoaded = xrAppState == null ? extension -> false : xrAppState::checkExtensionLoaded;
+        tamarinGestures.setBindings(gestureManifest, isExtensionLoaded, handGestureSourcePreference);
+        aimStateGestures.setBindings(gestureManifest, isExtensionLoaded, handGestureSourcePreference);
     }
 
     /**

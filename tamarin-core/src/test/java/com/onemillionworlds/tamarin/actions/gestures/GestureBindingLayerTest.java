@@ -42,13 +42,13 @@ class GestureBindingLayerTest{
 
     @Test
     void layerWithoutGesturesNeedsNoUpdates(){
-        assertFalse(GestureBindingLayer.none().hasGestures());
-        assertTrue(GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS).hasGestures());
+        assertFalse(GestureBindingLayer.tamarinDetected().hasGestures());
+        assertTrue(tamarinLayer(NO_EXTENSIONS).hasGestures());
     }
 
     @Test
     void actionWithoutGesturesIsJustTheStateBelow(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(FIST));
         BooleanActionState runtimeState = new BooleanActionState(true, true);
 
@@ -57,7 +57,7 @@ class GestureBindingLayerTest{
 
     @Test
     void gestureActivatesTheActionAndReportsTheChangeOnce(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
 
         layer.update(HandSide.LEFT, Optional.of(OPEN));
         assertState(false, false, layer.combine(FIST_ACTION, null, RUNTIME_OFF));
@@ -71,7 +71,7 @@ class GestureBindingLayerTest{
 
     @Test
     void unavailableStateDeactivatesTheAction(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(FIST));
 
         layer.update(HandSide.LEFT, Optional.empty());
@@ -82,7 +82,7 @@ class GestureBindingLayerTest{
 
     @Test
     void gestureOnlyCountsForTheHandItIsBoundTo(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.RIGHT, Optional.of(FIST));
 
         assertFalse(layer.combine(FIST_ACTION, null, RUNTIME_OFF).getState());
@@ -90,7 +90,7 @@ class GestureBindingLayerTest{
 
     @Test
     void restrictingToTheOtherHandIgnoresTheGesture(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(FIST));
 
         assertTrue(layer.combine(FIST_ACTION, HandSide.LEFT.restrictToInputString, RUNTIME_OFF).getState());
@@ -99,7 +99,7 @@ class GestureBindingLayerTest{
 
     @Test
     void stateBelowTurningOnWhileGestureAlreadyOnIsNotAChange(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(FIST));
         layer.update(HandSide.LEFT, Optional.of(FIST));
 
@@ -108,7 +108,7 @@ class GestureBindingLayerTest{
 
     @Test
     void stateBelowTurningOffWhileGestureStillOnIsNotAChange(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(FIST));
         layer.update(HandSide.LEFT, Optional.of(FIST));
 
@@ -117,7 +117,7 @@ class GestureBindingLayerTest{
 
     @Test
     void stateBelowChangeIsPassedThroughWhenNoGestureIsActive(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(OPEN));
 
         assertState(true, true, layer.combine(FIST_ACTION, null, new BooleanActionState(true, true)));
@@ -125,7 +125,7 @@ class GestureBindingLayerTest{
 
     @Test
     void tamarinDoesNotDetectGesturesTheRuntimeProvides(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), HandInteractionExt.REQUIRED_EXTENSION::equals);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(HandInteractionExt.REQUIRED_EXTENSION::equals);
         layer.update(HandSide.LEFT, Optional.of(HandGestureTamarinProvidedState.builder().pinch(Finger.INDEX, 1, true).build()));
 
         assertFalse(layer.combine(PINCH_INDEX_ACTION, null, RUNTIME_OFF).getState());
@@ -133,7 +133,7 @@ class GestureBindingLayerTest{
 
     @Test
     void tamarinDetectsGesturesIfTheRuntimeExtensionIsMissing(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(HandGestureTamarinProvidedState.builder().pinch(Finger.INDEX, 1, true).build()));
 
         assertTrue(layer.combine(PINCH_INDEX_ACTION, null, RUNTIME_OFF).getState());
@@ -141,15 +141,15 @@ class GestureBindingLayerTest{
 
     @Test
     void aimStateLayerOnlyHasGesturesIfItsExtensionIsLoaded(){
-        assertFalse(GestureBindingLayer.aimStateDetected(manifest(), NO_EXTENSIONS).hasGestures());
-        assertTrue(GestureBindingLayer.aimStateDetected(manifest(), HandTrackingAimState.REQUIRED_EXTENSION::equals).hasGestures());
+        assertFalse(aimLayer(NO_EXTENSIONS).hasGestures());
+        assertTrue(aimLayer(HandTrackingAimState.REQUIRED_EXTENSION::equals).hasGestures());
     }
 
     @Test
     void aimStateLayerProvidesTheGesturesTamarinNoLongerDoes(){
         Predicate<String> aimLoaded = HandTrackingAimState.REQUIRED_EXTENSION::equals;
-        GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = GestureBindingLayer.tamarinDetected(manifest(), aimLoaded);
-        GestureBindingLayer<HandTrackingAimState> aimLayer = GestureBindingLayer.aimStateDetected(manifest(), aimLoaded);
+        GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(aimLoaded);
+        GestureBindingLayer<HandTrackingAimState> aimLayer = aimLayer(aimLoaded);
 
         // Tamarin thinks the middle finger is pinching, but this gesture belongs to the aim layer now
         tamarinLayer.update(HandSide.LEFT, Optional.of(HandGestureTamarinProvidedState.builder().pinch(Finger.MIDDLE, 1, true).build()));
@@ -162,7 +162,7 @@ class GestureBindingLayerTest{
 
     @Test
     void aimStateLayerIgnoresGesturesItCannotProvide(){
-        GestureBindingLayer<HandTrackingAimState> aimLayer = GestureBindingLayer.aimStateDetected(manifest(), ALL_EXTENSIONS);
+        GestureBindingLayer<HandTrackingAimState> aimLayer = aimLayer(ALL_EXTENSIONS);
         aimLayer.update(HandSide.LEFT, Optional.of(AIM_MIDDLE_PINCHING));
 
         assertSame(RUNTIME_OFF, aimLayer.combine(FIST_ACTION, null, RUNTIME_OFF));
@@ -171,7 +171,7 @@ class GestureBindingLayerTest{
 
     @Test
     void floatActionTakesTheGestureStrength(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
 
         assertEquals(0.6f, layer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).getState(), 0.0001f);
@@ -179,7 +179,7 @@ class GestureBindingLayerTest{
 
     @Test
     void floatActionTakesTheLargerOfTheGestureAndTheStateBelow(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
 
         assertEquals(0.8f, layer.combine(GROW_ACTION, null, new FloatActionState(0.8f, false)).getState(), 0.0001f);
@@ -187,7 +187,7 @@ class GestureBindingLayerTest{
 
     @Test
     void floatActionIsChangedOnlyWhenTheGestureStrengthChanges(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
         assertFalse(layer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).hasChanged());
@@ -198,7 +198,7 @@ class GestureBindingLayerTest{
 
     @Test
     void floatGestureHiddenByALargerStateBelowIsNotAChange(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.2f)));
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.3f)));
 
@@ -207,7 +207,7 @@ class GestureBindingLayerTest{
 
     @Test
     void floatStateBelowChangingIsAlwaysAChange(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
 
@@ -216,7 +216,7 @@ class GestureBindingLayerTest{
 
     @Test
     void floatGestureOnlyCountsForTheRestrictedHand(){
-        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected(manifest(), NO_EXTENSIONS);
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = tamarinLayer(NO_EXTENSIONS);
         layer.update(HandSide.LEFT, Optional.of(middlePinch(0.6f)));
 
         assertEquals(0, layer.combine(GROW_ACTION, HandSide.RIGHT.restrictToInputString, FLOAT_RUNTIME_OFF).getState(), 0.0001f);
@@ -224,10 +224,70 @@ class GestureBindingLayerTest{
 
     @Test
     void aimStateLayerProvidesTheRuntimePinchStrengthForFloatActions(){
-        GestureBindingLayer<HandTrackingAimState> aimLayer = GestureBindingLayer.aimStateDetected(manifest(), ALL_EXTENSIONS);
+        GestureBindingLayer<HandTrackingAimState> aimLayer = aimLayer(ALL_EXTENSIONS);
         aimLayer.update(HandSide.LEFT, Optional.of(new HandTrackingAimState(HandTrackingAimState.VALID_BIT, 0.1f, 0.4f, 0.2f, 0.3f)));
 
         assertEquals(0.4f, aimLayer.combine(GROW_ACTION, null, FLOAT_RUNTIME_OFF).getState(), 0.0001f);
+    }
+
+    @Test
+    void runtimeOnlyLeavesTamarinWithNoGestures(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(ALL_EXTENSIONS, HandGestureSourcePreference.RUNTIME_ONLY);
+        tamarinLayer.update(HandSide.LEFT, Optional.of(FIST));
+
+        assertFalse(tamarinLayer.hasGestures());
+        assertFalse(tamarinLayer.combine(FIST_ACTION, null, RUNTIME_OFF).getState());
+    }
+
+    @Test
+    void runtimeOnlyStillUsesTheAimState(){
+        GestureBindingLayer<HandTrackingAimState> aimLayer = aimLayer(ALL_EXTENSIONS, HandGestureSourcePreference.RUNTIME_ONLY);
+        aimLayer.update(HandSide.LEFT, Optional.of(AIM_MIDDLE_PINCHING));
+
+        assertTrue(aimLayer.combine(PINCH_MIDDLE_ACTION, null, RUNTIME_OFF).getState());
+    }
+
+    @Test
+    void tamarinOnlyDetectsGesturesTheRuntimeProvides(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(ALL_EXTENSIONS, HandGestureSourcePreference.TAMARIN_ONLY);
+        GestureBindingLayer<HandTrackingAimState> aimLayer = aimLayer(ALL_EXTENSIONS, HandGestureSourcePreference.TAMARIN_ONLY);
+        tamarinLayer.update(HandSide.LEFT, Optional.of(HandGestureTamarinProvidedState.builder().pinch(Finger.MIDDLE, 1, true).build()));
+        aimLayer.update(HandSide.LEFT, Optional.of(AIM_MIDDLE_PINCHING));
+
+        assertFalse(aimLayer.hasGestures());
+        assertTrue(tamarinLayer.combine(PINCH_MIDDLE_ACTION, null, RUNTIME_OFF).getState());
+    }
+
+    @Test
+    void changingThePreferenceKeepsTheHandStates(){
+        GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer = tamarinLayer(NO_EXTENSIONS, HandGestureSourcePreference.RUNTIME_ONLY);
+        tamarinLayer.update(HandSide.LEFT, Optional.of(FIST));
+        tamarinLayer.update(HandSide.LEFT, Optional.of(FIST));
+
+        tamarinLayer.setBindings(manifest(), NO_EXTENSIONS, HandGestureSourcePreference.AUTOMATIC);
+
+        // the fist was already being made last frame, so the newly bound action is on but not newly changed
+        assertState(true, false, tamarinLayer.combine(FIST_ACTION, null, RUNTIME_OFF));
+    }
+
+    private static GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer(Predicate<String> isExtensionLoaded){
+        return tamarinLayer(isExtensionLoaded, HandGestureSourcePreference.AUTOMATIC);
+    }
+
+    private static GestureBindingLayer<HandGestureTamarinProvidedState> tamarinLayer(Predicate<String> isExtensionLoaded, HandGestureSourcePreference preference){
+        GestureBindingLayer<HandGestureTamarinProvidedState> layer = GestureBindingLayer.tamarinDetected();
+        layer.setBindings(manifest(), isExtensionLoaded, preference);
+        return layer;
+    }
+
+    private static GestureBindingLayer<HandTrackingAimState> aimLayer(Predicate<String> isExtensionLoaded){
+        return aimLayer(isExtensionLoaded, HandGestureSourcePreference.AUTOMATIC);
+    }
+
+    private static GestureBindingLayer<HandTrackingAimState> aimLayer(Predicate<String> isExtensionLoaded, HandGestureSourcePreference preference){
+        GestureBindingLayer<HandTrackingAimState> layer = GestureBindingLayer.aimStateDetected();
+        layer.setBindings(manifest(), isExtensionLoaded, preference);
+        return layer;
     }
 
     private static HandGestureTamarinProvidedState middlePinch(float strength){

@@ -41,6 +41,8 @@ public class GestureBindingLayer<S>{
 
     private final BiFunction<Gesture, S, Float> gestureStrength;
 
+    private final LayerMembership membership;
+
     /*
      * The states this frame and last frame (needed to say if an action has changed). Missing if the hand wasn't tracked
      */
@@ -48,19 +50,53 @@ public class GestureBindingLayer<S>{
     private final EnumMap<HandSide, S> previousStates = new EnumMap<>(HandSide.class);
 
     /**
-     * @param manifest the action manifest, for its gesture bindings
-     * @param isInLayer which gestures this layer provides
+     * @param membership which gestures belong in this layer
      * @param isGestureActive reads if a gesture is on from a hand's state (for boolean actions)
      * @param gestureStrength reads how strongly a gesture is being made (0 to 1) from a hand's state (for float actions)
      */
-    GestureBindingLayer(ActionManifest manifest, Predicate<Gesture> isInLayer, BiPredicate<Gesture, S> isGestureActive, BiFunction<Gesture, S, Float> gestureStrength){
+    GestureBindingLayer(LayerMembership membership, BiPredicate<Gesture, S> isGestureActive, BiFunction<Gesture, S, Float> gestureStrength){
+        this.membership = membership;
         this.isGestureActive = isGestureActive;
         this.gestureStrength = gestureStrength;
+    }
+
+    /**
+     * A layer for gestures detected by Tamarin itself (from the hand's joints). It has no bindings until
+     * {@link #setBindings} is called.
+     */
+    public static GestureBindingLayer<HandGestureTamarinProvidedState> tamarinDetected(){
+        return new GestureBindingLayer<>(
+                Gesture::isDetectedByTamarin,
+                (gesture, state) -> gesture.booleanEvaluator.apply(state),
+                (gesture, state) -> gesture.floatEvaluator.apply(state));
+    }
+
+    /**
+     * A layer for gestures detected by the runtime and reported via XR_FB_hand_tracking_aim. It has no bindings until
+     * {@link #setBindings} is called.
+     */
+    public static GestureBindingLayer<HandTrackingAimState> aimStateDetected(){
+        return new GestureBindingLayer<>(
+                Gesture::isDetectedByAimState,
+                (gesture, state) -> gesture.aimStateBooleanEvaluator.get().apply(state),
+                (gesture, state) -> gesture.aimStateFloatEvaluator.get().apply(state));
+    }
+
+    /**
+     * Sets which of the manifest's gesture bindings this layer provides (replacing any previous ones). The hands'
+     * states are kept, so this can be called at any time (e.g. when the {@link HandGestureSourcePreference} changes).
+     *
+     * @param manifest the action manifest, for its gesture bindings
+     * @param isExtensionLoaded returns true if the given extension is loaded
+     * @param preference which source gestures should come from
+     */
+    public void setBindings(ActionManifest manifest, Predicate<String> isExtensionLoaded, HandGestureSourcePreference preference){
+        gestureBindings.clear();
         for(ActionSet actionSet : manifest.getActionSets()){
             for(Action action : actionSet.getActions()){
                 List<GestureBinding> bindingsInLayer = new ArrayList<>();
                 for(GestureBinding binding : action.getGestureBindings()){
-                    if (isInLayer.test(binding.getGesture())){
+                    if (membership.isInLayer(binding.getGesture(), isExtensionLoaded, preference)){
                         bindingsInLayer.add(binding);
                     }
                 }
@@ -69,37 +105,6 @@ public class GestureBindingLayer<S>{
                 }
             }
         }
-    }
-
-    /**
-     * Gestures detected by Tamarin itself, for gestures the runtime can't detect.
-     *
-     * @param isExtensionLoaded returns true if the given extension is loaded
-     */
-    public static GestureBindingLayer<HandGestureTamarinProvidedState> tamarinDetected(ActionManifest manifest, Predicate<String> isExtensionLoaded){
-        return new GestureBindingLayer<>(manifest,
-                gesture -> gesture.isDetectedByTamarin(isExtensionLoaded),
-                (gesture, state) -> gesture.booleanEvaluator.apply(state),
-                (gesture, state) -> gesture.floatEvaluator.apply(state));
-    }
-
-    /**
-     * Gestures detected by the runtime and reported via XR_FB_hand_tracking_aim (only if it is loaded).
-     *
-     * @param isExtensionLoaded returns true if the given extension is loaded
-     */
-    public static GestureBindingLayer<HandTrackingAimState> aimStateDetected(ActionManifest manifest, Predicate<String> isExtensionLoaded){
-        return new GestureBindingLayer<>(manifest,
-                gesture -> gesture.isDetectedByAimState(isExtensionLoaded),
-                (gesture, state) -> gesture.aimStateBooleanEvaluator.get().apply(state),
-                (gesture, state) -> gesture.aimStateFloatEvaluator.get().apply(state));
-    }
-
-    /**
-     * A layer with no gestures in it (e.g. before the action manifest has been registered, or in desktop simulation).
-     */
-    public static <S> GestureBindingLayer<S> none(){
-        return new GestureBindingLayer<>(new ActionManifest(List.of()), gesture -> false, (gesture, state) -> false, (gesture, state) -> 0f);
     }
 
     /**
@@ -202,5 +207,12 @@ public class GestureBindingLayer<S>{
 
     private float strength(S stateOrNull, Gesture gesture){
         return stateOrNull == null ? 0 : gestureStrength.apply(gesture, stateOrNull);
+    }
+
+    /**
+     * Decides if a gesture belongs in a layer.
+     */
+    interface LayerMembership{
+        boolean isInLayer(Gesture gesture, Predicate<String> isExtensionLoaded, HandGestureSourcePreference preference);
     }
 }

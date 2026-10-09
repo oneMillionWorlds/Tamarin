@@ -120,16 +120,28 @@ public enum Gesture {
     }
 
     /**
-     * If Tamarin should detect this gesture itself, which it does unless the runtime can.
+     * If Tamarin should detect this gesture itself. With {@link HandGestureSourcePreference#AUTOMATIC} it does unless
+     * the runtime can.
      */
-    boolean isDetectedByTamarin(Predicate<String> isExtensionLoaded){
-        return !runtimeEquivalentRequiredExtension.filter(isExtensionLoaded).isPresent();
+    boolean isDetectedByTamarin(Predicate<String> isExtensionLoaded, HandGestureSourcePreference preference){
+        switch(preference){
+            case TAMARIN_ONLY:
+                return true;
+            case RUNTIME_ONLY:
+                return false;
+            case AUTOMATIC:
+            default:
+                return !runtimeEquivalentRequiredExtension.filter(isExtensionLoaded).isPresent();
+        }
     }
 
     /**
      * If this gesture should be read from the runtime's {@link HandTrackingAimState}.
      */
-    boolean isDetectedByAimState(Predicate<String> isExtensionLoaded){
+    boolean isDetectedByAimState(Predicate<String> isExtensionLoaded, HandGestureSourcePreference preference){
+        if (preference == HandGestureSourcePreference.TAMARIN_ONLY){
+            return false;
+        }
         return aimStateBooleanEvaluator.isPresent() && isExtensionLoaded.test(HandTrackingAimState.REQUIRED_EXTENSION);
     }
 }
