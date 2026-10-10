@@ -2,7 +2,6 @@ package com.onemillionworlds.tamarin.openxr;
 
 import com.jme3.texture.Image;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 /**
@@ -16,5 +15,8 @@ public class SwapchainImage extends Image{
         setFormat(format);
         setWidth(width);
         setHeight(height);
+        // the texture is created and owned by the OpenXR runtime (often as immutable storage), JME must not try to
+        // (re)upload it. If it does the first use of each swapchain image gives GL_INVALID_OPERATION from glTexImage2D
+        clearUpdateNeeded();
     }
 }
