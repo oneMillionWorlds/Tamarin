@@ -27,7 +27,33 @@ public class LemurSupport{
     public static final String LEMUR_TAMARIN_KEYBOARD = "LEMUR_TAMARIN_KEYBOARD";
     public static final String LEMUR_SELECTOR_POPUP = "LEMUR_SELECTOR_POPUP";
 
+    /**
+     * The keyboard used for text fields that haven't been given their own (see {@link #setKeyboardStyle}).
+     */
     public static KeyboardStyle keyboardStyle = new SimpleQwertyStyle();
+
+    /**
+     * Sets the keyboard that will open when this particular text field is clicked, overriding the global
+     * {@link #keyboardStyle}. E.g. {@link com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards.NumericStyle#INSTANCE}
+     * for a field that should only contain numbers.
+     * <p>
+     * Pass null to go back to using the global keyboard style.
+     */
+    public static void setKeyboardStyle(TextField textField, KeyboardStyle keyboardStyle){
+        textField.removeControl(KeyboardStyleControl.class);
+        if (keyboardStyle != null){
+            textField.addControl(new KeyboardStyleControl(keyboardStyle));
+        }
+    }
+
+    /**
+     * Gets the keyboard that will open when this text field is clicked; its own one if set by {@link #setKeyboardStyle},
+     * otherwise the global {@link #keyboardStyle}.
+     */
+    public static KeyboardStyle getKeyboardStyle(TextField textField){
+        KeyboardStyleControl control = textField.getControl(KeyboardStyleControl.class);
+        return control == null ? keyboardStyle : control.getKeyboardStyle();
+    }
 
     /**
      * Normally it's preferable to dispatch lemur click events but in some cases (like a physical button push) it can
@@ -103,9 +129,18 @@ public class LemurSupport{
                     if ( processedSpatial instanceof TextField){
                         TextField textField = ((TextField)processedSpatial);
                         textField.getControl(GuiControl.class).focusGained();
+                        KeyboardStyle textFieldKeyboardStyle = getKeyboardStyle(textField);
                         LemurKeyboard keyboard = new LemurKeyboard(
                                 nodePickedAgainst,
-                                c -> textField.setText(textField.getText()+c),
+                                c -> {
+                                    if (c == null || c.isEmpty()){
+                                        return;
+                                    }
+                                    String proposedText = textField.getText() + c;
+                                    if (textFieldKeyboardStyle.isAllowedText(proposedText)){
+                                        textField.setText(proposedText);
+                                    }
+                                },
                                 (event,data) -> {
                                     String startingText = textField.getText();
                                     switch(event){
@@ -123,7 +158,7 @@ public class LemurSupport{
                                             textField.getControl(GuiControl.class).focusLost();
                                             break;
                                     }
-                                }, keyboardStyle
+                                }, textFieldKeyboardStyle
                                 ,textFieldWorldCentre(textField), processedSpatial.getWorldRotation(),
                                 textField.getWorldScale().x);
                         if (!dryRun){
