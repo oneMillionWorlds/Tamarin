@@ -5,6 +5,7 @@ import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 
 import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
@@ -123,7 +124,7 @@ public class LemurSupport{
                                             break;
                                     }
                                 }, keyboardStyle
-                                ,processedSpatial.getWorldTranslation(), processedSpatial.getWorldRotation(),
+                                ,textFieldWorldCentre(textField), processedSpatial.getWorldRotation(),
                                 textField.getWorldScale().x);
                         if (!dryRun){
                             stateManager.attach(keyboard);
@@ -147,6 +148,15 @@ public class LemurSupport{
 
         }
         return SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS;
+    }
+
+    /**
+     * Lemur panels have their origin at the top left (extending right and down), so the world translation is a corner.
+     * This gives the world position of the centre of the text field instead.
+     */
+    private static Vector3f textFieldWorldCentre(TextField textField){
+        Vector3f size = textField.getSize();
+        return textField.localToWorld(new Vector3f(size.x / 2, -size.y / 2, 0), null);
     }
 }
 
