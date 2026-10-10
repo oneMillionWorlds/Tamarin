@@ -11,6 +11,13 @@ public interface KeyboardStyle{
     KeyboardButton[][] getKeyboardKeys();
 
     /**
+     * How rows of different widths are laid out. Defaults to {@link KeyboardRowAlignment#STRETCH}.
+     */
+    default KeyboardRowAlignment getRowAlignment(){
+        return KeyboardRowAlignment.STRETCH;
+    }
+
+    /**
      * Called before typed text is added to the text field. If this returns false the key press is ignored and the text
      * field is left unchanged. Deletions are always allowed.
      * <p>

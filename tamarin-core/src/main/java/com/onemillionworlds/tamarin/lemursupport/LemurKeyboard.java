@@ -11,12 +11,16 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.KeyboardButton;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardEvent;
+import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardRowAlignment;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
+import com.simsilica.lemur.Insets3f;
 import com.simsilica.lemur.event.MouseListener;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -110,9 +114,11 @@ public class LemurKeyboard extends BaseAppState{
 
         lemurWindow.setLocalScale(keyboardScale); //lemur defaults to 1 meter == 1 pixel (because that make sense for 2D, scale it down, so it's not huge in 3d)
 
+        List<Container> rowContainers = new ArrayList<>();
         for(KeyboardButton[] row : keyboardStyle.getKeyboardKeys()){
             Container rowContainer = new Container();
             lemurWindow.addChild(rowContainer);
+            rowContainers.add(rowContainer);
             int index = 0;
             for(KeyboardButton button : row){
                 Button buttonEntry = rowContainer.addChild(new Button(button.render(shiftMode, this)), 0, index);
@@ -131,12 +137,45 @@ public class LemurKeyboard extends BaseAppState{
             }
 
         }
+        alignRows(rowContainers, keyboardStyle.getRowAlignment());
 
         //lemur containers have their origin at the top left, shift left by half the width so the keyboard is horizontally centred on the owner
         float keyboardWidth = lemurWindow.getPreferredSize().x * keyboardScale;
         lemurWindow.setLocalTranslation(-keyboardWidth / 2, 0, 0);
 
         keyboardNode.attachChild(lemurWindow);
+    }
+
+    /**
+     * The keyboard's layout stretches every row to the width of the widest row. To avoid that (for anything other than
+     * STRETCH) each row is padded with insets up to the widest row's width, so the layout has nothing left to stretch.
+     * Where the padding goes decides the alignment.
+     */
+    private static void alignRows(List<Container> rowContainers, KeyboardRowAlignment alignment){
+        if (alignment == KeyboardRowAlignment.STRETCH){
+            return;
+        }
+        float maxWidth = 0;
+        for(Container row : rowContainers){
+            maxWidth = Math.max(maxWidth, row.getPreferredSize().x);
+        }
+        for(Container row : rowContainers){
+            float padding = maxWidth - row.getPreferredSize().x;
+            float leftPadding;
+            switch(alignment){
+                case LEFT:
+                    leftPadding = 0;
+                    break;
+                case RIGHT:
+                    leftPadding = padding;
+                    break;
+                case CENTRE:
+                default:
+                    leftPadding = padding / 2;
+                    break;
+            }
+            row.setInsets(new Insets3f(0, leftPadding, 0, padding - leftPadding));
+        }
     }
 
 

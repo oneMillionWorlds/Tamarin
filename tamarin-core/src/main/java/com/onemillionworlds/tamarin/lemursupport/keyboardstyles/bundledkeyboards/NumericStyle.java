@@ -1,5 +1,6 @@
 package com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards;
 
+import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardRowAlignment;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.Backspace;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.EnterKey;
@@ -32,6 +33,11 @@ public class NumericStyle implements KeyboardStyle{
                 new KeyboardButton[]{k("1"),k("2"),k("3"), k(".")},
                 new KeyboardButton[]{k("0"), new EnterKey()},
         };
+    }
+
+    @Override
+    public KeyboardRowAlignment getRowAlignment(){
+        return KeyboardRowAlignment.LEFT;
     }
 
     @Override

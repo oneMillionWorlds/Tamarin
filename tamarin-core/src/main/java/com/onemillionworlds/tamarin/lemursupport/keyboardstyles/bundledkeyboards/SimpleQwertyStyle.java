@@ -1,5 +1,6 @@
 package com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards;
 
+import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardRowAlignment;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.Backspace;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.buttons.EnterKey;
