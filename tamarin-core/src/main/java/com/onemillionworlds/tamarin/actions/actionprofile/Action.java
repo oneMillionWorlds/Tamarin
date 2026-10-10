@@ -12,6 +12,8 @@ import com.onemillionworlds.tamarin.actions.controllerprofile.MixedRealityMotion
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusGoController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.OculusTouchController;
 import com.onemillionworlds.tamarin.actions.controllerprofile.ValveIndexController;
+import com.onemillionworlds.tamarin.actions.gestures.Gesture;
+import com.onemillionworlds.tamarin.actions.gestures.GestureBinding;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,31 +49,16 @@ public class Action{
 
     private final Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding;
 
-    public Action(ActionHandle actionHandle, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings){
-        this.actionHandle = actionHandle;
-        this.translatedName = translatedName;
-        this.actionType = actionType;
-        this.suggestedBindings = suggestedBindings;
-        this.supportedSubActionPaths = DEFAULT_SUB_ACTIONS;
-        this.desktopSimulationKeybinding = new HashMap<>();
-    }
+    private final List<GestureBinding> gestures;
 
-    public Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths){
-        this.actionHandle = actionName;
-        this.translatedName = translatedName;
-        this.actionType = actionType;
-        this.suggestedBindings = suggestedBindings;
-        this.supportedSubActionPaths = supportedSubActionPaths;
-        this.desktopSimulationKeybinding = new HashMap<>();
-    }
-
-    private Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths, Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding){
+    private Action(ActionHandle actionName, String translatedName, ActionType actionType, List<SuggestedBinding> suggestedBindings, List<String> supportedSubActionPaths, Map<String,DesktopSimulationKeybinding> desktopSimulationKeybinding, List<GestureBinding> gestures){
         this.actionHandle = actionName;
         this.translatedName = translatedName;
         this.actionType = actionType;
         this.suggestedBindings = suggestedBindings;
         this.supportedSubActionPaths = supportedSubActionPaths;
         this.desktopSimulationKeybinding = desktopSimulationKeybinding;
+        this.gestures = gestures;
     }
 
     public String getActionName(){
@@ -112,6 +99,10 @@ public class Action{
         return desktopSimulationKeybinding;
     }
 
+    public List<GestureBinding> getGestureBindings(){
+        return gestures;
+    }
+
     @SuppressWarnings("unused")
     public static ActionBuilder builder(){
         return new ActionBuilder();
@@ -131,6 +122,8 @@ public class Action{
         private List<String> supportedSubActionPaths = DEFAULT_SUB_ACTIONS;
 
         private Map<String,DesktopSimulationKeybinding> desktopDebugKeyTrigger = new HashMap<>();
+
+        private List<GestureBinding> gestures = new ArrayList<>();
 
         /**
          * This is used to identify the action when you want to programatically interact with it e.g. getting an actions value. It is anticipated that
@@ -195,6 +188,16 @@ public class Action{
          */
         public ActionBuilder withSuggestedBinding(SuggestedBinding suggestedBinding){
             this.suggestedBindings.add(suggestedBinding);
+            return this;
+        }
+
+
+        /**
+         * Binds the Gesture to this action (Note the gesture may be detected in a number of
+         * different ways based on the available openXR runtimes)
+         */
+        public ActionBuilder withGestureBinding(HandSide handSide, Gesture gesture){
+            this.gestures.add(new GestureBinding(handSide, gesture));
             return this;
         }
 
@@ -396,13 +399,19 @@ public class Action{
             if(actionType == null){
                 throw new IllegalArgumentException("actionType cannot be null");
             }
-            if(suggestedBindings.isEmpty()){
-                throw new IllegalArgumentException("suggestedBindings cannot be empty");
+            if(suggestedBindings.isEmpty() && gestures.isEmpty()){
+                throw new IllegalArgumentException("suggestedBindings/gestures cannot be empty");
             }
             if(actionType != ActionType.BOOLEAN && actionType != ActionType.FLOAT && !desktopDebugKeyTrigger.isEmpty()){
                 throw new IllegalArgumentException("desktopDebugKeyTrigger can only be set for boolean and float actions");
             }
-            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths, desktopDebugKeyTrigger);
+
+            // add any equivalent bindings that the gesture has
+            for(GestureBinding gesture : gestures){
+                gesture.getGesture().getRuntimeEquivalentBinding(gesture.getHandSide()).ifPresent(suggestedBindings::add);
+            }
+
+            return new Action(actionHandle, translatedName, actionType, suggestedBindings, supportedSubActionPaths, desktopDebugKeyTrigger, gestures);
         }
 
     }

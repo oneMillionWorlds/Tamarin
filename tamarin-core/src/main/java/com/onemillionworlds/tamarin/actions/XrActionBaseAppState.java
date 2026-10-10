@@ -4,6 +4,14 @@ import com.jme3.anim.Armature;
 import com.jme3.anim.Joint;
 import com.jme3.app.state.BaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
+import com.onemillionworlds.tamarin.actions.actionprofile.ActionManifest;
+import com.onemillionworlds.tamarin.actions.gestures.HandGestureTamarinProvidedState;
+import com.onemillionworlds.tamarin.actions.gestures.HandJointsDataSource;
+import com.onemillionworlds.tamarin.actions.gestures.GestureBindingLayer;
+import com.onemillionworlds.tamarin.actions.gestures.HandGestureRules;
+import com.onemillionworlds.tamarin.actions.gestures.HandGestureSourcePreference;
+import com.onemillionworlds.tamarin.actions.gestures.HandJointMeasurements;
+import com.onemillionworlds.tamarin.actions.gestures.HandTrackingAimState;
 import com.onemillionworlds.tamarin.actions.state.BonePose;
 import com.onemillionworlds.tamarin.actions.state.BooleanActionState;
 import com.onemillionworlds.tamarin.actions.state.FloatActionState;
@@ -15,16 +23,30 @@ import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.openxr.GameplayInterrupt;
 import com.onemillionworlds.tamarin.openxr.XrBaseAppState;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
 
 public abstract class XrActionBaseAppState extends BaseAppState{
 
     public static final String ID = "OpenXrActionAppState";
 
     private final InteractionProfileTracker interactionProfileTracker = new InteractionProfileTracker();
+
+    /*
+     * These have no bindings until the manifest is registered (and never do in desktop simulation)
+     */
+    private final GestureBindingLayer<HandGestureTamarinProvidedState> tamarinGestures = GestureBindingLayer.tamarinDetected();
+    private final GestureBindingLayer<HandTrackingAimState> aimStateGestures = GestureBindingLayer.aimStateDetected();
+    private ActionManifest gestureManifest = new ActionManifest(List.of());
+    private HandGestureSourcePreference handGestureSourcePreference = HandGestureSourcePreference.AUTOMATIC;
+    private Set<String> activeActionSetNames = Set.of();
+    private final EnumMap<HandSide, HandGestureRules> gestureRules = new EnumMap<>(Map.of(HandSide.LEFT, new HandGestureRules(), HandSide.RIGHT, new HandGestureRules()));
 
     /**
      * Time in seconds since this state started updating, used for the controller lost grace period
@@ -79,6 +101,10 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      *     Note this method will return an empty list until the actions are synced (which happens once the session is fully running
      *     and this action state updates. Basically be careful calling this method at application start up).
      * </p>
+     * <p>
+     *     Gesture bindings that Tamarin handles are also included, e.g. "Left hand: Thumbs up (gesture)". These are in
+     *     English (not localised).
+     * </p>
      *
      * @param actionHandle the handle to get the binding string for
      * @return a String containing a localised description of the physical button(s) paired with the action
@@ -99,6 +125,14 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @param actionSets the names of the action sets
      */
     public abstract void setActiveActionSets(List<String> actionSets);
+
+    /**
+     * Implementations should call this from {@link #setActiveActionSets(List)}, so that gesture bindings (which
+     * Tamarin evaluates, not the runtime) also only work while their action set is active.
+     */
+    protected void recordActiveActionSets(List<String> actionSets){
+        activeActionSetNames = Set.copyOf(actionSets);
+    }
 
     public abstract void doNotSuppressRepeatedErrors();
 
@@ -164,6 +198,153 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      * @param handSide the handside to get the joint positions for
      */
     public abstract Optional<Map<HandJoint, BonePose>> getSkeleton(ActionHandle poseAction, HandSide handSide);
+
+    /**
+     * Where the hand joints (see {@link #getSkeleton}) for this hand are currently coming from. For example, a bare
+     * hand being tracked by cameras, or a controller that senses the fingers (like a Valve Index controller). This
+     * matters for things like hand gestures, which shouldn't be detected from a hand that is wrapped around a
+     * controller.
+     * <p>
+     *     This is only known if the runtime supports XR_EXT_hand_tracking_data_source (requested by default),
+     *     otherwise it is {@link HandJointsDataSource#UNKNOWN} whenever joints are available.
+     * </p>
+     * <p>
+     *     This is updated whenever {@link #getSkeleton} is called for this hand (it comes along with the joints), and
+     *     is just a stored value so it is cheap to call many times a frame. {@link com.onemillionworlds.tamarin.vrhands.VRHandsAppState}
+     *     calls {@link #getSkeleton} every frame for bound hands, but if nothing is calling it this will be out of date.
+     * </p>
+     * <p>
+     *     Always {@link HandJointsDataSource#HAND_TRACKING_UNSUPPORTED} in desktop simulation mode.
+     * </p>
+     */
+    public HandJointsDataSource getHandJointsDataSource(HandSide handSide){
+        return HandJointsDataSource.HAND_TRACKING_UNSUPPORTED;
+    }
+
+    /**
+     * Tamarin's own detection of hand gestures (pinches, fist, pointing etc.) for this hand this frame. This is what
+     * gesture bindings in the action manifest (see {@link com.onemillionworlds.tamarin.actions.actionprofile.Action.ActionBuilder#withGestureBinding})
+     * use for gestures the runtime doesn't provide itself (if the runtime does provide a gesture, its own detection is
+     * used for that gesture's bindings instead).
+     * <p>
+     *     Empty unless the hand is tracked as a bare hand (see {@link #getHandJointsDataSource}), and only worked out
+     *     if the action manifest has at least one gesture binding. Always empty in desktop simulation mode.
+     * </p>
+     */
+    public Optional<HandGestureTamarinProvidedState> getTamarinGestureState(HandSide handSide){
+        return tamarinGestures.getState(handSide);
+    }
+
+    /**
+     * The runtime's own gesture recognition for this hand this frame, from the XR_FB_hand_tracking_aim extension (Meta
+     * runtimes only). Gesture bindings in the action manifest use this for the gestures it provides (e.g. pinching the
+     * middle finger), if the extension is loaded.
+     * <p>
+     *     Empty if the extension isn't loaded, the runtime doesn't have a valid state for the hand (e.g. it isn't
+     *     tracked) and only worked out if the action manifest has at least one gesture binding. Always empty in desktop
+     *     simulation mode.
+     * </p>
+     */
+    public Optional<HandTrackingAimState> getHandTrackingAimState(HandSide handSide){
+        return aimStateGestures.getState(handSide);
+    }
+
+    /**
+     * Implementations should call this when the action manifest is registered with the runtime.
+     */
+    protected void registerGestureBindings(ActionManifest manifest){
+        gestureManifest = manifest;
+        refreshGestureBindings();
+    }
+
+    /**
+     * Sets where gesture bindings get their gestures from: the runtime's own gesture recognition, Tamarin's, or
+     * (the default, {@link HandGestureSourcePreference#AUTOMATIC}) the runtime's where it has one and Tamarin's
+     * otherwise. This is global, it affects every gesture binding, and can be changed at any time.
+     * <p>
+     *     Note that changing it while a gesture is being made may make an action briefly change (as the gesture's
+     *     state now comes from somewhere else).
+     * </p>
+     * <p>
+     *     Has no effect in desktop simulation mode.
+     * </p>
+     */
+    public void setHandGestureSourcePreference(HandGestureSourcePreference preference){
+        handGestureSourcePreference = preference;
+        refreshGestureBindings();
+    }
+
+    public HandGestureSourcePreference getHandGestureSourcePreference(){
+        return handGestureSourcePreference;
+    }
+
+    private void refreshGestureBindings(){
+        XrBaseAppState xrAppState = getState(XrBaseAppState.ID, XrBaseAppState.class);
+        Predicate<String> isExtensionLoaded = xrAppState == null ? extension -> false : xrAppState::checkExtensionLoaded;
+        tamarinGestures.setBindings(gestureManifest, isExtensionLoaded, handGestureSourcePreference);
+        aimStateGestures.setBindings(gestureManifest, isExtensionLoaded, handGestureSourcePreference);
+    }
+
+    /**
+     * If any action has a gesture bound to it, so implementations need to call {@link #updateHandGestures} each frame.
+     */
+    protected boolean handGesturesNeeded(){
+        return tamarinGestures.hasGestures() || aimStateGestures.hasGestures();
+    }
+
+    /**
+     * Implementations should call this once per frame for each hand (if {@link #handGesturesNeeded()}).
+     *
+     * @param stageRelativeJoints the hand's joints relative to the stage, or empty if the hand isn't tracked as a bare
+     *                            hand
+     * @param aimState the runtime's XR_FB_hand_tracking_aim state, or empty if it isn't available or valid
+     */
+    protected void updateHandGestures(HandSide handSide, Optional<Map<HandJoint, BonePose>> stageRelativeJoints, Optional<HandTrackingAimState> aimState){
+        HandGestureRules rules = gestureRules.get(handSide);
+        if (!stageRelativeJoints.isPresent()){
+            rules.reset();
+        }
+        tamarinGestures.update(handSide, stageRelativeJoints.map(joints -> rules.apply(new HandJointMeasurements(joints))));
+        aimStateGestures.update(handSide, aimState);
+    }
+
+    /**
+     * Implementations should add these to {@link #getLocalisedButtonNameForAction}. They describe the action's gesture
+     * bindings that Tamarin handles (gestures provided by a runtime binding, like the index finger pinch, are already
+     * among the runtime's own bound sources).
+     */
+    protected List<String> describeGestureBindings(ActionHandle action){
+        List<String> descriptions = new ArrayList<>(tamarinGestures.describe(action));
+        descriptions.addAll(aimStateGestures.describe(action));
+        return descriptions;
+    }
+
+    /**
+     * Implementations should pass the runtime's state for a boolean action through this, so that gestures bound to
+     * the action also activate it. Gestures come from (whichever are available) Tamarin's own detection and the
+     * runtime's XR_FB_hand_tracking_aim state, layered on top of the action's ordinary bindings.
+     */
+    protected BooleanActionState combineWithGestures(ActionHandle action, String restrictToInput, BooleanActionState runtimeState){
+        if (!activeActionSetNames.contains(action.actionSetName())){
+            // like the runtime's bindings, gesture bindings only work while their action set is active
+            return runtimeState;
+        }
+        BooleanActionState withTamarinGestures = tamarinGestures.combine(action, restrictToInput, runtimeState);
+        return aimStateGestures.combine(action, restrictToInput, withTamarinGestures);
+    }
+
+    /**
+     * As {@link #combineWithGestures(ActionHandle, String, BooleanActionState)} but for float actions, where gestures
+     * contribute how strongly they are being made (e.g. how close a pinch is). The action's value is the largest of the
+     * ordinary bindings' value and the bound gestures' strengths.
+     */
+    protected FloatActionState combineWithGestures(ActionHandle action, String restrictToInput, FloatActionState runtimeState){
+        if (!activeActionSetNames.contains(action.actionSetName())){
+            return runtimeState;
+        }
+        FloatActionState withTamarinGestures = tamarinGestures.combine(action, restrictToInput, runtimeState);
+        return aimStateGestures.combine(action, restrictToInput, withTamarinGestures);
+    }
 
     /**
      * Gets the current state of the action (abstract version of a button press).
