@@ -9,6 +9,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardStyle;
+import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardTextEdits;
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards.SimpleQwertyStyle;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.simsilica.lemur.Button;
@@ -151,6 +152,10 @@ public class LemurSupport{
                                             break;
                                         case DELETE_ALL:
                                             textField.setText("");
+                                            break;
+                                        case FLIP_SIGN:
+                                            String flippedText = KeyboardTextEdits.flipSign(startingText);
+                                            textField.setText(flippedText);
                                             break;
                                         case CLOSED_KEYBOARD:
                                             //its fairly normal to trigger actions off losing focus, so trigger that
