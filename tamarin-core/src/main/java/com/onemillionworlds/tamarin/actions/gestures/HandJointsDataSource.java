@@ -15,6 +15,10 @@ public enum HandJointsDataSource {
      * The joints are being worked out from a controller held in this hand (e.g. SteamVR with Valve Index controllers,
      * which sense the fingers on the controller). Hand gestures are not detected from these joints, as the user is
      * holding a controller (and would mostly be making a fist around it).
+     * <p>
+     *     Tamarin only asks for these joints if {@link com.onemillionworlds.tamarin.openxr.XrSettings#setAcceptControllerDerivedHandJoints}
+     *     is set, so by default this is not seen.
+     * </p>
      */
     CONTROLLER,
     /**

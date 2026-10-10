@@ -209,6 +209,10 @@ public abstract class XrActionBaseAppState extends BaseAppState{
      *     otherwise it is {@link HandJointsDataSource#UNKNOWN} whenever joints are available.
      * </p>
      * <p>
+     *     By default only joints from a bare hand are requested, so while a controller is held this will usually be
+     *     {@link HandJointsDataSource#NOT_TRACKED}. See {@link com.onemillionworlds.tamarin.openxr.XrSettings#setAcceptControllerDerivedHandJoints}.
+     * </p>
+     * <p>
      *     This is updated whenever {@link #getSkeleton} is called for this hand (it comes along with the joints), and
      *     is just a stored value so it is cheap to call many times a frame. {@link com.onemillionworlds.tamarin.vrhands.VRHandsAppState}
      *     calls {@link #getSkeleton} every frame for bound hands, but if nothing is calling it this will be out of date.

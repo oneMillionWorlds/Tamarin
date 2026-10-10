@@ -66,6 +66,12 @@ public class XrSettings{
      */
     boolean preferFbPassthrough = false;
 
+    /**
+     * If hand joints simulated by the runtime from a held controller are accepted (rather than only joints from a
+     * bare hand).
+     */
+    boolean acceptControllerDerivedHandJoints = false;
+
     public XRVersion xrApiVersion = new XRVersion(1, 0, 43);
 
     public XrSettings(){
@@ -308,6 +314,19 @@ public class XrSettings{
      */
     public void setPreferFbPassthrough(boolean preferFbPassthrough){
         this.preferFbPassthrough = preferFbPassthrough;
+    }
+
+    public boolean isAcceptControllerDerivedHandJoints(){
+        return acceptControllerDerivedHandJoints;
+    }
+
+    /**
+     * Sets whether hand joints that the runtime simulates from a held controller are used. This defaults to false,
+     * meaning only joints from a bare hand (e.g. optical hand tracking) are used. While a controller is held Tamarin
+     * then synthesises the hand pose itself (see
+     */
+    public void setAcceptControllerDerivedHandJoints(boolean acceptControllerDerivedHandJoints){
+        this.acceptControllerDerivedHandJoints = acceptControllerDerivedHandJoints;
     }
 
     /**

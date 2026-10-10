@@ -437,10 +437,13 @@ public class XrActionAppState extends XrActionBaseAppState{
                             .handJointSet(EXTHandTracking.XR_HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
 
                     if (handTrackersReportDataSource){
-                        // accept joints from both bare hands and controllers, then report which it was via getHandJointsDataSource
-                        IntBuffer requestedDataSources = stack.ints(
-                                EXTHandTrackingDataSource.XR_HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT,
-                                EXTHandTrackingDataSource.XR_HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT);
+                        // only bare hands unless the application opted in to joints simulated from a held controller
+                        // (these are often crude, worse than Tamarin's own synthesis). Which it was is reported via getHandJointsDataSource
+                        IntBuffer requestedDataSources = xrAppState.getXrSettings().isAcceptControllerDerivedHandJoints()
+                                ? stack.ints(
+                                        EXTHandTrackingDataSource.XR_HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT,
+                                        EXTHandTrackingDataSource.XR_HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT)
+                                : stack.ints(EXTHandTrackingDataSource.XR_HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT);
                         createHandTracking.next(XrHandTrackingDataSourceInfoEXT.calloc(stack)
                                 .type$Default()
                                 .requestedDataSources(requestedDataSources));

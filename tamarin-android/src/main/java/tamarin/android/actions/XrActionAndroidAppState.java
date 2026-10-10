@@ -455,10 +455,14 @@ public class XrActionAndroidAppState extends XrActionBaseAppState {
                             .handJointSet(XrHandJointSetEXT.HAND_JOINT_SET_DEFAULT_EXT); // Use the default hand joint set
 
                     if (handTrackersReportDataSource){
-                        // accept joints from both bare hands and controllers, then report which it was via getHandJointsDataSource
-                        IntBufferView requestedDataSources = stack.mallocInt(2);
+                        // only bare hands unless the application opted in to joints simulated from a held controller
+                        // (these are often crude, worse than Tamarin's own synthesis). Which it was is reported via getHandJointsDataSource
+                        boolean acceptControllerDerived = xrAppState.getXrSettings().isAcceptControllerDerivedHandJoints();
+                        IntBufferView requestedDataSources = stack.mallocInt(acceptControllerDerived ? 2 : 1);
                         requestedDataSources.set(0, XrHandTrackingDataSourceEXT.HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT.getValue());
-                        requestedDataSources.set(1, XrHandTrackingDataSourceEXT.HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT.getValue());
+                        if (acceptControllerDerived){
+                            requestedDataSources.set(1, XrHandTrackingDataSourceEXT.HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT.getValue());
+                        }
                         createHandTracking.next(XrHandTrackingDataSourceInfoEXT.calloc(stack)
                                 .type$Default()
                                 .next(NULL)

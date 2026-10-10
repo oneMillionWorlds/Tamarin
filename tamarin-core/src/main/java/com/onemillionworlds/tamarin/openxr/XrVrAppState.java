@@ -96,6 +96,14 @@ public abstract class XrVrAppState extends XrBaseAppState{
         this.xrSettings = xrSettings;
     }
 
+    /**
+     * The settings this app state was created with. Changing settings that only apply at session start will have no
+     * effect once the session has started.
+     */
+    public XrSettings getXrSettings(){
+        return xrSettings;
+    }
+
     @Override
     protected void initialize(Application app){
         AppSettings settings = app.getContext().getSettings();
