@@ -70,7 +70,7 @@ public class MechanicalButton extends Node{
                     //collisions with the button if the player plunges their hand into it
                     if(other instanceof BoundingSphere){
                         BoundingSphere boundingSphere = (BoundingSphere) other;
-                        BoundingSphere localSphere = new BoundingSphere(boundingSphere.getRadius(), this.worldToLocal(boundingSphere.getCenter(), null));
+                        BoundingSphere localSphere = OverallBoundsCalculator.worldSphereToLocal(this, boundingSphere);
                         CollisionResults newResults = new CollisionResults();
                         overallBoundsLocalisedToSpatialOrigin.collideWith(localSphere, newResults);
                         for(int i = 0; i < newResults.size(); i++){

@@ -11,13 +11,9 @@ import com.jme3.scene.Spatial;
 public class OverallBoundsCalculator{
 
     /**
-     * Calculates the overall bounding box for the given spatial, localized to the spatial's origin.
-     * This function considers all child elements of the spatial, which may include nodes and geometries,
-     * each potentially with their own local translations and rotations. The bounding box is adjusted to be
-     * relative to the origin of the provided spatial.
-     *
-     * @param spatial the spatial for which to calculate the bounding box.
-     * @return the bounding box localised to the spatial's origin.
+     * Calculates the overall bounding box for the given spatial and all its descendants, taking into account every
+     * scale, rotation and translation in the hierarchy. The spatial's own local transform is included, so the
+     * result is in the coordinate space of the spatial's parent.
      */
     protected static BoundingBox getOverallBoundsLocalisedToSpatialOrigin(Spatial spatial) {
         BoundingBox result = new BoundingBox();
@@ -84,12 +80,9 @@ public class OverallBoundsCalculator{
      * @return the transformed bounding box.
      */
     private static BoundingBox transformBoundingBox(BoundingBox box, Transform transform) {
-        // Transform the corners of the bounding box and find the new extents
-        // Note: This is a simplified approach and may need refinement for complex rotations
         Vector3f min = box.getMin(null);
         Vector3f max = box.getMax(null);
 
-        // Transform corners
         Vector3f[] corners = new Vector3f[] {
                 min, max,
                 new Vector3f(min.x, min.y, max.z),
@@ -104,13 +97,23 @@ public class OverallBoundsCalculator{
             transform.transformVector(vector3f, vector3f);
         }
 
-        // Find new bounding box extents
         BoundingBox transformedBox = new BoundingBox(corners[0], 0, 0, 0);
         for (Vector3f corner : corners) {
             transformedBox.mergeLocal(new BoundingBox(corner, 0, 0, 0));
         }
 
         return transformedBox;
+    }
+
+    /**
+     * Converts a world space sphere (e.g. a fingertip) into the local space of the given spatial. The radius is
+     * divided by the smallest component of the spatial's world scale, so under a non-uniform scale the local sphere
+     * is large enough to contain the world sphere.
+     */
+    protected static BoundingSphere worldSphereToLocal(Spatial localSpace, BoundingSphere worldSphere){
+        Vector3f worldScale = localSpace.getWorldScale();
+        float smallestScale = Math.min(Math.abs(worldScale.x), Math.min(Math.abs(worldScale.y), Math.abs(worldScale.z)));
+        return new BoundingSphere(worldSphere.getRadius() / smallestScale, localSpace.worldToLocal(worldSphere.getCenter(), null));
     }
 
 

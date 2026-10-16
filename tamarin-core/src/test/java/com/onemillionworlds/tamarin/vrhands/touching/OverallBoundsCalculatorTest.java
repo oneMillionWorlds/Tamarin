@@ -1,6 +1,7 @@
 package com.onemillionworlds.tamarin.vrhands.touching;
 
 import com.jme3.bounding.BoundingBox;
+import com.jme3.bounding.BoundingSphere;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -145,6 +146,48 @@ class OverallBoundsCalculatorTest{
         // child's +X is the parent's -Z, so the geometry centre lands at (0, 0, 3 - 5)
         Vector3fAsserts.assertEquals(new Vector3f(-1, -1, -3), result.getMin(new Vector3f()), 0.0001f);
         Vector3fAsserts.assertEquals(new Vector3f(1, 1, -1), result.getMax(new Vector3f()), 0.0001f);
+    }
+
+    @Test
+    public void nonUniformlyScaledAndRotatedParent() {
+        Node node = new Node("TestNode");
+        Node child = new Node("Child");
+        child.setLocalScale(2, 1, 1);
+        child.setLocalRotation(new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y));
+        node.attachChild(child);
+
+        Geometry geom = new Geometry("Geom1", new Box(1, 1, 1));
+        geom.setLocalTranslation(1, 0, 0);
+        child.attachChild(geom);
+
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
+
+        Vector3fAsserts.assertEquals(new Vector3f(-1, -1, -4), result.getMin(new Vector3f()), 0.0001f);
+        Vector3fAsserts.assertEquals(new Vector3f(1, 1, 0), result.getMax(new Vector3f()), 0.0001f);
+    }
+
+    @Test
+    public void worldSphereToLocal_uniformScale() {
+        Node node = new Node("TestNode");
+        node.setLocalTranslation(10, 0, 0);
+        node.setLocalScale(0.5f);
+        node.updateGeometricState();
+
+        BoundingSphere localSphere = OverallBoundsCalculator.worldSphereToLocal(node, new BoundingSphere(1, new Vector3f(11, 0, 0)));
+
+        Vector3fAsserts.assertEquals(new Vector3f(2, 0, 0), localSphere.getCenter(), 0.0001f);
+        assertEquals(2, localSphere.getRadius(), 0.0001f);
+    }
+
+    @Test
+    public void worldSphereToLocal_nonUniformScaleUsesSmallestScale() {
+        Node node = new Node("TestNode");
+        node.setLocalScale(2, 0.5f, 1);
+        node.updateGeometricState();
+
+        BoundingSphere localSphere = OverallBoundsCalculator.worldSphereToLocal(node, new BoundingSphere(1, new Vector3f(0, 0, 0)));
+
+        assertEquals(2, localSphere.getRadius(), 0.0001f);
     }
 
 }
