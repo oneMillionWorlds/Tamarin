@@ -3,7 +3,21 @@ name: Java release with Gradle
 on:
   workflow_dispatch:
 jobs:
+  read-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Read version from gradle.properties
+      id: version
+      run: echo "version=$(grep '^version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+
   release:
+    name: Release ${{ needs.read-version.outputs.version }}
+    needs: read-version
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
