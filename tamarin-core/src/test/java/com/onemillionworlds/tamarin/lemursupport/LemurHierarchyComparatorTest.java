@@ -3,6 +3,7 @@ package com.onemillionworlds.tamarin.lemursupport;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
+import com.jme3.renderer.queue.GeometryComparator;
 import com.jme3.renderer.queue.GeometryList;
 import com.jme3.renderer.queue.OpaqueComparator;
 import com.jme3.renderer.queue.TransparentComparator;
@@ -10,6 +11,7 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
+import com.simsilica.lemur.LayerComparator;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -81,6 +83,32 @@ class LemurHierarchyComparatorTest{
         assertSame(farWindowBackground, list.get(0));
         assertSame(middleCube, list.get(1));
         assertSame(nearWindowBackground, list.get(2));
+    }
+
+    @Test
+    void textOfAFurtherUiIsDrawnBeforeTheBackgroundOfANearerUi(){
+        Node scene = new Node("scene");
+        Node nearWindow = lemurWindow(scene, new Vector3f(0, 0, -2));
+        Geometry nearWindowBackground = geometry("nearWindowBackground", nearWindow, new Vector3f(0, 0, 0), 0.5f);
+        Node farWindow = lemurWindow(scene, new Vector3f(0, 0, -4));
+        Geometry farWindowBackground = geometry("farWindowBackground", farWindow, new Vector3f(0, 0, 0), 0.5f);
+        Geometry farWindowText = geometry("farWindowText", farWindow, new Vector3f(0, 0, 0.01f), 0.3f);
+        LayerComparator.setLayer(farWindowText, 1);
+        scene.updateGeometricState();
+
+        for(boolean opaque : new boolean[]{true, false}){
+            GeometryComparator layerComparator = new LayerComparator(opaque ? opaqueComparatorIgnoringMaterials() : new TransparentComparator(), -1);
+            GeometryList list = new GeometryList(new LemurHierarchyComparator(layerComparator, opaque, IS_LEMUR_ELEMENT));
+            list.add(farWindowText);
+            list.add(nearWindowBackground);
+            list.add(farWindowBackground);
+            list.setCamera(camera(Vector3f.ZERO, new Vector3f(0, 0, -1)));
+            list.sort();
+
+            assertSame(farWindowBackground, list.get(0));
+            assertSame(farWindowText, list.get(1));
+            assertSame(nearWindowBackground, list.get(2));
+        }
     }
 
     @Test

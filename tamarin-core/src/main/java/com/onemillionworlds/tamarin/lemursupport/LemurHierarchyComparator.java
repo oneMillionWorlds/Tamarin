@@ -47,7 +47,8 @@ public class LemurHierarchyComparator implements GeometryComparator{
     private final Vector3f temp = new Vector3f();
 
     /**
-     * @param delegate the comparator used for geometries that aren't part of a Lemur UI (and to break ties within one).
+     * @param delegate the comparator used for geometries that aren't part of a Lemur UI, and to break ties within one.
+     *                 Normally Lemur's {@code LayerComparator}, so that text is drawn after a background at the same z.
      * @param lemurAfterOtherGeometries true for the opaque bucket, false for the transparent and translucent buckets.
      */
     public LemurHierarchyComparator(GeometryComparator delegate, boolean lemurAfterOtherGeometries){

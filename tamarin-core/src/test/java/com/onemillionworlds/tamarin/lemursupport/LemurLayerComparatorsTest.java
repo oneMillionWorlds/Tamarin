@@ -13,15 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class LemurLayerComparatorsTest{
 
     @Test
-    void installWrapsEveryBucketInALayerComparator(){
+    void installWrapsSceneBucketsInHierarchyOrderingAroundALayerComparator(){
         ViewPort viewPort = new ViewPort("test", new Camera(10, 10));
 
         LemurLayerComparators.install(viewPort);
 
         RenderQueue queue = viewPort.getQueue();
-        assertInstanceOf(LayerComparator.class, queue.getGeometryComparator(RenderQueue.Bucket.Opaque));
-        assertInstanceOf(LayerComparator.class, queue.getGeometryComparator(RenderQueue.Bucket.Transparent));
-        assertInstanceOf(LayerComparator.class, queue.getGeometryComparator(RenderQueue.Bucket.Translucent));
+        for(RenderQueue.Bucket bucket : new RenderQueue.Bucket[]{RenderQueue.Bucket.Opaque, RenderQueue.Bucket.Transparent, RenderQueue.Bucket.Translucent}){
+            LemurHierarchyComparator hierarchyComparator = assertInstanceOf(LemurHierarchyComparator.class, queue.getGeometryComparator(bucket), bucket.name());
+            assertInstanceOf(LayerComparator.class, hierarchyComparator.getDelegate(), bucket.name());
+        }
         assertInstanceOf(LayerComparator.class, queue.getGeometryComparator(RenderQueue.Bucket.Gui));
     }
 
