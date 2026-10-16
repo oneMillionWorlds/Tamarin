@@ -65,6 +65,7 @@ public class DesktopSimulatingXrAppState extends XrBaseAppState{
                 additionalViewportRequest.isClearFlags_depth(),
                 additionalViewportRequest.isClearFlags_stencil());
         overlay.attachScene(additionalViewportRequest.getAdditionalRootNode());
+        applyStandardViewportConfiguration(overlay);
         additionalViewportRequest.getConfigureViewport().accept(overlay);
 
         return new ViewportConfigurator(){

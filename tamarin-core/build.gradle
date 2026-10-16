@@ -48,6 +48,7 @@ dependencies {
     testImplementation libs.junit.jupiter
     testRuntimeOnly libs.junit.platform.launcher
     testImplementation libs.jme3.core
+    testImplementation libs.lemur
     testImplementation libs.mockito.core
 }
 

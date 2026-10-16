@@ -11,6 +11,7 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.util.SafeArrayList;
+import com.onemillionworlds.tamarin.lemursupport.LemurAvailability;
 import com.onemillionworlds.tamarin.lemursupport.NoPressMouseEventControl;
 import com.onemillionworlds.tamarin.observable.ObservableEvent;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
@@ -88,7 +89,7 @@ public class MechanicalButton extends Node{
         attachChild(movingNode);
         movingNode.attachChild(buttonGeometry);
 
-        if(BoundHand.isLemurAvailable()){
+        if(LemurAvailability.isLemurAvailable()){
             //As we are also using a AbstractTouchControl use a NoPressMouseEventControl to avoid double handling
             MouseEventControl mec = new NoPressMouseEventControl(){
                 @Override

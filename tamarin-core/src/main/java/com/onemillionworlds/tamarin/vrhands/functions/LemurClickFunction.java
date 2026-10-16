@@ -7,6 +7,7 @@ import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.lemursupport.LemurAvailability;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -78,7 +79,7 @@ public class LemurClickFunction implements BoundHandFunction{
     }
 
     public boolean clickSpecialSupport(){
-        BoundHand.assertLemurAvailable();
+        LemurAvailability.assertLemurAvailable();
         boolean anyAction = false;
         for(Node node : pickAgainstNodes){
             CollisionResults results = this.boundHand.pickBulkHand(node);

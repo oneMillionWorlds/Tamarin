@@ -3,6 +3,7 @@ package com.onemillionworlds.tamarin.vrhands.functions;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.collision.CollisionResults;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.lemursupport.LemurAvailability;
 import com.onemillionworlds.tamarin.TamarinUtilities;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -90,7 +91,7 @@ public class PressFunction implements BoundHandFunction{
 
             CollisionResults results = boundHand.pickIndexFingerTip(pickAgainstNode);
             boolean shouldTriggerHaptic = false;
-            if (BoundHand.isLemurAvailable()){
+            if (LemurAvailability.isLemurAvailable()){
                 boolean dryRun = lemurTouchedLastUpdate;
                 FullHandlingClickThroughResult clickResult = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, dryRun, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
                 boolean lemurTouchedThisUpdate = clickResult.isClickRegularHandled() || clickResult.getSpecialHandlingClickThroughResult() == SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD;

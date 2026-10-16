@@ -5,6 +5,8 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
+import com.onemillionworlds.tamarin.lemursupport.LemurAvailability;
+import com.onemillionworlds.tamarin.lemursupport.LemurLayerComparators;
 import com.onemillionworlds.tamarin.observable.ObservableDataEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableEventSubscription;
 import com.onemillionworlds.tamarin.observable.ObservableValueSubscription;
@@ -22,6 +24,8 @@ import java.util.function.Consumer;
 public abstract class XrBaseAppState extends BaseAppState{
 
     public static String ID = "XrAppState";
+
+    private boolean installLemurLayerComparators = true;
 
     public XrBaseAppState(){
         super(ID);
@@ -49,6 +53,40 @@ public abstract class XrBaseAppState extends BaseAppState{
      * @return a ViewportConfigurator that can be used to remove the additional viewports or update their configuration
      */
     public abstract ViewportConfigurator addAdditionalViewport(AdditionalViewportRequest additionalViewportRequest);
+
+    /**
+     * If Lemur is on the classpath, Tamarin installs geometry comparators that draw Lemur UIs in the right order on
+     * every viewport it creates: the eye viewports and any additional viewports. These are Lemur's own layer
+     * comparators (as Lemur's {@code GuiGlobals.setupGuiComparators} does for the application's main viewport) plus
+     * ordering that draws each 3D Lemur UI back to front in its own stacking order. Without them, text can punch
+     * holes through the panel behind it, and semi-transparent panels can change colour as the user moves their head.
+     * See {@link LemurLayerComparators}.
+     * <p>
+     *     This is on by default. Turn it off if you install your own geometry comparators. Viewports are created
+     *     lazily during the first few frames, so set this immediately after constructing the state.
+     * </p>
+     */
+    public void setInstallLemurLayerComparators(boolean installLemurLayerComparators){
+        this.installLemurLayerComparators = installLemurLayerComparators;
+    }
+
+    /**
+     * Whether Tamarin installs comparators for Lemur UIs on the viewports it creates, see
+     * {@link #setInstallLemurLayerComparators(boolean)}.
+     */
+    public boolean isInstallLemurLayerComparators(){
+        return installLemurLayerComparators;
+    }
+
+    /**
+     * Applies the configuration Tamarin gives every viewport it creates (currently just the Lemur comparators,
+     * see {@link #setInstallLemurLayerComparators(boolean)}).
+     */
+    protected void applyStandardViewportConfiguration(ViewPort viewPort){
+        if(installLemurLayerComparators && LemurAvailability.isLemurAvailable()){
+            LemurLayerComparators.install(viewPort);
+        }
+    }
 
     /**
      * If the state has not yet been initialised will run when the eye cameras are positioned for the first time

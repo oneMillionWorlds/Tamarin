@@ -174,6 +174,7 @@ public abstract class XrVrAppState extends XrBaseAppState{
         ViewPort newViewport = getApplication().getRenderManager().createMainView(  eyeSide + " Eye", eyeSide == EyeSide.LEFT ? leftCamera : rightCamera);
         newViewport.setClearFlags(true, true, true);
         newViewport.attachScene(((SimpleApplication) getApplication()).getRootNode());
+        applyStandardViewportConfiguration(newViewport);
         this.newViewportConfiguration.accept(newViewport);
         if (isPassthroughEnabled()){
             applyPassthroughBackground(newViewport);
@@ -199,7 +200,7 @@ public abstract class XrVrAppState extends XrBaseAppState{
 
     @Override
     public ViewportConfigurator addAdditionalViewport(AdditionalViewportRequest additionalViewportRequest){
-        AdditionalViewportData additionalViewportData = new AdditionalViewportData(additionalViewportRequest, getApplication().getRenderManager(), leftCamera, rightCamera);
+        AdditionalViewportData additionalViewportData = new AdditionalViewportData(additionalViewportRequest, getApplication().getRenderManager(), leftCamera, rightCamera, this::applyStandardViewportConfiguration);
         this.additionalViewports.add(additionalViewportData);
 
         return new ViewportConfigurator(){

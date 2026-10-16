@@ -19,6 +19,7 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
 import com.jme3.scene.shape.Sphere;
+import com.onemillionworlds.tamarin.lemursupport.LemurAvailability;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -55,9 +56,6 @@ public abstract class BoundHand{
 
 
     public static final float FINGER_PICK_SPHERE_RADIUS = 0.0075f;
-
-    private static boolean lemurCheckedAvailable = false ;
-    private static boolean lemurIsAvailable = false ;
 
     /**
      * Placed on GEOMETRIES that should not be picked by the hand (either grab or point pick)
@@ -570,7 +568,7 @@ public abstract class BoundHand{
      * @return a Runnable that if called will end the click action
      */
     public FunctionRegistration setClickAction_lemurSupport(ActionHandle clickAction, Node... nodesToPickAgainst){
-        assertLemurAvailable();
+        LemurAvailability.assertLemurAvailable();
         clearClickAction_lemurSupport(); //the reason for this is the way that with many nodes dominance becomes a problem, if attached as several ClickActions (would probably be fine if bound to different buttons)
         return addFunction(new LemurClickFunction(clickAction, nodesToPickAgainst));
     }
@@ -732,23 +730,20 @@ public abstract class BoundHand{
         return handSide.name() + " hand";
     }
 
+    /**
+     * @deprecated use {@link LemurAvailability#assertLemurAvailable()}
+     */
+    @Deprecated
     public static void assertLemurAvailable(){
-        if (!isLemurAvailable()){
-            throw new RuntimeException("Lemur not available on class path. Lemur required for methods named _lemurSupport or classes with Lemur in name");
-        }
+        LemurAvailability.assertLemurAvailable();
     }
 
+    /**
+     * @deprecated use {@link LemurAvailability#isLemurAvailable()}
+     */
+    @Deprecated
     public static boolean isLemurAvailable(){
-        if(!lemurCheckedAvailable){
-            try{
-                Class.forName("com.simsilica.lemur.Button");
-                lemurIsAvailable = true;
-            } catch(Throwable ex){
-                lemurIsAvailable = false;
-            }
-            lemurCheckedAvailable = true;
-        }
-        return lemurIsAvailable;
+        return LemurAvailability.isLemurAvailable();
     }
 
     public static boolean notNull(Object... objects){

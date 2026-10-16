@@ -9,6 +9,7 @@ import com.jme3.asset.AssetManager;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.onemillionworlds.tamarin.lemursupport.LemurAvailability;
 import com.onemillionworlds.tamarin.actions.HandSide;
 import com.onemillionworlds.tamarin.actions.XrActionBaseAppState;
 import com.onemillionworlds.tamarin.actions.actionprofile.ActionHandle;
@@ -105,7 +106,7 @@ public class VRHandsAppState extends BaseAppState{
             updateHandsForHandSpec(pendingHandSpec);
             pendingHandSpec = null;
         }
-        if(BoundHand.isLemurAvailable()){
+        if(LemurAvailability.isLemurAvailable()){
             if(!(xrAppState instanceof DesktopSimulatingXrAppState)){ //if it is desktop simulating let the mouse remain in charge
                 BasePickState basePickState = getStateManager().getState(BasePickState.class);
                 if(basePickState != null){

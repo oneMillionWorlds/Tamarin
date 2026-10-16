@@ -28,14 +28,24 @@ public class AdditionalViewportData{
     private final Camera leftCamera;
     private final Camera rightCamera;
 
+    private final Consumer<ViewPort> standardConfiguration;
+
     public AdditionalViewportData(AdditionalViewportRequest additionalViewportRequest, RenderManager renderManager, Camera leftCamera, Camera rightCamera){
+        this(additionalViewportRequest, renderManager, leftCamera, rightCamera, viewPort -> {});
+    }
+
+    /**
+     * @param standardConfiguration configuration Tamarin applies to every viewport it creates, applied to each new
+     *                              viewport before the request's own configuration.
+     */
+    public AdditionalViewportData(AdditionalViewportRequest additionalViewportRequest, RenderManager renderManager, Camera leftCamera, Camera rightCamera, Consumer<ViewPort> standardConfiguration){
         rootNode = additionalViewportRequest.getAdditionalRootNode();
         configureViewport = additionalViewportRequest.getConfigureViewport();
         this.renderManager = renderManager;
         this.additionalViewportRequest = additionalViewportRequest;
         this.leftCamera = leftCamera;
         this.rightCamera = rightCamera;
-
+        this.standardConfiguration = standardConfiguration;
     }
 
     public ViewPort getAssociatedViewport(FrameBuffer fb, EyeSide eyeSide){
@@ -62,6 +72,7 @@ public class AdditionalViewportData{
                 newViewport.attachScene(rootNode);
             }
             newViewport.setOutputFrameBuffer(fb);
+            standardConfiguration.accept(newViewport);
             this.configureViewport.accept(newViewport);
             return newViewport;
         });
