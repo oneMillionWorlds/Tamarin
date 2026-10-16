@@ -82,4 +82,69 @@ class OverallBoundsCalculatorTest{
         Vector3fAsserts.assertEquals(new Vector3f(FastMath.sqrt(2), 1, FastMath.sqrt(2)), maximum, 0.0001f);
     }
 
+    @Test
+    public void scaledRoot() {
+        Geometry geom = new Geometry("Geom1", new Box(1, 1, 1));
+        geom.setLocalScale(0.5f, 2, 1);
+
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(geom);
+
+        Vector3fAsserts.assertEquals(new Vector3f(-0.5f, -2, -1), result.getMin(new Vector3f()), 0.0001f);
+        Vector3fAsserts.assertEquals(new Vector3f(0.5f, 2, 1), result.getMax(new Vector3f()), 0.0001f);
+    }
+
+    @Test
+    public void scaledDescendant() {
+        Node node = new Node("TestNode");
+        Node child = new Node("Child");
+        child.setLocalTranslation(1, 0, 0);
+        node.attachChild(child);
+
+        Geometry geom = new Geometry("Geom1", new Box(10, 10, 10));
+        geom.setLocalScale(0.1f);
+        geom.setLocalTranslation(0, 2, 0);
+        child.attachChild(geom);
+
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
+
+        Vector3fAsserts.assertEquals(new Vector3f(0, 1, -1), result.getMin(new Vector3f()), 0.0001f);
+        Vector3fAsserts.assertEquals(new Vector3f(2, 3, 1), result.getMax(new Vector3f()), 0.0001f);
+    }
+
+    @Test
+    public void scaledParentScalesChildTranslation() {
+        Node node = new Node("TestNode");
+        Node child = new Node("Child");
+        child.setLocalScale(0.5f);
+        node.attachChild(child);
+
+        Geometry geom = new Geometry("Geom1", new Box(1, 1, 1));
+        geom.setLocalTranslation(4, 0, 0);
+        child.attachChild(geom);
+
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
+
+        Vector3fAsserts.assertEquals(new Vector3f(1.5f, -0.5f, -0.5f), result.getMin(new Vector3f()), 0.0001f);
+        Vector3fAsserts.assertEquals(new Vector3f(2.5f, 0.5f, 0.5f), result.getMax(new Vector3f()), 0.0001f);
+    }
+
+    @Test
+    public void rotatedParentRotatesChildTranslation() {
+        Node node = new Node("TestNode");
+        Node child = new Node("Child");
+        child.setLocalTranslation(0, 0, 3);
+        child.setLocalRotation(new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y));
+        node.attachChild(child);
+
+        Geometry geom = new Geometry("Geom1", new Box(1, 1, 1));
+        geom.setLocalTranslation(5, 0, 0);
+        child.attachChild(geom);
+
+        BoundingBox result = OverallBoundsCalculator.getOverallBoundsLocalisedToSpatialOrigin(node);
+
+        // child's +X is the parent's -Z, so the geometry centre lands at (0, 0, 3 - 5)
+        Vector3fAsserts.assertEquals(new Vector3f(-1, -1, -3), result.getMin(new Vector3f()), 0.0001f);
+        Vector3fAsserts.assertEquals(new Vector3f(1, 1, -1), result.getMax(new Vector3f()), 0.0001f);
+    }
+
 }

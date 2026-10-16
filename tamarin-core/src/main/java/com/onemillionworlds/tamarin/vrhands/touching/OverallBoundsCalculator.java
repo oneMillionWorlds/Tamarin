@@ -2,7 +2,7 @@ package com.onemillionworlds.tamarin.vrhands.touching;
 
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bounding.BoundingSphere;
-import com.jme3.math.Quaternion;
+import com.jme3.math.Transform;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -21,12 +21,7 @@ public class OverallBoundsCalculator{
      */
     protected static BoundingBox getOverallBoundsLocalisedToSpatialOrigin(Spatial spatial) {
         BoundingBox result = new BoundingBox();
-        updateOverallBounds(spatial, new Vector3f(0, 0, 0), new Quaternion(), result);
-
-        result.setCenter(result.getCenter().mult(spatial.getLocalScale()));
-        result.setXExtent(result.getXExtent() * spatial.getLocalScale().x);
-        result.setYExtent(result.getYExtent() * spatial.getLocalScale().y);
-        result.setZExtent(result.getZExtent() * spatial.getLocalScale().z);
+        updateOverallBounds(spatial, Transform.IDENTITY, result);
         return result;
     }
 
@@ -34,32 +29,27 @@ public class OverallBoundsCalculator{
      * Helper method to recursively update the bounding box based on child spatials.
      *
      * @param spatial the spatial to process.
-     * @param parentTranslation accumulated translation from parent spatials.
-     * @param parentRotation accumulated rotation from parent spatials.
+     * @param parentTransform accumulated transform (scale, rotation and translation) from parent spatials.
      * @param overallBounds the bounding box being updated.
      */
-    private static void updateOverallBounds(Spatial spatial, Vector3f parentTranslation, Quaternion parentRotation, BoundingBox overallBounds) {
+    private static void updateOverallBounds(Spatial spatial, Transform parentTransform, BoundingBox overallBounds) {
         if (spatial == null) {
             return;
         }
 
-        // Accumulate the local translation and rotation
-        Vector3f localTranslation = spatial.getLocalTranslation();
-        Quaternion localRotation = spatial.getLocalRotation();
-        Vector3f accumulatedTranslation = parentRotation.mult(parentTranslation.add(localTranslation));
-        Quaternion accumulatedRotation = parentRotation.mult(localRotation);
+        Transform accumulatedTransform = spatial.getLocalTransform().clone().combineWithParent(parentTransform);
 
         if (spatial instanceof Node) {
             Node node = (Node) spatial;
             for (Spatial child : node.getChildren()) {
-                updateOverallBounds(child, accumulatedTranslation, accumulatedRotation, overallBounds);
+                updateOverallBounds(child, accumulatedTransform, overallBounds);
             }
         } else if (spatial instanceof Geometry) {
             Geometry geometry = (Geometry) spatial;
             BoundingBox localBounds = getBoundingBox(geometry);
 
             if (localBounds != null) {
-                BoundingBox transformedBounds = transformBoundingBox(localBounds, accumulatedTranslation, accumulatedRotation);
+                BoundingBox transformedBounds = transformBoundingBox(localBounds, accumulatedTransform);
                 if (overallBounds.getYExtent() == 0 && overallBounds.getXExtent() == 0 && overallBounds.getZExtent() == 0){
                     //this is the first bounds we've seen
                     overallBounds.setCenter(transformedBounds.getCenter());
@@ -87,14 +77,13 @@ public class OverallBoundsCalculator{
     }
 
     /**
-     * Transforms the bounding box by the given translation and rotation.
+     * Transforms the bounding box by the given transform.
      *
      * @param box the bounding box to transform.
-     * @param translation the translation to apply.
-     * @param rotation the rotation to apply.
+     * @param transform the scale, rotation and translation to apply.
      * @return the transformed bounding box.
      */
-    private static BoundingBox transformBoundingBox(BoundingBox box, Vector3f translation, Quaternion rotation) {
+    private static BoundingBox transformBoundingBox(BoundingBox box, Transform transform) {
         // Transform the corners of the bounding box and find the new extents
         // Note: This is a simplified approach and may need refinement for complex rotations
         Vector3f min = box.getMin(null);
@@ -112,8 +101,7 @@ public class OverallBoundsCalculator{
         };
 
         for(Vector3f vector3f : corners){
-            rotation.multLocal(vector3f);
-            vector3f.addLocal(translation);
+            transform.transformVector(vector3f, vector3f);
         }
 
         // Find new bounding box extents
