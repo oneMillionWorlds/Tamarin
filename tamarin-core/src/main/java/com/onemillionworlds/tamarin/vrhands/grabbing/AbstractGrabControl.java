@@ -6,6 +6,9 @@ import com.jme3.scene.control.AbstractControl;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import javax.annotation.OverridingMethodsMustInvokeSuper;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -16,30 +19,62 @@ import java.util.Optional;
  * This control allows for grab interaction but is entirely optional, raw {@link BoundHand#pickPalm} can be used and
  * your own grabbing implementation.
  * </p>
+ * <p>
+ * More than one hand may hold the control at once. Each hand is tracked independently, so releasing one hand leaves
+ * the control held by the other. The hand that grabbed first is the primary hand (see {@link #getGrabbingHand()});
+ * if it lets go the next hand to have grabbed becomes the primary hand.
+ * </p>
  * Extend this class to get access to onGrab and onRelease, make sure to call super
  */
 @SuppressWarnings("unused")
 public abstract class AbstractGrabControl extends AbstractControl{
 
+    private final List<BoundHand> grabbingHands = new ArrayList<>(2);
 
-    Optional<BoundHand> grabbingHand = Optional.empty();
-
+    /**
+     * Called each time a hand grabs this control, including when another hand is already holding it.
+     */
     @OverridingMethodsMustInvokeSuper
     public void onGrab(BoundHand grabbedByHand ){
-        grabbingHand = Optional.of(grabbedByHand);
+        if(!grabbingHands.contains(grabbedByHand)){
+            grabbingHands.add(grabbedByHand);
+        }
     }
 
+    /**
+     * Called each time a hand releases this control. Other hands may still be holding it, see {@link #isGrabbed()}.
+     */
     @OverridingMethodsMustInvokeSuper
     public void onRelease(BoundHand handUnbindingFrom){
-        grabbingHand = Optional.empty();
+        grabbingHands.remove(handUnbindingFrom);
     }
 
+    /**
+     * @return true if at least one hand is holding this control.
+     */
     public boolean isGrabbed(){
-        return grabbingHand.isPresent();
+        return !grabbingHands.isEmpty();
     }
 
+    /**
+     * @return true if the given hand is (one of the hands) holding this control.
+     */
+    public boolean isGrabbedBy(BoundHand hand){
+        return grabbingHands.contains(hand);
+    }
+
+    /**
+     * The primary grabbing hand: the one that has been holding this control the longest.
+     */
     public Optional<BoundHand> getGrabbingHand(){
-        return grabbingHand;
+        return grabbingHands.isEmpty() ? Optional.empty() : Optional.of(grabbingHands.get(0));
+    }
+
+    /**
+     * Every hand currently holding this control, in the order they grabbed it (so the primary hand first).
+     */
+    public List<BoundHand> getGrabbingHands(){
+        return Collections.unmodifiableList(grabbingHands);
     }
 
     /**
