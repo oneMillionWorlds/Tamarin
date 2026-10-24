@@ -346,6 +346,22 @@ class RelativeMovingGrabControlTest{
         Vector3fAsserts.assertEquals(new Vector3f(expectedScale, expectedScale, expectedScale), target.getLocalScale(), TOLERANCE);
     }
 
+    @Test
+    void thePalmMovingWithinTheHandAfterTheGrabDoesNotMoveTheTarget(){
+        palmHoldOffset.set(0, 0, 0.5f);
+        control.setTwoHandedGrabEnabled(true);
+        control.setTwoHandedResizing(UniformScaleTwoHandedResizing.INSTANCE);
+        target.setLocalTranslation(0, 0, 0.5f);
+        grabWithBothHands(new Vector3f(-1, 0, 0), new Vector3f(1, 0, 0));
+
+        // e.g. the fingers curling further moving the (skeleton placed) palm relative to the controller pose
+        palmHoldOffset.set(0.3f, 0.1f, 0.2f);
+        update();
+
+        Vector3fAsserts.assertEquals(new Vector3f(0, 0, 0.5f), target.getLocalTranslation(), TOLERANCE);
+        Vector3fAsserts.assertEquals(new Vector3f(1, 1, 1), target.getLocalScale(), TOLERANCE);
+    }
+
     private void grabWithBothHands(Vector3f leftPosition, Vector3f rightPosition){
         leftHandNode.setLocalTranslation(leftPosition);
         rightHandNode.setLocalTranslation(rightPosition);

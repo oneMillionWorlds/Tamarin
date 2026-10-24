@@ -16,6 +16,7 @@ import com.onemillionworlds.tamarin.vrhands.grabbing.twohanded.NoTwoHandedResizi
 import com.onemillionworlds.tamarin.vrhands.grabbing.twohanded.TwoHandedResizeContext;
 import com.onemillionworlds.tamarin.vrhands.grabbing.twohanded.TwoHandedResizing;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,7 +27,7 @@ import java.util.List;
  * hand lets go, at which point the target smoothly carries on following the second hand.
  * <p>
  * With {@link #setTwoHandedGrabEnabled(boolean)} two hands can hold the target at once. It then follows the point
- * midway between the hands, and turns as the line between the hands turns (and as the hands twist, on average, about
+ * midway between the palms, and turns as the line between the palms turns (and as the hands twist, on average, about
  * that line). What the hands moving together or apart does is decided by
  * {@link #setTwoHandedResizing(TwoHandedResizing)} (by default nothing). Changing between one and two hands never
  * makes the target jump.
@@ -38,13 +39,15 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
     private static final float MINIMUM_HAND_SEPARATION = 1e-4f;
 
-    private List<BoundHand> anchoredHands = Collections.emptyList();
+    /**
+     * The hands moving the target, primary hand first.
+     */
+    private List<AnchoredHand> anchoredHands = Collections.emptyList();
     private Vector3f startTargetPosition;
     private Quaternion startTargetRotation;
     private Vector3f startTargetScale;
     private Vector3f startGraspPosition;
     private Vector3f graspToTargetOffset;
-    private Quaternion[] startHandRotations;
     private Vector3f startHandLine;
     private Vector3f startGraspPointOnTarget;
     private Vector3f startPrimaryHandPointOnTarget;
@@ -94,7 +97,7 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
 
         Spatial moveTargetSpatial = getMoveTargetSpatial();
         Node targetParent = moveTargetSpatial.getParent();
-        if (!activeHands.equals(anchoredHands)){
+        if (!isAnchoredTo(activeHands)){
             endTwoHandedResizeIfInProgress();
             anchor(activeHands, moveTargetSpatial, targetParent);
             if (activeHands.size() == 2){
@@ -103,25 +106,24 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
             }
         }
 
-        BoundHand primaryHand = activeHands.get(0);
-        Vector3f primaryPosition = handPosition(primaryHand, targetParent, activeHands.size() == 2);
-        Quaternion primaryRotation = handRotation(primaryHand, targetParent);
+        AnchoredHand primary = anchoredHands.get(0);
+        Vector3f primaryPosition = primary.position(targetParent);
 
-        if (activeHands.size() == 1){
-            Quaternion changeInRotation = getQuaternionFromTo(startHandRotations[0], primaryRotation);
+        if (anchoredHands.size() == 1){
+            Quaternion changeInRotation = primary.rotationChange(targetParent);
             Vector3f naturalPosition = startTargetPosition.add(primaryPosition.subtract(startGraspPosition));
             if (shouldApplyRotation){
                 naturalPosition.addLocal(changeInRotation.mult(graspToTargetOffset).subtractLocal(graspToTargetOffset));
             }
-            moveTarget(moveTargetSpatial, primaryHand, naturalPosition, changeInRotation.mult(startTargetRotation));
+            moveTarget(moveTargetSpatial, primary.hand, naturalPosition, changeInRotation.mult(startTargetRotation));
         }else{
-            Vector3f secondaryPosition = handPosition(activeHands.get(1), targetParent, true);
-            Quaternion secondaryRotation = handRotation(activeHands.get(1), targetParent);
+            AnchoredHand secondary = anchoredHands.get(1);
+            Vector3f secondaryPosition = secondary.position(targetParent);
 
             Vector3f midpoint = primaryPosition.add(secondaryPosition).multLocal(0.5f);
             Vector3f handLine = secondaryPosition.subtract(primaryPosition);
             Quaternion newRotation = shouldApplyRotation
-                    ? twoHandedRotationChange(handLine, primaryRotation, secondaryRotation).mult(startTargetRotation)
+                    ? twoHandedRotationChange(handLine, primary.rotationChange(targetParent), secondary.rotationChange(targetParent)).mult(startTargetRotation)
                     : startTargetRotation;
 
             float startHandSeparation = startHandLine.length();
@@ -133,8 +135,20 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
                     startSecondaryHandPointOnTarget, startTargetScale));
 
             Vector3f graspToTarget = newRotation.mult(moveTargetSpatial.getLocalScale().mult(graspPointOnTarget).negateLocal());
-            moveTarget(moveTargetSpatial, primaryHand, midpoint.add(graspToTarget), newRotation);
+            moveTarget(moveTargetSpatial, primary.hand, midpoint.add(graspToTarget), newRotation);
         }
+    }
+
+    private boolean isAnchoredTo(List<BoundHand> hands){
+        if (hands.size() != anchoredHands.size()){
+            return false;
+        }
+        for (int i = 0; i < hands.size(); i++){
+            if (anchoredHands.get(i).hand != hands.get(i)){
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -164,21 +178,21 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      * whenever the set of hands moving the target changes, which is what stops the target jumping at a hand-over.
      */
     private void anchor(List<BoundHand> activeHands, Spatial moveTargetSpatial, Node targetParent){
-        anchoredHands = activeHands;
+        List<AnchoredHand> newlyAnchoredHands = new ArrayList<>(activeHands.size());
+        for (BoundHand hand : activeHands){
+            newlyAnchoredHands.add(new AnchoredHand(hand, targetParent));
+        }
+        anchoredHands = newlyAnchoredHands;
         startTargetPosition = targetParent.worldToLocal(moveTargetSpatial.getWorldTranslation(), null);
         startTargetRotation = targetParent.getWorldRotation().inverse().mult(new Quaternion(moveTargetSpatial.getWorldRotation()));
         startTargetScale = moveTargetSpatial.getLocalScale().clone();
-        startHandRotations = new Quaternion[activeHands.size()];
-        for (int i = 0; i < activeHands.size(); i++){
-            startHandRotations[i] = handRotation(activeHands.get(i), targetParent);
-        }
 
-        Vector3f primaryPosition = handPosition(activeHands.get(0), targetParent, activeHands.size() == 2);
-        if (activeHands.size() == 1){
+        Vector3f primaryPosition = anchoredHands.get(0).position(targetParent);
+        if (anchoredHands.size() == 1){
             startGraspPosition = primaryPosition;
             startHandLine = null;
         }else{
-            Vector3f secondaryPosition = handPosition(activeHands.get(1), targetParent, true);
+            Vector3f secondaryPosition = anchoredHands.get(1).position(targetParent);
             startGraspPosition = primaryPosition.add(secondaryPosition).multLocal(0.5f);
             startHandLine = secondaryPosition.subtract(primaryPosition);
             startGraspPointOnTarget = parentLocalToTargetLocal(startGraspPosition);
@@ -203,13 +217,13 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
      * The swing of the line between the hands, combined with the average twist of the two hands about that line (the
      * line alone can't say how the target has rolled about itself).
      */
-    private Quaternion twoHandedRotationChange(Vector3f handLine, Quaternion primaryRotation, Quaternion secondaryRotation){
+    private Quaternion twoHandedRotationChange(Vector3f handLine, Quaternion primaryRotationChange, Quaternion secondaryRotationChange){
         Quaternion swing = GraspMaths.rotationBetween(startHandLine, handLine);
         Quaternion inverseSwing = swing.inverse();
         Vector3f axis = handLine.normalize();
 
-        float primaryTwist = GraspMaths.twistAngle(getQuaternionFromTo(startHandRotations[0], primaryRotation).mult(inverseSwing), axis);
-        float secondaryTwist = GraspMaths.twistAngle(getQuaternionFromTo(startHandRotations[1], secondaryRotation).mult(inverseSwing), axis);
+        float primaryTwist = GraspMaths.twistAngle(primaryRotationChange.mult(inverseSwing), axis);
+        float secondaryTwist = GraspMaths.twistAngle(secondaryRotationChange.mult(inverseSwing), axis);
 
         Quaternion twist = new Quaternion().fromAngleNormalAxis((primaryTwist + secondaryTwist) / 2, axis);
         return twist.mult(swing);
@@ -236,21 +250,43 @@ public abstract class AbstractRelativeMovingGrabControl extends AbstractGrabCont
     }
 
     /**
-     * Where the hand is holding the target. With one hand any point fixed to the hand gives the same motion, so the
-     * stable controller pose is used. With two hands the midpoint and separation depend on the point, so it is the
-     * palm's hold position (where the grab pick happens) rather than the hand node, which is in front of the thumb.
+     * A hand moving the target, along with what was recorded about it when it was anchored.
      */
-    private static Vector3f handPosition(BoundHand hand, Node targetParent, boolean graspingWithTwoHands){
-        Vector3f worldPosition = graspingWithTwoHands ? hand.getHoldPosition(0) : hand.getHandNode_xPointing().getWorldTranslation();
-        Vector3f position = targetParent.worldToLocal(worldPosition, null);
-        assert !TamarinUtilities.isNaN(position) : "hand position is NaN";
-        return position;
-    }
+    private static final class AnchoredHand{
+        final BoundHand hand;
+        final Quaternion startRotation;
+        /**
+         * The palm's hold position (where the grab pick happens) in the hand node's coordinates.
+         */
+        final Vector3f holdPointOnHand;
 
-    private static Quaternion handRotation(BoundHand hand, Node targetParent){
-        Quaternion rotation = targetParent.getWorldRotation().inverse().mult(hand.getHandNode_xPointing().getWorldRotation());
-        assert !TamarinUtilities.isNaN(rotation) : "hand rotation is NaN";
-        return rotation;
+        AnchoredHand(BoundHand hand, Node targetParent){
+            this.hand = hand;
+            this.startRotation = rotation(hand, targetParent);
+            this.holdPointOnHand = hand.getHandNode_xPointing().worldToLocal(hand.getHoldPosition(0), null);
+        }
+
+        /**
+         * Where the hand is holding the target: the palm's hold position as it was when the hand was anchored, carried
+         * rigidly with the hand node. The palm itself is placed from the hand skeleton, so following it live would make
+         * the target drift as the fingers move or tracking jitters.
+         */
+        Vector3f position(Node targetParent){
+            Vector3f worldPosition = hand.getHandNode_xPointing().localToWorld(holdPointOnHand, null);
+            Vector3f position = targetParent.worldToLocal(worldPosition, null);
+            assert !TamarinUtilities.isNaN(position) : "hand position is NaN";
+            return position;
+        }
+
+        Quaternion rotationChange(Node targetParent){
+            return getQuaternionFromTo(startRotation, rotation(hand, targetParent));
+        }
+
+        private static Quaternion rotation(BoundHand hand, Node targetParent){
+            Quaternion rotation = targetParent.getWorldRotation().inverse().mult(hand.getHandNode_xPointing().getWorldRotation());
+            assert !TamarinUtilities.isNaN(rotation) : "hand rotation is NaN";
+            return rotation;
+        }
     }
 
     /**
