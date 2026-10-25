@@ -13,6 +13,8 @@ import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.KeyboardTextEdit
 import com.onemillionworlds.tamarin.lemursupport.keyboardstyles.bundledkeyboards.SimpleQwertyStyle;
 import com.onemillionworlds.tamarin.vrhands.BoundHand;
 import com.simsilica.lemur.Button;
+import com.simsilica.lemur.GridPanel;
+import com.simsilica.lemur.ListBox;
 import com.simsilica.lemur.Selector;
 import com.simsilica.lemur.TextField;
 import com.simsilica.lemur.core.GuiControl;
@@ -80,6 +82,9 @@ public class LemurSupport{
                 while(processedSpatial!=null){
                     if (Boolean.TRUE.equals(processedSpatial.getUserData(TAMARIN_STOP_BUBBLING))){
                         return new FullHandlingClickThroughResult(specialClickResult, false);
+                    }
+                    if (clickListBoxCell(processedSpatial, dryRun)){
+                        return new FullHandlingClickThroughResult(specialClickResult, true);
                     }
                     if (processedSpatial instanceof Button){
                         if (!dryRun){((Button)processedSpatial).click();}
@@ -188,6 +193,38 @@ public class LemurSupport{
 
         }
         return SpecialHandlingClickThroughResult.NO_SPECIAL_INTERACTIONS;
+    }
+
+    /**
+     * A ListBox selects items from cursor events on its cells rather than from button click commands (and some cells,
+     * like those in a dropdown's popup, are plain labels), so clicking the cell does nothing. This selects the cell's
+     * item instead.
+     *
+     * @return true if the spatial was a visible cell of a ListBox (whether or not it was selected, due to dryRun)
+     */
+    private static boolean clickListBoxCell(Spatial cell, boolean dryRun){
+        if (!(cell.getParent() instanceof GridPanel)){
+            return false;
+        }
+        GridPanel grid = (GridPanel)cell.getParent();
+        Spatial ancestor = grid.getParent();
+        while(ancestor != null && !(ancestor instanceof ListBox)){
+            ancestor = ancestor.getParent();
+        }
+        if (ancestor == null || ((ListBox<?>)ancestor).getGridPanel() != grid){
+            return false;
+        }
+        ListBox<?> listBox = (ListBox<?>)ancestor;
+        int firstVisibleRow = grid.getRow();
+        for(int i = 0; i < grid.getVisibleRows(); i++){
+            if (grid.getCell(firstVisibleRow + i, 0) == cell){
+                if (!dryRun){
+                    listBox.getSelectionModel().setSelection(firstVisibleRow + i);
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

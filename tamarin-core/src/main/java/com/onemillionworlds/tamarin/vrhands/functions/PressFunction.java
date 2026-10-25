@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 /**
  * This will use finger tip picking and will look for both lemur controls (optional dependant) and
@@ -27,11 +26,9 @@ import java.util.logging.Logger;
  *
  * It is not quite as integrated with Lemur as {@link LemurClickFunction} and
  * doesn't support as many interactions (basically only buttons, things with click
- * event listeners and text boxes)
+ * event listeners, text boxes, list boxes and dropdowns)
  */
 public class PressFunction implements BoundHandFunction{
-
-    private static final Logger logger = Logger.getLogger(PressFunction.class.getName());
 
     /**
      * If there are multiple touches within this time all but the first are suppressed
@@ -94,7 +91,8 @@ public class PressFunction implements BoundHandFunction{
             if (LemurAvailability.isLemurAvailable()){
                 boolean dryRun = lemurTouchedLastUpdate;
                 FullHandlingClickThroughResult clickResult = LemurSupport.clickThroughFullHandling(pickAgainstNode, results, stateManager, dryRun, this::handleNewKeyboardOpening, this::handleNewDropdownOpening);
-                boolean lemurTouchedThisUpdate = clickResult.isClickRegularHandled() || clickResult.getSpecialHandlingClickThroughResult() == SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD;
+                SpecialHandlingClickThroughResult special = clickResult.getSpecialHandlingClickThroughResult();
+                boolean lemurTouchedThisUpdate = clickResult.isClickRegularHandled() || special == SpecialHandlingClickThroughResult.OPENED_LEMUR_KEYBOARD || special == SpecialHandlingClickThroughResult.OPENED_DROPDOWN;
                 shouldTriggerHaptic = !lemurTouchedLastUpdate && lemurTouchedThisUpdate;
                 lemurTouchedLastUpdate = lemurTouchedThisUpdate;
 
@@ -141,7 +139,6 @@ public class PressFunction implements BoundHandFunction{
     }
 
     private void handleNewDropdownOpening(SelectorPopUp<?> newSelectorPopup){
-        logger.warning("Selector used with finger tip interaction, this is not supported");
         closeDropDown();
         openDropdown = Optional.of(newSelectorPopup);
     }
