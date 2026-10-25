@@ -98,6 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.onemillionworlds.tamarin.openxrbindings.XR10.xrEnumerateInstanceExtensionProperties;
@@ -125,6 +126,8 @@ public class OpenXrAndroidSessionManager implements PassthroughControl {
     int swapchainHeight;
 
     private static final Logger LOGGER = Logger.getLogger(OpenXrAndroidSessionManager.class.getName());
+
+    private static final long GRACEFUL_EXIT_TIMEOUT_NANOS = 2_000_000_000L;
 
     XrInstance xrInstance;
     boolean missingXrDebug;
@@ -1217,7 +1220,64 @@ public class OpenXrAndroidSessionManager implements PassthroughControl {
 
     }
 
+    /**
+     * Asks the runtime to end the session and waits (briefly) for it to move through STOPPING to EXITING, so the
+     * runtime sees an orderly exit rather than the session disappearing while still running.
+     */
+    private void exitSessionGracefully(){
+        if (!isSessionRunning()){
+            return;
+        }
+        XrResult result = XR10.xrRequestExitSession(xrSession);
+        if (result.getValue() < 0){
+            LOGGER.warning("xrRequestExitSession failed with " + result + ", destroying session without a graceful exit");
+            return;
+        }
+        long deadline = System.nanoTime() + GRACEFUL_EXIT_TIMEOUT_NANOS;
+        while (System.nanoTime() < deadline){
+            pollEvents();
+            SessionState state = getSessionState();
+            if (state == SessionState.EXITING || state == SessionState.LOSS_PENDING){
+                return;
+            }
+            if (isSessionRunning()){
+                submitEmptyFrame();
+            } else {
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+        LOGGER.warning("Timed out waiting for the OpenXR session to exit, session state was " + getSessionState());
+    }
+
+    private void submitEmptyFrame(){
+        try (MemoryStack stack = MemoryStack.stackGet().push()) {
+            XrFrameState frameState = XrFrameState.calloc(stack)
+                    .type$Default();
+            checkResponseCode(XR10.xrWaitFrame(xrSession, XrFrameWaitInfo.calloc(stack).type$Default(), frameState));
+            checkResponseCode(XR10.xrBeginFrame(xrSession, XrFrameBeginInfo.calloc(stack).type$Default()));
+            checkResponseCode(XR10.xrEndFrame(
+                    xrSession,
+                    XrFrameEndInfo.calloc(stack)
+                            .type$Default()
+                            .next(NULL)
+                            .displayTime(frameState.predictedDisplayTime())
+                            .environmentBlendMode(XrEnvironmentBlendMode.fromValue(xrVrBlendMode.getXrValue()))
+                            .layers(null)
+            ));
+        }
+    }
+
     public void destroy(){
+        try {
+            exitSessionGracefully();
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Failed to exit the OpenXR session gracefully", e);
+        }
         eventDataBuffer.free();
         views.free();
         viewConfigs.free();
